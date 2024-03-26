@@ -1,0 +1,21 @@
+{
+  "name": "asap",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "dotenv": "^16.0.3"
+  },
+  "dependencies": {
+    "@unitn-asa/deliveroo-js-client": "^0.0.37",
+    "@unitn-asa/pddl-client": "^0.0.29",
+    "node-fetch": "^3.3.0",
+    "socket.io-client": "^4.6.0"
+  }
+}
