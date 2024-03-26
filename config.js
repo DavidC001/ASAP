@@ -1,8 +1,8 @@
 const config = {
 
-    host: "https://deliveroojs.onrender.com", //"http://localhost:8080", // https://deliveroojs.onrender.com"
+    host: "https://cuwu.ddns.net:8082", //"http://localhost:8080", // https://deliveroojs.onrender.com"
 
-    token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Ijc4ZDc2YzBmNjgwIiwibmFtZSI6ImxvbCIsImlhdCI6MTcxMTQ1Mjc2NH0.5goRWP-ZZKN8LB31H--VOgsMTxTHT9IfkngrLDlfnTk'
+    token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjQzNjBhOTE4OTU4IiwibmFtZSI6ImxvbCIsImlhdCI6MTcxMTQ1Mzc2NH0.opEO5mYymDmxgOIA0lS2kCgxEmc4BYqtYQr22xzxDWo'
 
 }
 
