@@ -30,32 +30,38 @@ const db = new Map()
 client.onAgentsSensing((agents) => {
 
     for (const a of agents) {
-
+        const timestamp = Date.now() - start;
         if (a.x % 1 !== 0 || a.y % 1 !== 0) // skip intermediate values (0.6 or 0.4)
             continue;
 
         // I meet someone for the first time
         if (!db.has(a.id)) {
-            db.set(a.id, {x: a.x, y: a.y, name: a.name})
-            console.log('Met ' + a.name + ' for the first time');
+            db.set(a.id, [])
+            console.log('Met ' + a.name + ' for the first time', db.get(a.id));
         } else { // I remember him
-            console.log("Already met " + a.name);
-            db.set(a.id, {x: a.x, y: a.y, name: a.name})
+            console.log("Already met " + a.name, db.get(a.id));
         }
-
+        if (db.get(a.id).length > 5) db.get(a.id).shift();
+        db.get(a.id).push({x: a.x, y: a.y, name: a.name, timestamp: timestamp})
     }
 
     for (const [id, history] of db.entries()) {
 
         const last = history[history.length - 1]
         const second_last = (history.length > 1 ? history[history.length - 2] : 'no knowledge')
-
         if (!agents.map(a => a.id).includes(id)) {
             // If I am not seeing him anymore
-            console.log(id + " disappeared at [" + last.x + "," + last.y + "]");
+            console.log(last.name + " disappeared at [" + last.x + "," + last.y + "]");
 
         } else { // If I am still seing him ... see above
-            console.log('still seing him ' + last.name + " at [" + last.x + "," + last.y + "]")
+            console.log('still seing ' + last.name + " at [" + last.x + "," + last.y + "]")
+            if (second_last.x===last.x && second_last.y===last.y){
+                console.log("Agent " + last.name +" is not moving")
+            }
+            else if(second_last.y>last.y){console.log("Agent " + last.name +" is moving down") }
+            else if(second_last.y<last.y){console.log("Agent " + last.name +" is moving up") }
+            else if(second_last.x>last.x){console.log("Agent " + last.name +" is moving left") }
+            else if(second_last.x<last.x){console.log("Agent " + last.name +" is moving right") }
         }
 
     }
