@@ -1,7 +1,6 @@
-import { map } from '../map/map.js';
+import { map, MAX_FUTURE } from '../map/map.js';
 
 const MAX_HISTORY = 5;
-const MAX_FUTURE = 10;
 
 //believed intentions
 class BelievedIntention {
