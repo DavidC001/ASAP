@@ -1,6 +1,16 @@
 import { parcles } from "../parcles/parcles.js";
 import { agents } from "../agent/agent.js";
 
+const MAX_FUTURE = 10;
+
+/**
+ * @class Map
+ * 
+ * @param {number} width - The width of the map
+ * @param {number} height - The height of the map
+ * @param {[[{x:number,y:number,delivery:boolean}]]} map - The tiles of the map
+ * @param {[[[{x:number,y:number,delivery:boolean}]]]} predictedMap - The predicted tiles of the map
+ */
 class Map {
     width;
     height;
@@ -64,4 +74,4 @@ function updateMap(width, height, tiles) {
     //TODO
 }
 
-module.exports = { createMap, updateMap, map };
+module.exports = { createMap, updateMap, map, MAX_FUTURE };
