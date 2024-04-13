@@ -60,3 +60,17 @@ class Agent {
 
 /** @type {Map<string, Agent>} */
 const Agents = new Map();
+
+/**
+ * @param {[ { id:string, name:string, x:number, y:number, score:number } ]} agents 
+ */
+function senseAgents(agents) {
+    //TODO: Implement this function
+}
+
+
+module.exports = {
+    Agent,
+    Agents,
+    senseAgents
+}
