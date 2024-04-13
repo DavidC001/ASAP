@@ -1,4 +1,4 @@
-// TODO imprt from MAPs
+import { map } from '../map/map.js';
 
 const MAX_HISTORY = 5;
 const MAX_FUTURE = 10;
@@ -59,7 +59,7 @@ class Agent {
 }
 
 /** @type {Map<string, Agent>} */
-const Agents = new Map();
+const agents = new Map();
 
 /**
  * @param {[ { id:string, name:string, x:number, y:number, score:number } ]} agents 
@@ -71,6 +71,6 @@ function senseAgents(agents) {
 
 module.exports = {
     Agent,
-    Agents,
+    agents,
     senseAgents
 }
