@@ -53,7 +53,7 @@ function senseParcels(sensedParcels) {
 }
 
 
-module.exports = {
+export {
     Parcel,
     parcels,
     senseParcels

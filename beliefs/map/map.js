@@ -1,5 +1,5 @@
-import { parcles } from "../parcles/parcles.js";
-import { agents } from "../agent/agent.js";
+import { parcels } from "../parcels/parcels.js";
+import { agents } from "../agents/agents.js";
 
 const MAX_FUTURE = 10;
 
@@ -54,7 +54,7 @@ class Map {
 }
 
 /** @type {Map} */
-const map = null;
+let map = null;
 
 /**
  * 
@@ -74,4 +74,4 @@ function updateMap(width, height, tiles) {
     //TODO
 }
 
-module.exports = { createMap, updateMap, map, MAX_FUTURE };
+export { createMap, updateMap, map, MAX_FUTURE };

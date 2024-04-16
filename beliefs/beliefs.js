@@ -1,4 +1,5 @@
-import {getParcels, senseParcels} from "./parcels/parcels.js";
+import {senseParcels} from "./parcels/parcels.js";
+import {senseAgents} from "./agents/agents.js";
 import {createMap} from "./map/map.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
 
@@ -61,6 +62,10 @@ function RegisterBeliefsRevisions(client) {
 
     client.onMap(async (width, height, tiles) => {
         createMap({width, height, tiles});
+    })
+
+    client.onAgentsSensing(async (agents) => {
+        senseAgents(agents);
     })
 }
 
