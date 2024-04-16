@@ -1,8 +1,14 @@
 import {getParcels, senseParcels} from "./parcels/parcels.js";
 import {createMap} from "./map/map.js";
+import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
 
+/** @type {{id:string, name:string, x:number, y:number, score:number, config:{}}} */
 const me = {};
 
+/**
+ * 
+ * @param {{id:string, name:string, x:number, y:number, score:number}} param0 
+ */
 function updateMe({id, name, x, y, score}) {
     me.id = id;
     me.name = name;
@@ -11,6 +17,13 @@ function updateMe({id, name, x, y, score}) {
     me.score = score;
 }
 
+/**
+ * 
+ * @param {{x:number,y:number}} param0 
+ * @param {{x:number,y:number}} param1 
+ * 
+ * @returns {number} the Manhattan distance between the two points
+ */
 function distance({x: x1, y: y1}, {x: x2, y: y2}) {
     const dx = Math.abs(Math.round(x1) - Math.round(x2))
     const dy = Math.abs(Math.round(y1) - Math.round(y2))
@@ -18,6 +31,11 @@ function distance({x: x1, y: y1}, {x: x2, y: y2}) {
 }
 
 
+/**
+ * Registers the beliefs revision functions
+ * 
+ * @param {DeliverooApi} client 
+ */
 function RegisterBeliefsRevisions(client) {
     client.onYou(updateMe);
     me.config = client.config;
