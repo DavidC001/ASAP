@@ -61,10 +61,9 @@ class Map {
                 delivery_zones.push({x: tile.x, y: tile.y});
             } else {
                 delivery_zones.forEach(delivery_zone => {
-                    //let distance1 = distance(delivery_zone, tile);
-                    let distance1 = this.BFS(tile, delivery_zone).length;
-                    if (distance1 < bestDistance) {
-                        bestDistance = distance1;
+                    let distance1 = this.BFS(tile, delivery_zone);
+                    if (distance1.length < bestDistance) {
+                        bestDistance = distance1.length;
                         closestDelivery = delivery_zone;
                     }
                 });
@@ -82,46 +81,42 @@ class Map {
         queue.push(pos);
         visited[pos.x][pos.y] = true;
         let current = null;
+        let dist = distance(pos, objective);
+        let dist2 = Infinity;
+
         while (queue.length > 0) {
             current = queue.shift();
+            dist2 = distance(current,objective)
+            if(dist2<dist){
+                steps.push(current);
+                dist = dist2;
+            }
             if (current.x === objective.x && current.y === objective.y) {
                 break;
             }
 
             //right
-            if (current.x + 1 < this.width && !visited[current.x + 1][current.y]) {
+            if ((current.x + 1) >= 0 && (current.x + 1) < this.width && !visited[current.x + 1][current.y]) {
                 queue.push({x: current.x + 1, y: current.y});
                 visited[current.x + 1][current.y] = true;
             }
             //left
-            if (current.x - 1 >= 0 && !visited[current.x - 1][current.y]) {
+            if ((current.x - 1) >= 0 && (current.x - 1) < this.width && !visited[current.x - 1][current.y]) {
                 queue.push({x: current.x - 1, y: current.y});
                 visited[current.x - 1][current.y] = true;
             }
-            //down
-            if (current.y + 1 < this.height && !visited[current.x][current.y + 1]) {
+            //up
+            if ((current.y + 1) >= 0 && (current.y + 1) < this.height && !visited[current.x][current.y + 1]) {
                 queue.push({x: current.x, y: current.y + 1});
                 visited[current.x][current.y + 1] = true;
             }
-            //up
-            if (current.y - 1 >= 0 && !visited[current.x][current.y - 1]) {
+            //down
+            if ((current.y - 1) >= 0 && (current.y - 1) < this.height && !visited[current.x][current.y - 1]) {
                 queue.push({x: current.x, y: current.y - 1});
                 visited[current.x][current.y - 1] = true;
             }
         }
 
-        while (current.x !== pos.x && current.y !== pos.y) {
-            steps.push(current);
-            for (let i = current.x - 1; i <= current.x + 1; i++) {
-                for (let j = current.y - 1; j <= current.y + 1; j++) {
-                    if (i < 0 || j < 0 || i >= this.width || j >= this.height) continue;
-                    if (visited[i][j] && distance({x: i, y: j}, pos) < distance(current, pos)) {
-                        current = {x: i, y: j};
-                        break;
-                    }
-                }
-            }
-        }
         return steps;
     }
 
