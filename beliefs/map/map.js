@@ -1,11 +1,35 @@
-import { parcels } from "../parcels/parcels.js";
-import { agents } from "../agents/agents.js";
+import {Parcel} from "../parcels/parcels.js";
+import {distance} from "../beliefs.js"
+//import { agents, Agent} from "../agent/agent.js";
 
 const MAX_FUTURE = 10;
 
 /**
+ * @class Tile
+ *
+ * @param {number} heuristic - The heuristic value of the tile
+ * @param {{x:number,y:number}} closest_delivery - The closest delivery zone
+ * @param {string} type - The type of the tile between spawnable, delivery and obstacle
+ * @param {Agent} agent - The agent on the tile
+ * @param {Parcel} parcel - The parcel on the tile
+ */
+class Tile {
+    heuristic;
+    closest_delivery;
+    type = 'obstacle';
+    agent = null;
+    parcel = null;
+
+
+    constructor(tileData) {
+        this.heuristic = tileData.heuristic;
+        this.closest_delivery = tileData.closest_delivery;
+    }
+}
+
+/**
  * @class Map
- * 
+ *
  * @param {number} width - The width of the map
  * @param {number} height - The height of the map
  * @param {[[{x:number,y:number,delivery:boolean}]]} map - The tiles of the map
@@ -18,11 +42,36 @@ class Map {
     predictedMap;
 
     /**
-     * 
-     * @param {[{x:number,y:number,delivery:boolean}]} tiles 
+     * //TODO: heuristic calculation with BFS
+     * @param {[{x:number,y:number,delivery:boolean,parcelSpawner:boolean}]} tiles
      */
-    async generateMap(tiles) {
-        //TODO
+    generateMap(tiles) {
+        this.map = Array(this.width).fill().map(() => Array(this.height).fill().map(() => new Tile({
+            heuristic: Infinity,
+            closest_delivery: null
+        })));
+        tiles.sort((a, b) => (b.delivery - a.delivery));
+        let delivery_zones = [];
+        tiles.forEach(tile => {
+            //console.log(tile);
+            let bestDistance = Infinity;
+            let closestDelivery = null;
+            let currentTile = this.map[tile.x][tile.y];
+            if (tile.delivery) {
+                delivery_zones.push({x: tile.x, y: tile.y});
+            } else {
+                delivery_zones.forEach(delivery_zone => {
+                    let distance1 = distance(delivery_zone, tile);
+                    if (distance1 < bestDistance) {
+                        bestDistance = distance1;
+                        closestDelivery = delivery_zone;
+                    }
+                });
+            }
+            currentTile.heuristic = bestDistance;
+            currentTile.closest_delivery = closestDelivery;
+            currentTile.type = tile.parcelSpawner ? 'spawnable' : 'delivery';
+        });
     }
 
     /**
@@ -33,8 +82,8 @@ class Map {
     }
 
     /**
-     * 
-     * @param { width:number, height:number, tiles:[{x:number,y:number,delivery:boolean}] }} mapData 
+     *
+     * @param {{ width: number, height: number, tiles: [{x:number,y:number,delivery:boolean,parcelSpawner:boolean}]} } mapData
      */
     constructor(mapData) {
         this.width = mapData.width;
@@ -43,10 +92,10 @@ class Map {
     }
 
     /**
-     * 
-     * @param {number} width 
-     * @param {number} height 
-     * @param {[{x:number,y:number,delivery:boolean}]} tiles 
+     *
+     * @param {number} width
+     * @param {number} height
+     * @param {[{x:number,y:number,delivery:boolean}]} tiles
      */
     updateMap(width, height, tiles) {
         //TODO
@@ -57,21 +106,21 @@ class Map {
 let map = null;
 
 /**
- * 
- * @param {{ width:number, height:number, tiles:[{x:number,y:number,delivery:boolean}] }} mapData 
+ *
+ * @param { { width:number, height:number, tiles:[{x:number,y:number,delivery:boolean}] } } mapData
  */
 function createMap(mapData) {
     map = new Map(mapData);
 }
 
 /**
- * 
- * @param {number} width 
- * @param {number} height 
- * @param {[{x:number,y:number,delivery:boolean}]} tiles 
+ *
+ * @param {number} width
+ * @param {number} height
+ * @param {[{x:number,y:number,delivery:boolean}]} tiles
  */
 function updateMap(width, height, tiles) {
     //TODO
 }
 
-export { createMap, updateMap, map, MAX_FUTURE };
+export {createMap, map, MAX_FUTURE}
