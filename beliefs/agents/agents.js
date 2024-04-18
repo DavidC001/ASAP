@@ -76,9 +76,8 @@ class BelievedIntention {
 
         if (carrying) {
             this.intention = intentions.DELIVER;
-            //TODO
-            //this.objective = map.map[position.x][position.y].clostestDelivery
-            this.objective = {x:0,y:0};
+            //TODO check
+            this.objective = map.map[position.x][position.y].closest_delivery
             this.goTo(position);
             console.log("intention: deliver")
             return;
@@ -125,8 +124,8 @@ class BelievedIntention {
     goTo(pos) {
         this.futureMoves = [];
         //TODO: BFS to find the shortest path to the objective
-        //steps = map.BFS(pos, this.objective);
-        let steps = Array(MAX_FUTURE).fill(pos);
+        steps = map.BFS(pos, this.objective);
+        
         for (let i = 0; i < MAX_FUTURE; i++) {
             if (steps.length == 0) {
                 this.futureMoves.push(
@@ -244,7 +243,7 @@ function senseAgents(sensedAgents) {
         if (!inView.includes(id)) {
             agent.updatePredicted();
         }
-        console.log(agent);
+        //console.log(agent);
     }
 }
 
