@@ -42,7 +42,7 @@ class Map {
     predictedMap;
 
     /**
-     * //TODO: heuristic calculation with BFS
+     * Generates the map
      * @param {[{x:number,y:number,delivery:boolean,parcelSpawner:boolean}]} tiles
      */
     generateMap(tiles) {
@@ -53,7 +53,10 @@ class Map {
         tiles.sort((a, b) => (b.delivery - a.delivery));
         let delivery_zones = [];
         tiles.forEach(tile => {
-            //console.log(tile);
+            let currentTile = this.map[tile.x][tile.y];
+            currentTile.type = tile.parcelSpawner ? 'spawnable' : 'delivery';
+        });
+        tiles.forEach(tile => {
             let bestDistance = Infinity;
             let closestDelivery = null;
             let currentTile = this.map[tile.x][tile.y];
@@ -70,54 +73,40 @@ class Map {
             }
             currentTile.heuristic = bestDistance;
             currentTile.closest_delivery = closestDelivery;
-            currentTile.type = tile.parcelSpawner ? 'spawnable' : 'delivery';
         });
     }
 
     BFS(pos, objective) {
-        let steps = [];
         let queue = [];
         let visited = new Array(this.width).fill().map(() => new Array(this.height).fill().map(() => false));
-        queue.push(pos);
+        queue.push([pos]);
         visited[pos.x][pos.y] = true;
         let current = null;
-        let dist = distance(pos, objective);
-        let dist2 = Infinity;
+        let node = null;
+        let directions = [[0, 1], [0, -1], [1, 0], [-1, 0]]; // up, down, right, left
 
         while (queue.length > 0) {
             current = queue.shift();
-            dist2 = distance(current,objective)
-            if(dist2<dist){
-                steps.push(current);
-                dist = dist2;
-            }
-            if (current.x === objective.x && current.y === objective.y) {
-                break;
+            node = current.at(-1)
+
+            if (node.x === objective.x && node.y === objective.y) {
+                return current;
             }
 
-            //right
-            if ((current.x + 1) >= 0 && (current.x + 1) < this.width && !visited[current.x + 1][current.y]) {
-                queue.push({x: current.x + 1, y: current.y});
-                visited[current.x + 1][current.y] = true;
-            }
-            //left
-            if ((current.x - 1) >= 0 && (current.x - 1) < this.width && !visited[current.x - 1][current.y]) {
-                queue.push({x: current.x - 1, y: current.y});
-                visited[current.x - 1][current.y] = true;
-            }
-            //up
-            if ((current.y + 1) >= 0 && (current.y + 1) < this.height && !visited[current.x][current.y + 1]) {
-                queue.push({x: current.x, y: current.y + 1});
-                visited[current.x][current.y + 1] = true;
-            }
-            //down
-            if ((current.y - 1) >= 0 && (current.y - 1) < this.height && !visited[current.x][current.y - 1]) {
-                queue.push({x: current.x, y: current.y - 1});
-                visited[current.x][current.y - 1] = true;
+            for (let dir of directions) {
+                let newX = node.x + dir[0];
+                let newY = node.y + dir[1];
+                if ((newX >= 0) && (newX < this.width) && (newY >= 0) && (newY < this.height) && (!visited[newX][newY]) && this.map[newX][newY].type !== 'obstacle') {
+                    let newCurrent = JSON.parse(JSON.stringify(current));
+                    newCurrent.push({x: newX, y: newY});
+                    queue.push(newCurrent);
+                    visited[newX][newY] = true;
+                }
             }
         }
 
-        return steps;
+        // If we don't find a path, return an empty array
+        return [];
     }
 
     /**
