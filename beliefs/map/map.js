@@ -1,6 +1,6 @@
-import {Parcel} from "../parcels/parcels.js";
+import {parcels, Parcel} from "../parcels/parcels.js";
 import {distance} from "../beliefs.js"
-//import { agents, Agent} from "../agent/agent.js";
+import {agents, Agent} from "../agents/agents.js";
 
 const MAX_FUTURE = 10;
 
@@ -61,9 +61,9 @@ class Map {
                 delivery_zones.push({x: tile.x, y: tile.y});
             } else {
                 delivery_zones.forEach(delivery_zone => {
-                    let distance1 = distance(delivery_zone, tile);
-                    if (distance1 < bestDistance) {
-                        bestDistance = distance1;
+                    let distance1 = this.BFS(tile, delivery_zone);
+                    if (distance1.length < bestDistance) {
+                        bestDistance = distance1.length;
                         closestDelivery = delivery_zone;
                     }
                 });
@@ -72,6 +72,52 @@ class Map {
             currentTile.closest_delivery = closestDelivery;
             currentTile.type = tile.parcelSpawner ? 'spawnable' : 'delivery';
         });
+    }
+
+    BFS(pos, objective) {
+        let steps = [];
+        let queue = [];
+        let visited = new Array(this.width).fill().map(() => new Array(this.height).fill().map(() => false));
+        queue.push(pos);
+        visited[pos.x][pos.y] = true;
+        let current = null;
+        let dist = distance(pos, objective);
+        let dist2 = Infinity;
+
+        while (queue.length > 0) {
+            current = queue.shift();
+            dist2 = distance(current,objective)
+            if(dist2<dist){
+                steps.push(current);
+                dist = dist2;
+            }
+            if (current.x === objective.x && current.y === objective.y) {
+                break;
+            }
+
+            //right
+            if ((current.x + 1) >= 0 && (current.x + 1) < this.width && !visited[current.x + 1][current.y]) {
+                queue.push({x: current.x + 1, y: current.y});
+                visited[current.x + 1][current.y] = true;
+            }
+            //left
+            if ((current.x - 1) >= 0 && (current.x - 1) < this.width && !visited[current.x - 1][current.y]) {
+                queue.push({x: current.x - 1, y: current.y});
+                visited[current.x - 1][current.y] = true;
+            }
+            //up
+            if ((current.y + 1) >= 0 && (current.y + 1) < this.height && !visited[current.x][current.y + 1]) {
+                queue.push({x: current.x, y: current.y + 1});
+                visited[current.x][current.y + 1] = true;
+            }
+            //down
+            if ((current.y - 1) >= 0 && (current.y - 1) < this.height && !visited[current.x][current.y - 1]) {
+                queue.push({x: current.x, y: current.y - 1});
+                visited[current.x][current.y - 1] = true;
+            }
+        }
+
+        return steps;
     }
 
     /**
@@ -92,13 +138,18 @@ class Map {
     }
 
     /**
+     * Updates the map with the new agents and parcels positions
      *
-     * @param {number} width
-     * @param {number} height
-     * @param {[{x:number,y:number,delivery:boolean}]} tiles
+     * @param {Map<string, Agent>} updateAgents
+     * @param {Map<string, Parcel>} updateParcels
      */
-    updateMap(width, height, tiles) {
-        //TODO
+    async updateMap(updateAgents, updateParcels) {
+        for (let [id, agent] of updateAgents) {
+            this.map[agent.position.x][agent.position.y].agent = id;
+        }
+        for (let [id, parcel] of updateParcels) {
+            this.map[parcel.position.x][parcel.position.y].parcel = id;
+        }
     }
 }
 
@@ -107,20 +158,18 @@ let map = null;
 
 /**
  *
- * @param { { width:number, height:number, tiles:[{x:number,y:number,delivery:boolean}] } } mapData
+ * @param { { width:number, height:number, tiles:[{x:number,y:number,delivery:boolean,parcelSpawner:boolean}] } } mapData
  */
 function createMap(mapData) {
     map = new Map(mapData);
 }
 
 /**
- *
- * @param {number} width
- * @param {number} height
- * @param {[{x:number,y:number,delivery:boolean}]} tiles
+ * Updates the map with the new agents and parcels positions
  */
-function updateMap(width, height, tiles) {
-    //TODO
+function updateMap() {
+    map.updateMap(agents, parcels)
 }
 
-export {createMap, map, MAX_FUTURE}
+
+export {createMap, map, MAX_FUTURE, updateMap}
