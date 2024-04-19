@@ -1,3 +1,7 @@
+/* TODO: - check if we can get only those out of sensing range
+*        - delete parcels that are delivered
+*        - Make update once every decay interval --> partially done
+*/
 /**
  * @class parcel
  *
@@ -65,18 +69,4 @@ function senseParcels(sensedParcels, decayInterval) {
     }
 }
 
-function getParcels() {
-    return parcels;
-}
-
-/**
- * Updating parcels must be done once every parcel decay interval
- */
-function updateParcels() {
-    // Here we select which parcels to delete if they are out of range
-    //TODO: - check if we can get only those out of sensing range
-    //      - delete parcels that are delivered
-    //      - Make update once every decay interval
-}
-
-export {Parcel, senseParcels, getParcels}
+export {parcels, Parcel, senseParcels}
