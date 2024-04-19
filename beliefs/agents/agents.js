@@ -14,8 +14,6 @@ let intentions = {
 /**
  * @class BelievedIntention
  * 
- * @param {[{x:number,y:number}]} history - The position history of the agent
- * @param {boolean} carrying - True if the agent is carrying a parcel
  * 
  * @property {string} intention - The believed intention of the agent
  * @property {string} lastMove - The last move of the agent
@@ -28,6 +26,12 @@ class BelievedIntention {
     objective;
     futureMoves;
 
+    /**
+     * 
+     * @param {[{x:number,y:number}]} history 
+     * @param {boolean} carrying 
+     * @returns 
+     */
     constructor(history, carrying) {
         console.log("predicting intention");
         if (history.length < 2) {
@@ -167,7 +171,6 @@ class BelievedIntention {
 /**
  * @class Agent
  * 
- * @param {[{x:number,y:number}]} position - The position history of the agent
  * 
  * @property {{x:number,y:number}} position - The current position of the agent
  * @property {[{x:number,y:number}]} history - The position history of the agent
@@ -182,6 +185,10 @@ class Agent {
     believedIntetion;
     inView;
 
+    /**
+     * 
+     * @param {[{x:number,y:number}]} position - The position history of the agent
+     */
     constructor(position) {
         this.position = position;
         this.history = [];
