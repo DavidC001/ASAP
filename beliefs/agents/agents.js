@@ -52,7 +52,7 @@ class BelievedIntention {
             this.lastMove = "UP";
         }
 
-        if (position.x == lastPosition.x && position.y == lastPosition.y) {
+        if (position.x === lastPosition.x && position.y === lastPosition.y) {
             this.lastMove = "NONE";
         }
 
@@ -99,19 +99,19 @@ class BelievedIntention {
         //TODO blocked by obstacles
         this.futureMoves = [];
         for (let i = 0; i < MAX_FUTURE; i++) {
-            if (this.lastMove == "UP") {
+            if (this.lastMove === "UP") {
                 this.futureMoves.push(
                     { x: pos.x, y: Math.max(map.height,pos.y + i)}
                 );
-            } else if (this.lastMove == "DOWN") {
+            } else if (this.lastMove === "DOWN") {
                 this.futureMoves.push(
                     { x: pos.x, y: Math.min(0, pos.y - i)}
                 );
-            } else if (this.lastMove == "LEFT") {
+            } else if (this.lastMove === "LEFT") {
                 this.futureMoves.push(
                     { x: Math.min(0,pos.x - i), y: pos.y }
                 );
-            } else if (this.lastMove == "RIGHT") {
+            } else if (this.lastMove === "RIGHT") {
                 this.futureMoves.push(
                     { x: Math.max(map.width, pos.x + i), y: pos.y }
                 );
@@ -137,7 +137,7 @@ class BelievedIntention {
         steps = map.BFS(pos, obj);
         
         for (let i = 0; i < MAX_FUTURE; i++) {
-            if (steps.length == 0) {
+            if (steps.length === 0) {
                 this.futureMoves.push(
                     this.futureMoves[this.futureMoves.length - 1]
                 );
