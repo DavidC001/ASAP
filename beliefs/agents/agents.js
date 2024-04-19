@@ -4,23 +4,24 @@ import { me, distance } from '../beliefs.js';
 const MAX_HISTORY = 5;
 
 //believed intentions
-/**
- * @class BelievedIntention
- * 
- * @param STILL
- * @param MOVE
- * @param PICK_UP
- * @param DELIVER
- * 
- * @argument {[{x:number,y:number}]} history - The position history of the agent
- * @argument carrying - The object the agent is carrying
- */
+
 let intentions = {
     STILL: "STILL",
     MOVE: "MOVE",
     PICK_UP: "PICK_UP",
     DELIVER: "DELIVER"
 }
+/**
+ * @class BelievedIntention
+ * 
+ * @param {[{x:number,y:number}]} history - The position history of the agent
+ * @param {boolean} carrying - True if the agent is carrying a parcel
+ * 
+ * @property {string} intention - The believed intention of the agent
+ * @property {string} lastMove - The last move of the agent
+ * @property {{x:number,y:number}} objective - The objective of the agent
+ * @property {[{x:number,y:number}]} futureMoves - The predicted future positions of the agent
+ */
 class BelievedIntention {
     intention;
     lastMove;
@@ -32,7 +33,7 @@ class BelievedIntention {
         if (history.length < 2) {
             this.intention = intentions.STILL;
             this.futureMoves = new Array(MAX_FUTURE).fill(history[history.length - 1]);
-            console.log("intention: still")
+            //console.log("intention: still")
             return;
         }
 
@@ -66,8 +67,8 @@ class BelievedIntention {
                         && distance(position, map.map[i][j]) < clostest_distance) {
                         this.intention = intentions.PICK_UP;
                         this.objective = map.map[i][j];
-                        this.goTo(position);
-                        console.log("intention: pick up")
+                        this.goTo(position, this.objective);
+                        //console.log("intention: pick up")
                         return;
                     }
                 }
@@ -78,8 +79,8 @@ class BelievedIntention {
             this.intention = intentions.DELIVER;
             //TODO check
             this.objective = map.map[position.x][position.y].closest_delivery
-            this.goTo(position);
-            console.log("intention: deliver")
+            this.goTo(position, this.objective);
+            //console.log("intention: deliver")
             return;
         }
 
@@ -87,9 +88,13 @@ class BelievedIntention {
         this.intention = intentions.MOVE;
         this.objective = {x:-1,y:-1};
         this.keepMoving(position);
-        console.log("intention: keep moving")
+        //console.log("intention: keep moving")
     }
 
+    /**
+     * Method to predict the future moves of the agent when the intention is to keep moving
+     * @param {{x:number,y:number}} pos - The current position of the agent
+     */
     keepMoving(pos) {
         //TODO blocked by obstacles
         this.futureMoves = [];
@@ -121,10 +126,15 @@ class BelievedIntention {
         
     }
 
-    goTo(pos) {
+    /**
+     * Method to predict the future moves of the agent when the intention is to go to a specific position
+     * @param {{x:number,y:number}} pos - The current position of the agent
+     * @param {{x:number,y:number}} obj - The objective position of the agent
+     */
+    goTo(pos,obj) {
         this.futureMoves = [];
         //TODO: BFS to find the shortest path to the objective
-        steps = map.BFS(pos, this.objective);
+        steps = map.BFS(pos, obj);
         
         for (let i = 0; i < MAX_FUTURE; i++) {
             if (steps.length == 0) {
@@ -139,6 +149,10 @@ class BelievedIntention {
         }
     }
 
+    /**
+     * Method to predict the next position of the agent
+     * @returns {{x:number,y:number}} The next position of the agent
+     */
     nextStep() {
         let next_pos = this.futureMoves[0];
         this.futureMoves.shift();
@@ -150,22 +164,16 @@ class BelievedIntention {
 
 }
 
-BelievedIntention.prototype.toString = function() {
-    string = "Intention: " + this.intention + "\n";
-    string += "Objective: " + this.objective + "\n";
-    string += "Future moves: [\n";
-    for (let move of this.futureMoves) {
-        string += "    {x:" + move.x + ", y:" + move.y + "}\n";
-    }
-    string += "]";
-    return string;
-}
-
 /**
  * @class Agent
  * 
  * @param {[{x:number,y:number}]} position - The position history of the agent
  * 
+ * @property {{x:number,y:number}} position - The current position of the agent
+ * @property {[{x:number,y:number}]} history - The position history of the agent
+ * @property {boolean} carrying - True if the agent is carrying a parcel
+ * @property {BelievedIntention} believedIntetion - The believed intention of the agent
+ * @property {boolean} inView - True if the agent is in the field of view
  */
 class Agent {
     position;
@@ -174,11 +182,6 @@ class Agent {
     believedIntetion;
     inView;
 
-    /**
-     * 
-     * @param {{x:number,y:number}} position
-     * 
-     */
     constructor(position) {
         this.position = position;
         this.history = [];
@@ -212,7 +215,7 @@ class Agent {
     }
 
     /**
-     * update the agent's informations
+     * update the agent's predicted position
      */
     updatePredicted() {
         this.inView = false;
