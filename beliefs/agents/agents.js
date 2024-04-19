@@ -193,7 +193,7 @@ class Agent {
         this.position = position;
         this.history = [];
         this.inView = true;
-        this.carrying = (map.map[position.x][position.y].parcel ? true : false);
+        this.carrying = (map.map[position.x][position.y].parcel ? true : false); //TODO: change implementation to use lookup in parcels
         this.updateHistory(position);
     }
 
