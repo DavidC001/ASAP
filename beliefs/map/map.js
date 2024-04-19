@@ -146,6 +146,7 @@ class Map {
 
 /** @type {Map} */
 let map = null;
+let visualizer = null;
 
 /**
  *
@@ -156,6 +157,7 @@ function createMap(mapData) {
     setInterval(async () => {
         await map.updateMap();
     },1000);
+    visualizer = new MapVisualizer();
 }
 
 /**
@@ -164,6 +166,59 @@ function createMap(mapData) {
 async function updateMap() {
     await map.updateMap()
 }
+
+import { Window } from 'skia-canvas';
+
+class MapVisualizer {
+    win;
+    frame;
+    frameCount = 0;
+
+    constructor() {
+        this.win = new Window(300, 300);
+        this.win.title = "Canvas Window";
+        console.log(this.win.canvas);
+        this.win.on('draw', (e) => {
+            if (this.frameCount % 120 === 0) {
+                this.drawMap(e);
+                //console.log("Drawing map");
+            } else {
+                e.target.canvas.getContext("2d").putImageData(this.frame, 0, 0);
+            }
+            this.frameCount++;
+        });
+    }
+
+    drawMap(e) {
+        let ctx = e.target.canvas.getContext("2d")
+        let tile_dimensions = 300 / map.width;
+        for (let x = 0; x < map.width; x++) {
+            for (let y = 0; y < map.height; y++) {
+                let tile = map.map[x][y];
+                let color = 'black';
+                if (tile.type === 'delivery') {
+                    color = 'green';
+                } else if (tile.type === 'spawnable') {
+                    color = 'blue';
+                }
+                ctx.fillStyle = color;
+                ctx.fillRect(x * tile_dimensions, y * tile_dimensions, tile_dimensions, tile_dimensions);
+
+                if (tile.agent) {
+                    ctx.fillStyle = 'red';
+                    ctx.fillRect(x * tile_dimensions * 4 / 3, y * tile_dimensions * 4 / 3, tile_dimensions / 3 * 2, tile_dimensions / 3 * 2);
+                }
+                if (tile.parcel) {
+                    ctx.fillStyle = 'yellow';
+                    ctx.fillRect(x * tile_dimensions * 3 / 2, y * tile_dimensions * 3 / 2, tile_dimensions / 2, tile_dimensions / 2);
+                }
+            }
+        }
+        this.frame = ctx.getImageData(0, 0, 300, 300);
+    }
+
+}
+
 
 
 export {createMap, map, MAX_FUTURE, updateMap}
