@@ -7,11 +7,11 @@ const MAX_FUTURE = 10;
 /**
  * @class Tile
  *
- * @param {number} heuristic - The heuristic value of the tile
- * @param {{x:number,y:number}} closest_delivery - The closest delivery zone
- * @param {string} type - The type of the tile between spawnable, delivery and obstacle
- * @param {Agent} agent - The agent on the tile
- * @param {Parcel} parcel - The parcel on the tile
+ * @property {number} heuristic - The heuristic value of the tile
+ * @property {{x:number,y:number}} closest_delivery - The closest delivery zone
+ * @property {string} type - The type of the tile between spawnable, delivery and obstacle
+ * @property {Agent} agent - The agent on the tile
+ * @property {Parcel} parcel - The parcel on the tile
  */
 class Tile {
     heuristic;
@@ -30,10 +30,10 @@ class Tile {
 /**
  * @class Map
  *
- * @param {number} width - The width of the map
- * @param {number} height - The height of the map
- * @param {[[{x:number,y:number,delivery:boolean}]]} map - The tiles of the map
- * @param {[[[{x:number,y:number,delivery:boolean}]]]} predictedMap - The predicted tiles of the map
+ * @property {number} width - The width of the map
+ * @property {number} height - The height of the map
+ * @property {[[{x:number,y:number,delivery:boolean}]]} map - The tiles of the map
+ * @property {[[[{x:number,y:number,delivery:boolean}]]]} predictedMap - The predicted tiles of the map
  */
 class Map {
     width;
@@ -114,6 +114,7 @@ class Map {
      */
     async updatePrediction() {
         //TODO
+        this.predictedMap = new Array(MAX_FUTURE).fill(this.map);
     }
 
     /**
@@ -129,16 +130,17 @@ class Map {
     /**
      * Updates the map with the new agents and parcels positions
      *
-     * @param {Map<string, Agent>} updateAgents
-     * @param {Map<string, Parcel>} updateParcels
      */
-    async updateMap(updateAgents, updateParcels) {
-        for (let [id, agent] of updateAgents) {
+    async updateMap() {
+        for (let [id, agent] of agents) {
             this.map[agent.position.x][agent.position.y].agent = id;
         }
-        for (let [id, parcel] of updateParcels) {
+        for (let [id, parcel] of parcels) {
             this.map[parcel.position.x][parcel.position.y].parcel = id;
         }
+
+
+        await this.updatePrediction();
     }
 }
 
@@ -151,13 +153,16 @@ let map = null;
  */
 function createMap(mapData) {
     map = new Map(mapData);
+    setInterval(async () => {
+        await map.updateMap();
+    },1000);
 }
 
 /**
  * Updates the map with the new agents and parcels positions
  */
-function updateMap() {
-    map.updateMap(agents, parcels)
+async function updateMap() {
+    await map.updateMap()
 }
 
 
