@@ -100,31 +100,27 @@ class BelievedIntention {
      * @param {{x:number,y:number}} pos - The current position of the agent
      */
     keepMoving(pos) {
-        //TODO blocked by obstacles
         this.futureMoves = [];
+        dx = 0;
+        dy = 0;
+        if (this.lastMove === "UP") {
+            dy = 1;
+        }
+        if (this.lastMove === "DOWN") {
+            dy = -1;
+        }
+        if (this.lastMove === "LEFT") {
+            dx = -1;
+        }
         for (let i = 0; i < MAX_FUTURE; i++) {
-            if (this.lastMove === "UP") {
+            pos = {x: pos.x + dx, y: pos.y + dy};
+            if (map.map[pos.x][pos.y].type === "obstacle") {
                 this.futureMoves.push(
-                    { x: pos.x, y: Math.max(map.height,pos.y + i)}
+                    this.futureMoves[this.futureMoves.length - 1]
                 );
-            } else if (this.lastMove === "DOWN") {
-                this.futureMoves.push(
-                    { x: pos.x, y: Math.min(0, pos.y - i)}
-                );
-            } else if (this.lastMove === "LEFT") {
-                this.futureMoves.push(
-                    { x: Math.min(0,pos.x - i), y: pos.y }
-                );
-            } else if (this.lastMove === "RIGHT") {
-                this.futureMoves.push(
-                    { x: Math.max(map.width, pos.x + i), y: pos.y }
-                );
-            } else {
-                this.futureMoves.push(
-                    pos
-                );
+            }else {
+                this.futureMoves.push(pos);
             }
-
             pos = this.futureMoves[this.futureMoves.length - 1];
         }
         
@@ -193,7 +189,7 @@ class Agent {
         this.position = position;
         this.history = [];
         this.inView = true;
-        this.carrying = (map.map[position.x][position.y].parcel ? true : false);
+        this.carrying = (map.map[position.x][position.y].parcel ? true : false); //TODO: change implementation to use lookup in parcels
         this.updateHistory(position);
     }
 
