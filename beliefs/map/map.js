@@ -152,7 +152,7 @@ class Maps {
                 continue;
             }
             // If the agent has changed position, update it's current state and remove the previous one from the map
-            if (this.currentAgentPosition[id] && (this.currentAgentPosition[id].x !== agent.position.x) && (this.currentAgentPosition[id].y !== agent.position.y)) {
+            if (this.currentAgentPosition[id] && ((this.currentAgentPosition[id].x !== agent.position.x) || (this.currentAgentPosition[id].y !== agent.position.y))) {
                 new_map[this.currentAgentPosition[id].x][this.currentAgentPosition[id].y].agent = null;
             }
             new_map[agent.position.x][agent.position.y].agent = id;
@@ -166,8 +166,10 @@ class Maps {
                 continue;
             }
             // If a parcel has changed position, update it's current state and remove the previous one from the map
-            if (this.currentParcelPosition[id] && this.currentParcelPosition[id].x !== parcel.position.x && this.currentParcelPosition[id].y !== parcel.position.y) {
+            if (this.currentParcelPosition[id] && (this.currentParcelPosition[id].x !== parcel.position.x || this.currentParcelPosition[id].y !== parcel.position.y)) {
+                console.log(this.currentParcelPosition[id].x !== parcel.position.x && this.currentParcelPosition[id].y !== parcel.position.y);
                 new_map[this.currentParcelPosition[id].x][this.currentParcelPosition[id].y].parcel = null;
+
             }
             new_map[parcel.position.x][parcel.position.y].parcel = {
                 id: id,
@@ -180,7 +182,6 @@ class Maps {
         for (let [id, action] of actionBuffer) {
             if (action.action === 'delete') {
                 new_map[action.position.x][action.position.y][action.type] = null;
-                new_map[action.position.x][action.position.y].type = 'spawnable';
             }
         }
         actionBuffer.clear();
@@ -200,6 +201,7 @@ parcelEmitter.on('deleteParcel', (id) => {
 /** @type {Maps} */
 let map = null;
 let visualizer = null;
+let counter = 0;
 
 /**
  * Create the map from scratch with some initial data and heuristics
