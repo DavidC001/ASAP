@@ -167,7 +167,11 @@ class Maps {
             if (this.currentParcelPosition[id] && this.currentParcelPosition[id].x !== parcel.position.x && this.currentParcelPosition[id].y !== parcel.position.y) {
                 this.map[this.currentParcelPosition[id].x][this.currentParcelPosition[id].y].parcel = null;
             }
-            this.map[parcel.position.x][parcel.position.y].parcel = {id: id, carried: parcel.carried};
+            this.map[parcel.position.x][parcel.position.y].parcel = {
+                id: id,
+                carried: parcel.carried,
+                score: parcel.score
+            };
             this.currentParcelPosition[id] = {x: parcel.position.x, y: parcel.position.y};
         }
 
