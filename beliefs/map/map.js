@@ -1,8 +1,15 @@
-import {parcels, Parcel} from "../parcels/parcels.js";
+import {parcels, Parcel, parcelEmitter} from "../parcels/parcels.js";
 import {distance} from "../beliefs.js"
 import {agents, Agent} from "../agents/agents.js";
+import {EventEmitter} from 'events';
 
+const mapEmitter = new EventEmitter();
 const MAX_FUTURE = 10;
+/**
+ * Buffer in which I put the updated actions of my agents and parcels
+ * @type {Map<string, Object>}
+ */
+const actionBuffer = new Map();
 
 /**
  * @class Tile
@@ -28,18 +35,22 @@ class Tile {
 }
 
 /**
- * @class Map
+ * @class Maps
  *
  * @property {number} width - The width of the map
  * @property {number} height - The height of the map
  * @property {[[{x:number,y:number,delivery:boolean}]]} map - The tiles of the map
  * @property {[[[{x:number,y:number,delivery:boolean}]]]} predictedMap - The predicted tiles of the map
+ * @property {Map<string, {x:number,y:number}>} currentAgentPosition - The current position of the agents
+ * @property {Map<string, {x:number,y:number}>} currentParcelPosition - The current position of the parcels
  */
-class Map {
+class Maps {
     width;
     height;
     map;
     predictedMap;
+    currentAgentPosition = new Map();
+    currentParcelPosition = new Map();
 
     /**
      * Generates the map
@@ -133,29 +144,64 @@ class Map {
      */
     async updateMap() {
         for (let [id, agent] of agents) {
+            // Check that the agent is in the bounds of the map
+            if (agent.position.x < 0 || agent.position.y < 0 || agent.position.x >= this.width || agent.position.y >= this.height) {
+                console.log('Agent out of bounds');
+                continue;
+            }
+            // If the agent has changed position, update it's current state and remove the previous one from the map
+            if (this.currentAgentPosition[id] && (this.currentAgentPosition[id].x !== agent.position.x) && (this.currentAgentPosition[id].y !== agent.position.y)) {
+                this.map[this.currentAgentPosition[id].x][this.currentAgentPosition[id].y].agent = null;
+            }
             this.map[agent.position.x][agent.position.y].agent = id;
+            this.currentAgentPosition[id] = {x: agent.position.x, y: agent.position.y};
         }
+
         for (let [id, parcel] of parcels) {
-            this.map[parcel.position.x][parcel.position.y].parcel = id;
+            // Check that the parcel is in the bounds of the map
+            if (parcel.position.x < 0 || parcel.position.y < 0 || parcel.position.x >= this.width || parcel.position.y >= this.height) {
+                console.log('Parcel out of bounds');
+                continue;
+            }
+            // If a parcel has changed position, update it's current state and remove the previous one from the map
+            if (this.currentParcelPosition[id] && this.currentParcelPosition[id].x !== parcel.position.x && this.currentParcelPosition[id].y !== parcel.position.y) {
+                this.map[this.currentParcelPosition[id].x][this.currentParcelPosition[id].y].parcel = null;
+            }
+            this.map[parcel.position.x][parcel.position.y].parcel = {id: id, carried: parcel.carried};
+            this.currentParcelPosition[id] = {x: parcel.position.x, y: parcel.position.y};
         }
 
+        for (let action of actionBuffer) {
+            if (action.type === 'delete') {
+                this.map[action.position.x][action.position.y][action.type] = null;
+                actionBuffer.delete(action.id);
+            }
+        }
 
+        console.log(actionBuffer, this.currentParcelPosition);
         await this.updatePrediction();
     }
 }
 
-/** @type {Map} */
+parcelEmitter.on('deleteParcel', (id) => {
+    let temp_position = map.currentParcelPosition[id];
+    delete map.currentParcelPosition[id];
+    actionBuffer.set(id, {action: 'delete', type: 'parcel', id: id, position: temp_position});
+    parcels.delete(id);
+});
+
+/** @type {Maps} */
 let map = null;
 
 /**
- *
+ * Create the map from scratch with some initial data and heuristics
  * @param { { width:number, height:number, tiles:[{x:number,y:number,delivery:boolean,parcelSpawner:boolean}] } } mapData
  */
 function createMap(mapData) {
-    map = new Map(mapData);
+    map = new Maps(mapData);
     setInterval(async () => {
         await map.updateMap();
-    },1000);
+    }, 1000);
 }
 
 /**

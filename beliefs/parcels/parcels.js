@@ -1,7 +1,15 @@
 /* TODO: - check if we can get only those out of sensing range
 *        - delete parcels that are delivered
+*        - delete parcels that were carried but then we see again the agent that doesn't have them again
+*        - update the parcel based on the agent
 *        - Make update once every decay interval --> partially done
+*        - Add a map that maps the parcels to the agents that are carrying them
+*        - What to do when parcels are picked up?
 */
+import {EventEmitter} from 'events';
+
+const parcelEmitter = new EventEmitter();
+
 /**
  * @class parcel
  *
@@ -10,6 +18,7 @@
  * @param {string} carried - True if the parcel is carried by the robot
  */
 class Parcel {
+    id;
     position;
     score;
     carried;
@@ -17,20 +26,24 @@ class Parcel {
 
     /**
      *
+     * @param {string} id
      * @param {{x:number,y:number}} position
      * @param {number} score
      * @param {string} carried
      * @param {number} decayInterval
      */
-    constructor(position, score, carried, decayInterval) {
+    constructor(id, position, score, carried, decayInterval) {
+        this.id = id;
         this.position = position; // {x, y}
         this.score = score;
         this.carried = carried;
         this.updater = setInterval(() => {
             if (this.score === 1) {
                 clearInterval(this.updater);
+                parcelEmitter.emit('deleteParcel', this.id);
+            }else {
+                this.score--;
             }
-            this.score--;
         }, decayInterval);
     }
 }
@@ -40,6 +53,14 @@ class Parcel {
  */
 const parcels = new Map();
 
+
+/**
+ * Updates the parcels informations when carried by an agent
+ * TODO: collect information from the agents
+ */
+function updateParcels() {
+
+}
 
 /**
  *
@@ -58,15 +79,11 @@ function senseParcels(sensedParcels, decayInterval) {
             p.score = score;
             p.carried = carried;
         } else {
-            parcels.set(id, new Parcel(position, score, carried, decayInterval));
+            parcels.set(id, new Parcel(id, position, score, carried, decayInterval));
         }
     }
 
-    for (let [id, parcel] of parcels) {
-        if (parcel.score === 0) {
-            parcels.delete(id);
-        }
-    }
+
 }
 
-export {parcels, Parcel, senseParcels}
+export {parcels, Parcel, senseParcels, parcelEmitter}
