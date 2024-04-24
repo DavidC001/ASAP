@@ -17,7 +17,6 @@
     "@unitn-asa/deliveroo-js-client": "^0.0.37",
     "@unitn-asa/pddl-client": "^0.0.29",
     "node-fetch": "^3.3.0",
-    "skia-canvas": "^1.0.1",
     "socket.io-client": "^4.6.0"
   }
 }
