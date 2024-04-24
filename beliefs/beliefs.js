@@ -3,7 +3,7 @@ import {senseAgents} from "./agents/agents.js";
 import {createMap} from "./map/map.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
 
-/** @type {{id:string, name:string, x:number, y:number, score:number, config:{}}} */
+/** @type {{id:string, name:string, x:number, y:number, score:number, config:{}, moves_per_parcel_decay:number}} */
 const me = {};
 
 /**
@@ -42,6 +42,7 @@ function RegisterBeliefsRevisions(client) {
     me.config = client.config;
 
     let interval = me.config.PARCEL_DECADING_INTERVAL.match(/(\d+)(\w+)/);
+
     switch (interval[2]) {
         case 'ms':
             interval = interval[1];
@@ -55,6 +56,8 @@ function RegisterBeliefsRevisions(client) {
         default:
             console.log('Invalid time interval');
     }
+
+    me.moves_per_parcel_decay = Math.floor(interval / me.config.MOVEMENT_DURATION);
 
     client.onParcelsSensing(async (perceived_parcels) => {
         senseParcels(perceived_parcels, interval);
