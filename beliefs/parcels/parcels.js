@@ -41,7 +41,7 @@ class Parcel {
             if (this.score === 1) {
                 clearInterval(this.updater);
                 parcelEmitter.emit('deleteParcel', this.id);
-            }else {
+            } else {
                 this.score--;
             }
         }, decayInterval);
@@ -69,6 +69,7 @@ function updateParcels() {
  */
 function senseParcels(sensedParcels, decayInterval) {
     for (let parcel of sensedParcels) {
+        if (parcel.x % 1 != 0 || parcel.y % 1 != 0) continue;
         let position = {x: parcel.x, y: parcel.y};
         let score = parcel.reward;
         let carried = parcel.carriedBy;
