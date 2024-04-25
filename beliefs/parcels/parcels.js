@@ -74,12 +74,12 @@ function updateParcels() {
 function senseParcels(sensedParcels, decayInterval) {
     let inView = [];
     for (let parcel of sensedParcels) {
+        inView.push(parcel.id);
         if (parcel.x % 1 !== 0 || parcel.y % 1 !== 0) continue;
         let position = {x: parcel.x, y: parcel.y};
         let score = parcel.reward;
         let carried = parcel.carriedBy;
         let id = parcel.id;
-        inView.push(id);
         if (parcels.has(id)) {
             let p = parcels.get(id);
             p.position = position;
