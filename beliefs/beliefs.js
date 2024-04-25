@@ -37,8 +37,8 @@ const me = {};
 function updateMe({id, name, x, y, score}) {
     me.id = id;
     me.name = name;
-    me.x = x;
-    me.y = y;
+    me.x = Math.round(x);
+    me.y = Math.round(y);
     me.score = score;
 }
 
