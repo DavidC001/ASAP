@@ -70,8 +70,10 @@ class BelievedIntention {
                     if (distance(position, map.map[i][j]) < distance(lastPosition, map.map[i][j]) 
                         && distance(position, map.map[i][j]) < clostest_distance) {
                         this.intention = intentions.PICK_UP;
-                        this.objective = map.map[i][j];
-                        this.goTo(position, this.objective);
+                        if (this.objective != map.map[i][j]){
+                            this.objective = map.map[i][j];
+                            this.goTo(position, this.objective);
+                        }
                         //console.log("intention: pick up")
                         return;
                     }
@@ -82,8 +84,10 @@ class BelievedIntention {
         if (carrying) {
             this.intention = intentions.DELIVER;
             //TODO check
-            this.objective = map.map[position.x][position.y].closest_delivery
-            this.goTo(position, this.objective);
+            if (this.objective != map.map[position.x][position.y].closest_delivery){
+                this.objective = map.map[position.x][position.y].closest_delivery
+                this.goTo(position, this.objective);
+            }
             //console.log("intention: deliver")
             return;
         }
@@ -115,13 +119,21 @@ class BelievedIntention {
         for (let i = 0; i < MAX_FUTURE; i++) {
             pos = {x: pos.x + dx, y: pos.y + dy};
             if (pos.x < 0 || pos.y < 0 || pos.x >= map.width || pos.y >= map.height) {
-                this.futureMoves.push(
-                    this.futureMoves[this.futureMoves.length - 1]
-                );
+                if (this.futureMoves.length > 0){
+                    this.futureMoves.push(
+                        this.futureMoves[this.futureMoves.length - 1]
+                    );
+                }else{
+                    this.futureMoves.push({x:pos.x-dx,y:pos.y-dy});
+                }
             } else if (map.map[pos.x][pos.y].type === "obstacle") {
-                this.futureMoves.push(
-                    this.futureMoves[this.futureMoves.length - 1]
-                );
+                if (this.futureMoves.length > 0){
+                    this.futureMoves.push(
+                        this.futureMoves[this.futureMoves.length - 1]
+                    );
+                }else{
+                    this.futureMoves.push({x:pos.x-dx,y:pos.y-dy});
+                }
             }else {
                 this.futureMoves.push(pos);
             }
@@ -216,6 +228,7 @@ class Agent {
             if (this.history.length > MAX_HISTORY) {
                 this.history.shift();
             }
+            this.position = newPosition;
         }
         
         this.believedIntetion = new BelievedIntention(this.history, this.carrying);
@@ -237,7 +250,7 @@ const agents = new Map();
  * @param {[ { id:string, name:string, x:number, y:number, score:number } ]} sensedAgents 
  */
 function senseAgents(sensedAgents) {
-    console.log("sensing agents")
+    //console.log("sensing agents")
     let inView = []
     //TODO: Implement this function
     for (const agent of sensedAgents) {
