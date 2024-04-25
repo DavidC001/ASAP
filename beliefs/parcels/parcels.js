@@ -38,14 +38,18 @@ class Parcel {
         this.position = position; // {x, y}
         this.score = score;
         this.carried = carried;
-        this.updater = setInterval(() => {
-            if (this.score === 1) {
-                clearInterval(this.updater);
-                parcelEmitter.emit('deleteParcel', this.id);
-            } else {
-                this.score--;
-            }
-        }, decayInterval);
+        if (decayInterval < Infinity) {
+            this.updater = setInterval(() => {
+                if (this.score === 1) {
+                    clearInterval(this.updater);
+                    parcelEmitter.emit('deleteParcel', this.id);
+                } else {
+                    this.score--;
+                }
+            }, decayInterval);
+        } else {
+            this.updater = null;
+        }
     }
 }
 
