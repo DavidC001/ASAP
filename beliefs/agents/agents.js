@@ -33,7 +33,7 @@ class BelievedIntention {
      * @returns 
      */
     constructor(history, carrying) {
-        console.log("predicting intention");
+        //console.log("predicting intention");
         if (history.length < 2) {
             this.intention = intentions.STILL;
             this.futureMoves = new Array(MAX_FUTURE).fill(history[history.length - 1]);
@@ -101,8 +101,8 @@ class BelievedIntention {
      */
     keepMoving(pos) {
         this.futureMoves = [];
-        dx = 0;
-        dy = 0;
+        let dx = 0;
+        let dy = 0;
         if (this.lastMove === "UP") {
             dy = 1;
         }
@@ -114,7 +114,11 @@ class BelievedIntention {
         }
         for (let i = 0; i < MAX_FUTURE; i++) {
             pos = {x: pos.x + dx, y: pos.y + dy};
-            if (map.map[pos.x][pos.y].type === "obstacle") {
+            if (pos.x < 0 || pos.y < 0 || pos.x >= map.width || pos.y >= map.height) {
+                this.futureMoves.push(
+                    this.futureMoves[this.futureMoves.length - 1]
+                );
+            } else if (map.map[pos.x][pos.y].type === "obstacle") {
                 this.futureMoves.push(
                     this.futureMoves[this.futureMoves.length - 1]
                 );
@@ -133,8 +137,8 @@ class BelievedIntention {
      */
     goTo(pos,obj) {
         this.futureMoves = [];
-        //TODO: BFS to find the shortest path to the objective
-        steps = map.BFS(pos, obj);
+        //TODO: use a more efficient path planner
+        let steps = map.BFS(pos, obj);
         
         for (let i = 0; i < MAX_FUTURE; i++) {
             if (steps.length === 0) {
@@ -233,6 +237,7 @@ const agents = new Map();
  * @param {[ { id:string, name:string, x:number, y:number, score:number } ]} agents 
  */
 function senseAgents(sensedAgents) {
+    console.log("sensing agents")
     let inView = []
     //TODO: Implement this function
     for (const agent of sensedAgents) {

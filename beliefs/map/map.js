@@ -1,7 +1,8 @@
 import {parcels, Parcel, parcelEmitter} from "../parcels/parcels.js";
-import {distance} from "../beliefs.js"
+import {me, distance} from "../beliefs.js"
 import {agents, Agent} from "../agents/agents.js";
 import {EventEmitter} from 'events';
+import * as fs from 'node:fs';
 
 const mapEmitter = new EventEmitter();
 const MAX_FUTURE = 10;
@@ -123,7 +124,7 @@ class Maps {
     /**
      * Infers the future state of the map
      */
-    async updatePrediction() {
+    updatePrediction() {
         //TODO
         this.predictedMap = new Array(MAX_FUTURE).fill(this.map);
     }
@@ -142,7 +143,8 @@ class Maps {
      * Updates the map with the new agents and parcels positions
      *
      */
-    async updateMap() {
+    updateMap() {
+        let new_map = JSON.parse(JSON.stringify(this.map));
         for (let [id, agent] of agents) {
             // Check that the agent is in the bounds of the map
             if (agent.position.x < 0 || agent.position.y < 0 || agent.position.x >= this.width || agent.position.y >= this.height) {
@@ -150,10 +152,10 @@ class Maps {
                 continue;
             }
             // If the agent has changed position, update it's current state and remove the previous one from the map
-            if (this.currentAgentPosition[id] && (this.currentAgentPosition[id].x !== agent.position.x) && (this.currentAgentPosition[id].y !== agent.position.y)) {
-                this.map[this.currentAgentPosition[id].x][this.currentAgentPosition[id].y].agent = null;
+            if (this.currentAgentPosition[id] && ((this.currentAgentPosition[id].x !== agent.position.x) || (this.currentAgentPosition[id].y !== agent.position.y))) {
+                new_map[this.currentAgentPosition[id].x][this.currentAgentPosition[id].y].agent = null;
             }
-            this.map[agent.position.x][agent.position.y].agent = id;
+            new_map[agent.position.x][agent.position.y].agent = id;
             this.currentAgentPosition[id] = {x: agent.position.x, y: agent.position.y};
         }
 
@@ -164,10 +166,12 @@ class Maps {
                 continue;
             }
             // If a parcel has changed position, update it's current state and remove the previous one from the map
-            if (this.currentParcelPosition[id] && this.currentParcelPosition[id].x !== parcel.position.x && this.currentParcelPosition[id].y !== parcel.position.y) {
-                this.map[this.currentParcelPosition[id].x][this.currentParcelPosition[id].y].parcel = null;
+            if (this.currentParcelPosition[id] && (this.currentParcelPosition[id].x !== parcel.position.x || this.currentParcelPosition[id].y !== parcel.position.y)) {
+                console.log(this.currentParcelPosition[id].x !== parcel.position.x && this.currentParcelPosition[id].y !== parcel.position.y);
+                new_map[this.currentParcelPosition[id].x][this.currentParcelPosition[id].y].parcel = null;
+
             }
-            this.map[parcel.position.x][parcel.position.y].parcel = {
+            new_map[parcel.position.x][parcel.position.y].parcel = {
                 id: id,
                 carried: parcel.carried,
                 score: parcel.score
@@ -175,27 +179,29 @@ class Maps {
             this.currentParcelPosition[id] = {x: parcel.position.x, y: parcel.position.y};
         }
 
-        for (let action of actionBuffer) {
-            if (action.type === 'delete') {
-                this.map[action.position.x][action.position.y][action.type] = null;
-                actionBuffer.delete(action.id);
+        for (let [id, action] of actionBuffer) {
+            if (action.action === 'delete') {
+                new_map[action.position.x][action.position.y][action.type] = null;
             }
         }
-
-        console.log(actionBuffer, this.currentParcelPosition);
-        await this.updatePrediction();
+        actionBuffer.clear();
+        this.map = JSON.parse(JSON.stringify(new_map));
+        visualizer.drawMap();
+        this.updatePrediction();
     }
 }
 
 parcelEmitter.on('deleteParcel', (id) => {
     let temp_position = map.currentParcelPosition[id];
     delete map.currentParcelPosition[id];
-    actionBuffer.set(id, {action: 'delete', type: 'parcel', id: id, position: temp_position});
+    actionBuffer.set(id, {action: 'delete', type: 'parcel', position: temp_position});
     parcels.delete(id);
 });
 
 /** @type {Maps} */
 let map = null;
+let visualizer = null;
+let counter = 0;
 
 /**
  * Create the map from scratch with some initial data and heuristics
@@ -203,6 +209,7 @@ let map = null;
  */
 function createMap(mapData) {
     map = new Maps(mapData);
+    visualizer = new MapVisualizer();
     setInterval(async () => {
         await map.updateMap();
     }, 1000);
@@ -211,8 +218,57 @@ function createMap(mapData) {
 /**
  * Updates the map with the new agents and parcels positions
  */
-async function updateMap() {
-    await map.updateMap()
+function updateMap() {
+    map.updateMap()
+}
+
+class MapVisualizer {
+    file;
+
+    constructor() {
+        this.file = './map.txt';
+    }
+
+    // Write a function that translate a matrix into a file
+
+    drawMap() {
+        let text_map = Array(map.width).fill().map(() => Array(map.height).fill().map(() => ' '));
+        for (let x = 0; x < map.width; x++) {
+            for (let y = 0; y < map.height; y++) {
+                let tile = map.map[x][y];
+                let color = '#';
+                if (tile.type === 'delivery') {
+                    color = '°';
+                } else if (tile.type === 'spawnable') {
+                    color = '*';
+                }
+
+                if (me.x === x && me.y === y) {
+                    if (color === '*') color += '';
+                    color = 'M';
+                }
+
+                if (tile.agent) {
+                    if (color === '*') color = '';
+                    color += 'A';
+                }
+                if (tile.parcel) {
+                    if (color === '*') color = '';
+                    color += 'P';
+                }
+                // Reverse coordinate to match deliveroo visualization system
+                text_map[Math.abs(map.height - y) - 1][Math.abs(map.width - x) - 1] = color;
+            }
+        }
+        text_map = text_map.map(row => row.slice().reverse());
+        const data = text_map.map(row => row.join(',')).join('\n');
+        fs.writeFile(this.file, data, (err) => {
+            if (err) {
+                console.error('Error writing file:', err);
+            }
+        });
+    }
+
 }
 
 
