@@ -1,13 +1,38 @@
-import {getParcels, senseParcels} from "./parcels/parcels.js";
+import {senseParcels} from "./parcels/parcels.js";
+import {senseAgents} from "./agents/agents.js";
 import {createMap} from "./map/map.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
 
-/** @type {{id:string, name:string, x:number, y:number, score:number, config:{}}} */
+/**
+ * Variables with all the information about myself
+ * @type {{
+ * id:string,
+ * name:string,
+ * x:number,
+ * y:number,
+ * score:number,
+ * config:{
+ *      MAP_FILE:string,
+ *      PARCELS_GENERATION_INTERVAL:string,
+ *      PARCELS_MAX:string,
+ *      MOVEMENT_STEPS:number,
+ *      MOVEMENT_DURATION:number,
+ *      AGENTS_OBSERVATION_DISTANCE:number,
+ *      PARCELS_OBSERVATION_DISTANCE:number,
+ *      AGENT_TIMEOUT:number,
+ *      PARCEL_REWARD_AVG:number,
+ *      PARCEL_REWARD_VARIANCE:number,
+ *      PARCEL_DECADING_INTERVAL:string,
+ *      RANDOMLY_MOVING_AGENTS:number,
+ *      RANDOM_AGENT_SPEED:string,
+ *      CLOCK:number
+ * },
+ * moves_per_parcel_decay:number}} */
 const me = {};
 
 /**
- * 
- * @param {{id:string, name:string, x:number, y:number, score:number}} param0 
+ *
+ * @param {{id:string, name:string, x:number, y:number, score:number}} param0
  */
 function updateMe({id, name, x, y, score}) {
     me.id = id;
@@ -18,10 +43,10 @@ function updateMe({id, name, x, y, score}) {
 }
 
 /**
- * 
- * @param {{x:number,y:number}} param0 
- * @param {{x:number,y:number}} param1 
- * 
+ *
+ * @param {{x:number,y:number}} param0
+ * @param {{x:number,y:number}} param1
+ *
  * @returns {number} the Manhattan distance between the two points
  */
 function distance({x: x1, y: y1}, {x: x2, y: y2}) {
@@ -33,8 +58,8 @@ function distance({x: x1, y: y1}, {x: x2, y: y2}) {
 
 /**
  * Registers the beliefs revision functions
- * 
- * @param {DeliverooApi} client 
+ *
+ * @param {DeliverooApi} client
  */
 function RegisterBeliefsRevisions(client) {
     client.onYou(updateMe);
@@ -55,12 +80,18 @@ function RegisterBeliefsRevisions(client) {
             console.log('Invalid time interval');
     }
 
+    me.moves_per_parcel_decay = Math.floor(interval / me.config.MOVEMENT_DURATION);
+
     client.onParcelsSensing(async (perceived_parcels) => {
         senseParcels(perceived_parcels, interval);
     })
 
     client.onMap(async (width, height, tiles) => {
         createMap({width, height, tiles});
+    })
+
+    client.onAgentsSensing(async (agents) => {
+        senseAgents(agents);
     })
 }
 
