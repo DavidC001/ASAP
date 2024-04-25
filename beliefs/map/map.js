@@ -95,14 +95,15 @@ class Maps {
         visited[pos.x][pos.y] = true;
         let current = null;
         let node = null;
-        let directions = [[0, 1], [0, -1], [1, 0], [-1, 0]]; // up, down, right, left
+        let directions = [[0, 1, 'up'], [0, -1, 'down'], [1, 0, 'right'], [-1, 0, 'left']]; // up, down, right, left
 
         while (queue.length > 0) {
             current = queue.shift();
             node = current.at(-1)
 
             if (node.x === objective.x && node.y === objective.y) {
-                return current;
+                //remove the first element of the array
+                return current.slice(1);
             }
 
             for (let dir of directions) {
@@ -110,7 +111,7 @@ class Maps {
                 let newY = node.y + dir[1];
                 if ((newX >= 0) && (newX < this.width) && (newY >= 0) && (newY < this.height) && (!visited[newX][newY]) && this.map[newX][newY].type !== 'obstacle') {
                     let newCurrent = JSON.parse(JSON.stringify(current));
-                    newCurrent.push({x: newX, y: newY});
+                    newCurrent.push({x: newX, y: newY, move: dir[2]});
                     queue.push(newCurrent);
                     visited[newX][newY] = true;
                 }
