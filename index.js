@@ -2,6 +2,7 @@
 import {DeliverooApi, timer} from "@unitn-asa/deliveroo-js-client";
 import * as pddlClient from "@unitn-asa/pddl-client";
 import {RegisterBeliefsRevisions} from "./beliefs/beliefs.js";
+import {IntentionRevision} from "./intentions/intentions.js";
 
 import {default as config} from "./config.js";
 
@@ -11,4 +12,5 @@ client.onDisconnect(() => console.log("disconnected", client.socket.id));
 
 client.onConfig((config) => {
     RegisterBeliefsRevisions(client);
+    IntentionRevision(client);
 })
