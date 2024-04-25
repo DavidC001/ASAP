@@ -144,6 +144,7 @@ class Maps {
      *
      */
     updateMap() {
+        //console.log('Updating map');
         let new_map = JSON.parse(JSON.stringify(this.map));
         for (let [id, agent] of agents) {
             // Check that the agent is in the bounds of the map
@@ -210,9 +211,9 @@ let counter = 0;
 function createMap(mapData) {
     map = new Maps(mapData);
     visualizer = new MapVisualizer();
-    setInterval(async () => {
-        await map.updateMap();
-    }, 1000);
+    setInterval(() => {
+        map.updateMap();
+    }, me.config.MOVEMENT_DURATION);
 }
 
 /**
