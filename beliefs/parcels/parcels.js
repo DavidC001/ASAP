@@ -7,6 +7,7 @@
 *        - What to do when parcels are picked up?
 */
 import {EventEmitter} from 'events';
+import {distance, me} from "../beliefs.js";
 
 const parcelEmitter = new EventEmitter();
 
@@ -53,7 +54,6 @@ class Parcel {
  */
 const parcels = new Map();
 
-
 /**
  * Updates the parcels informations when carried by an agent
  * TODO: collect information from the agents
@@ -68,12 +68,14 @@ function updateParcels() {
  * @param {number} decayInterval
  */
 function senseParcels(sensedParcels, decayInterval) {
+    let inView = [];
     for (let parcel of sensedParcels) {
-        if (parcel.x % 1 != 0 || parcel.y % 1 != 0) continue;
+        if (parcel.x % 1 !== 0 || parcel.y % 1 !== 0) continue;
         let position = {x: parcel.x, y: parcel.y};
         let score = parcel.reward;
         let carried = parcel.carriedBy;
         let id = parcel.id;
+        inView.push(id);
         if (parcels.has(id)) {
             let p = parcels.get(id);
             p.position = position;
@@ -81,6 +83,12 @@ function senseParcels(sensedParcels, decayInterval) {
             p.carried = carried;
         } else {
             parcels.set(id, new Parcel(id, position, score, carried, decayInterval));
+        }
+    }
+
+    for (let [id, p] of parcels) {
+        if (!inView.includes(id) && !(distance(p.position, me) >= me.config.PARCELS_OBSERVATION_DISTANCE)) {
+            parcelEmitter.emit('deleteParcel', id);
         }
     }
 
