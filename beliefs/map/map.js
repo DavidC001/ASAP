@@ -97,6 +97,12 @@ class Maps {
         let node = null;
         let directions = [[0, 1, 'up'], [0, -1, 'down'], [1, 0, 'right'], [-1, 0, 'left']]; // up, down, right, left
 
+        //if objective is obstracted, return empty array
+        if (this.map[objective.x][objective.y].type === 'obstacle'
+            || this.map[objective.x][objective.y].agent !== null) {
+            return [];
+        }
+
         while (queue.length > 0) {
             current = queue.shift();
             node = current.at(-1)
@@ -109,7 +115,10 @@ class Maps {
             for (let dir of directions) {
                 let newX = node.x + dir[0];
                 let newY = node.y + dir[1];
-                if ((newX >= 0) && (newX < this.width) && (newY >= 0) && (newY < this.height) && (!visited[newX][newY]) && this.map[newX][newY].type !== 'obstacle') {
+                if ((newX >= 0) && (newX < this.width) && (newY >= 0) && (newY < this.height) 
+                    && (!visited[newX][newY]) 
+                    && this.map[newX][newY].type !== 'obstacle'
+                    && this.map[newX][newY].agent === null) {
                     let newCurrent = JSON.parse(JSON.stringify(current));
                     newCurrent.push({x: newX, y: newY, move: dir[2]});
                     queue.push(newCurrent);

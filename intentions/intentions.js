@@ -84,7 +84,9 @@ class Intention {
         //TODO: consider other agents going after them
         let utility = 0;
         if (this.pickUp) {
-            if (map.map[this.goal.x][this.goal.y].parcel === null) {
+            //if an agent is on the same position as the parcel return -1
+            if (map.map[this.goal.x][this.goal.y].agent !== null
+                || map.map[this.goal.x][this.goal.y].parcel === null) {
                 utility = -1;
             } else {
                 let numParcels = carriedParcels.length + 1;
