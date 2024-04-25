@@ -247,7 +247,7 @@ class Agent {
 const agents = new Map();
 
 /**
- * @param {[ { id:string, name:string, x:number, y:number, score:number } ]} agents 
+ * @param {[ { id:string, name:string, x:number, y:number, score:number } ]} sensedAgents 
  */
 function senseAgents(sensedAgents) {
     //console.log("sensing agents")
@@ -255,7 +255,7 @@ function senseAgents(sensedAgents) {
     //TODO: Implement this function
     for (const agent of sensedAgents) {
         inView.push(agent.id);
-        if(agent.x % 1 != 0 || agent.y % 1 != 0) continue;
+        if(agent.x % 1 !== 0 || agent.y % 1 !== 0) continue;
         if (!agents.has(agent.id)) {
             agents.set(agent.id, new Agent({ x: Math.round(agent.x), y: Math.round(agent.y) }));
         } else {
