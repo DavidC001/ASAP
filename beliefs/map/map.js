@@ -168,9 +168,7 @@ class Maps {
             }
             // If a parcel has changed position, update it's current state and remove the previous one from the map
             if (this.currentParcelPosition[id] && (this.currentParcelPosition[id].x !== parcel.position.x || this.currentParcelPosition[id].y !== parcel.position.y)) {
-                console.log(this.currentParcelPosition[id].x !== parcel.position.x && this.currentParcelPosition[id].y !== parcel.position.y);
                 new_map[this.currentParcelPosition[id].x][this.currentParcelPosition[id].y].parcel = null;
-
             }
             new_map[parcel.position.x][parcel.position.y].parcel = {
                 id: id,
@@ -195,7 +193,7 @@ class Maps {
 parcelEmitter.on('deleteParcel', (id) => {
     let temp_position = map.currentParcelPosition[id];
     delete map.currentParcelPosition[id];
-    actionBuffer.set(id, {action: 'delete', type: 'parcel', position: temp_position});
+    if(temp_position) actionBuffer.set(id, {action: 'delete', type: 'parcel', position: temp_position});
     parcels.delete(id);
 });
 
