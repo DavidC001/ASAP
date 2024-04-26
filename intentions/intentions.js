@@ -3,7 +3,7 @@ import { me } from '../beliefs/beliefs.js';
 import { parcels } from '../beliefs/parcels/parcels.js';
 import { EventEmitter } from 'events';
 
-const MAX_RETRIES = 5;
+const MAX_RETRIES = 1;
 const stopEmitter = new EventEmitter();
 
 class Intention {
@@ -32,7 +32,10 @@ class Intention {
             console.log('delivering to', this.goal)
             this.plan = map.BFS(me, this.goal)
         } else if(!this.deliver && !this.pickUp){
-            this.goal = {x: Math.floor(Math.random() * map.width), y: Math.floor(Math.random() * map.height)};
+            this.goal = {
+                x: Math.floor(Math.random() * (map.width-me.config.PARCELS_OBSERVATION_DISTANCE+1)), 
+                y: Math.floor(Math.random() * (map.height-me.config.PARCELS_OBSERVATION_DISTANCE+1))
+            };
             console.log('random goal', this.goal);
             this.plan = map.BFS(me, this.goal);
         } else {
@@ -43,7 +46,7 @@ class Intention {
 
         let retryCount = 0;
         for (let i = 0; i < this.plan.length; i++) {
-            console.log(this.type,'move', this.plan[i]);
+            //console.log(this.type,'move', this.plan[i]);
             let res = await client.move(this.plan[i].move);
             if(!res) {
                 //console.log('Move failed, retrying...');
@@ -82,46 +85,39 @@ class Intention {
     utility() {
         if (!this.deliver && !this.pickUp) return 1; //random intention
         //TODO: consider other agents going after them
+
         let utility = 0;
+        let numParcels = carriedParcels.length;
+        let toRemove = []
+        let score = carriedParcels.reduce((acc, id) => {
+            if (parcels.has(id)) {
+                return acc + parcels.get(id).score
+            } else {
+                toRemove.push(id);
+                return acc;
+            }
+        }, 0);
+
+        for (let id of toRemove) {
+            carriedParcels.splice(carriedParcels.indexOf(id), 1);
+        }
+
+
         if (this.pickUp) {
             //if an agent is on the same position as the parcel return -1
             if (map.map[this.goal.x][this.goal.y].agent !== null
                 || map.map[this.goal.x][this.goal.y].parcel === null) {
                 utility = -1;
             } else {
-                let numParcels = carriedParcels.length + 1;
-                let toRemove = []
-                let score = map.map[this.goal.x][this.goal.y].parcel.score + carriedParcels.reduce((acc, id) => {
-                    if (parcels.has(id)) {
-                        return acc + parcels.get(id).score
-                    } else {
-                        toRemove.push(id); //if parcel is deleted while being carried
-                        return acc;
-                    }
-                }, 0);
-                for (let id of toRemove) {
-                    carriedParcels.splice(carriedParcels.indexOf(id), 1);
-                }
+                score += parcels.get(this.pickUp).score;
                 let steps = map.BFS(me, this.goal).length; //TODO: if too slow use manhattan distance
-                utility = score - steps / me.moves_per_parcel_decay * (numParcels) - map.map[this.goal.x][this.goal.y].heuristic * (numParcels)
+                utility = score - steps * (numParcels) / me.moves_per_parcel_decay - map.map[this.goal.x][this.goal.y].heuristic  * (numParcels) / me.moves_per_parcel_decay
             }
         } else if (this.deliver) {
-            let numParcels = carriedParcels.length;
-            let toRemove = []
-            let score = carriedParcels.reduce((acc, id) => {
-                if (parcels.has(id)) {
-                    return acc + parcels.get(id).score
-                } else {
-                    toRemove.push(id);
-                    return acc;
-                }
-            }, 0);
-            for (let id of toRemove) {
-                carriedParcels.splice(carriedParcels.indexOf(id), 1);
-            }
             let steps = map.map[this.goal.x][this.goal.y].heuristic;
-            utility = score - steps / me.moves_per_parcel_decay * (numParcels) - map.map[this.goal.x][this.goal.y].heuristic * (numParcels)   
+            utility = score - steps * (numParcels) / me.moves_per_parcel_decay
         }
+
         return utility;
     }
 
