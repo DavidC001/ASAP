@@ -68,24 +68,27 @@ function RegisterBeliefsRevisions(client) {
     let interval = me.config.PARCEL_DECADING_INTERVAL.match(/(\d+)(\w+)/);
     let interval_num = Infinity;
 
-    switch (interval[2]) {
-        case 'ms':
-            interval_num = interval[1];
-            break;
-        case 's':
-            interval_num = interval[1] * 1000;
-            break;
-        case 'm':
-            interval_num = interval[1] * 60 * 1000;
-            break;
-        case 'infinite':
-            interval_num = Infinity;
-            break;
-        default:
-            console.log('Invalid time interval');
+    if (interval !== null) {
+        switch (interval[2]) {
+            case 'ms':
+                interval_num = interval[1];
+                break;
+            case 's':
+                interval_num = interval[1] * 1000;
+                break;
+            case 'm':
+                interval_num = interval[1] * 60 * 1000;
+                break;
+            case 'infinite':
+                interval_num = Infinity;
+                break;
+            default:
+                console.log('Invalid time interval');
+        }
     }
 
     me.moves_per_parcel_decay = Math.floor(interval_num / me.config.MOVEMENT_DURATION);
+    //console.log('moves per parcel decay', me.moves_per_parcel_decay);
 
     client.onParcelsSensing(async (perceived_parcels) => {
         senseParcels(perceived_parcels, interval_num);
