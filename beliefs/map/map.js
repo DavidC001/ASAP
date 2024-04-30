@@ -95,7 +95,8 @@ class Maps {
         visited[pos.x][pos.y] = true;
         let current = null;
         let node = null;
-        let directions = [[0, 1, 'up'], [0, -1, 'down'], [1, 0, 'right'], [-1, 0, 'left']]; // up, down, right, left
+        let directions = [[[0, 1, 'up'], [0, -1, 'down'], [1, 0, 'right'], [-1, 0, 'left']],
+            [[1, 0, 'right'], [-1, 0, 'left'], [0, 1, 'up'], [0, -1, 'down']]];
 
         //if objective is obstracted, return empty array
         if (this.map[objective.x][objective.y].type === 'obstacle'
@@ -112,11 +113,11 @@ class Maps {
                 return current.slice(1);
             }
 
-            for (let dir of directions) {
+            for (let dir of directions[current.length % 2]) {
                 let newX = node.x + dir[0];
                 let newY = node.y + dir[1];
-                if ((newX >= 0) && (newX < this.width) && (newY >= 0) && (newY < this.height) 
-                    && (!visited[newX][newY]) 
+                if ((newX >= 0) && (newX < this.width) && (newY >= 0) && (newY < this.height)
+                    && (!visited[newX][newY])
                     && this.map[newX][newY].type !== 'obstacle'
                     && this.map[newX][newY].agent === null) {
                     let newCurrent = JSON.parse(JSON.stringify(current));
