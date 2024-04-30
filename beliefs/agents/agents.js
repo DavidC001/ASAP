@@ -1,5 +1,6 @@
 import { map, MAX_FUTURE } from '../map/map.js';
 import { me, distance } from '../beliefs.js';
+import { agentsCarrying } from '../parcels/parcels.js';
 
 const MAX_HISTORY = 5;
 
@@ -154,13 +155,25 @@ class BelievedIntention {
         
         for (let i = 0; i < MAX_FUTURE; i++) {
             if (steps.length === 0) {
-                this.futureMoves.push(
-                    this.futureMoves[this.futureMoves.length - 1]
-                );
+                if (this.futureMoves.length > 0){
+                    this.futureMoves.push(
+                        this.futureMoves[this.futureMoves.length - 1]
+                    );
+                } else {
+                    this.futureMoves.push(pos);
+                }
             } else {
                 this.futureMoves.push(
                     steps.shift()
                 );
+            }
+        }
+        //if last move is on a delivery then move away from it
+        if (map.map[this.futureMoves[this.futureMoves.length - 1].x][this.futureMoves[this.futureMoves.length - 1].y].delivery){
+            if (steps.length > 1){
+                this.futureMoves[this.futureMoves.length - 1] = steps[steps.length - 2];
+            } else {
+                this.futureMoves[this.futureMoves.length - 1] = pos;
             }
         }
     }
@@ -170,11 +183,16 @@ class BelievedIntention {
      * @returns {{x:number,y:number}} The next position of the agent
      */
     nextStep() {
-        let next_pos = this.futureMoves[0];
-        this.futureMoves.shift();
-        this.futureMoves.push(
-            this.futureMoves[this.futureMoves.length - 1]
-        );
+        let next_pos;
+        if (this.futureMoves){
+            next_pos = this.futureMoves[0];
+            this.futureMoves.shift();
+            this.futureMoves.push(
+                this.futureMoves[this.futureMoves.length - 1]
+            );
+        } else {
+            next_pos = this.objective;
+        }
         return next_pos;
     }
 
@@ -189,6 +207,7 @@ class BelievedIntention {
  * @property {boolean} carrying - True if the agent is carrying a parcel
  * @property {BelievedIntention} believedIntetion - The believed intention of the agent
  * @property {boolean} inView - True if the agent is in the field of view
+ * @property {string} id - The id of the agent
  */
 class Agent {
     position;
@@ -196,16 +215,18 @@ class Agent {
     carrying;
     believedIntetion;
     inView;
+    id;
 
     /**
      * 
      * @param {[{x:number,y:number}]} position - The position history of the agent
      */
-    constructor(position) {
+    constructor(position, id) {
+        this.id = id;
         this.position = position;
         this.history = [];
         this.inView = true;
-        this.carrying = (map.map[position.x][position.y].parcel ? true : false); //TODO: change implementation to use lookup in parcels
+        this.carrying = agentsCarrying.has(id).length > 0;
         this.updateHistory(position);
     }
 
@@ -230,6 +251,8 @@ class Agent {
             }
             this.position = newPosition;
         }
+
+        this.carrying = agentsCarrying.has(this.id).length > 0;
         
         this.believedIntetion = new BelievedIntention(this.history, this.carrying);
     }
@@ -266,6 +289,10 @@ function senseAgents(sensedAgents) {
     for (const [id, agent] of agents) {
         if (!inView.includes(id)) {
             agent.updatePredicted();
+            //if old position is in view then move agent out of bounds
+            if ( distance(agent, me) < me.config.AGENTS_OBSERVATION_DISTANCE){
+                agent.position = {x:-1,y:-1};
+            }
         }
         //console.log(agent);
     }
