@@ -158,8 +158,10 @@ class Maps {
         //console.log('Updating map');
         let new_map = JSON.parse(JSON.stringify(this.map));
         for (let [id, agent] of agents) {
-            // Check that the agent is in the bounds of the map
+            // Check that the agent is in the bounds of the map and set it to null if it is not
             if (agent.position.x < 0 || agent.position.y < 0 || agent.position.x >= this.width || agent.position.y >= this.height) {
+                new_map[this.currentAgentPosition[id].x][this.currentAgentPosition[id].y].agent = null;
+                this.currentAgentPosition[id] = null;
                 console.log('Agent out of bounds');
                 continue;
             }
