@@ -206,7 +206,7 @@ class Maps {
 parcelEmitter.on('deleteParcel', (id) => {
     let temp_position = map.currentParcelPosition[id];
     delete map.currentParcelPosition[id];
-    if(temp_position) actionBuffer.set(id, {action: 'delete', type: 'parcel', position: temp_position});
+    if (temp_position) actionBuffer.set(id, {action: 'delete', type: 'parcel', position: temp_position});
     parcels.delete(id);
 });
 

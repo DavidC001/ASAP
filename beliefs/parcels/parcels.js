@@ -3,13 +3,16 @@
 *        - delete parcels that were carried but then we see again the agent that doesn't have them again
 *        - update the parcel based on the agent
 *        - Make update once every decay interval --> partially done
-*        - Add a map that maps the parcels to the agents that are carrying them
-*        - What to do when parcels are picked up?
 */
 import {EventEmitter} from 'events';
 import {distance, me} from "../beliefs.js";
 
 const parcelEmitter = new EventEmitter();
+/**
+ * Maps an agent with its carried parcels
+ * @type {Map<string, Array<string>>}
+ */
+const agentsCarrying = new Map();
 
 /**
  * @class parcel
@@ -67,7 +70,7 @@ function updateParcels() {
 }
 
 /**
- *
+ * All the logic to sense the
  * @param {[ { id:string, x:number, y:number, carriedBy:string, reward:number } ]} sensedParcels
  * @param {number} decayInterval
  */
@@ -85,18 +88,33 @@ function senseParcels(sensedParcels, decayInterval) {
             p.position = position;
             p.score = score;
             p.carried = carried;
+            if (p.carried) {
+                let agents_carrying = agentsCarrying.get(p.carried);
+                if (agentsCarrying.has(p.carried) && !agents_carrying.includes(id)) {
+                    agents_carrying.push(id);
+                } else {
+                    agentsCarrying.set(p.carried, [id]);
+                }
+            }
         } else {
             parcels.set(id, new Parcel(id, position, score, carried, decayInterval));
         }
     }
 
     for (let [id, p] of parcels) {
-        if (!inView.includes(id) && !(distance(p.position, me) >= me.config.PARCELS_OBSERVATION_DISTANCE)) {
+        if (!inView.includes(id) && (distance(p.position, me) < me.config.PARCELS_OBSERVATION_DISTANCE)) {
             parcelEmitter.emit('deleteParcel', id);
         }
     }
-
-
 }
 
-export {parcels, Parcel, senseParcels, parcelEmitter}
+parcelEmitter.on('deleteParcel', (id) => {
+    let p = parcels.get(id);
+    if (p.carried) {
+        let agent = p.carried;
+        let index = agentsCarrying.get(agent).indexOf(id);
+        agentsCarrying.get(agent).splice(index, 1);
+    }
+});
+
+export {parcels, Parcel, senseParcels, parcelEmitter, agentsCarrying}
