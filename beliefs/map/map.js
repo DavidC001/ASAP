@@ -135,11 +135,37 @@ class Maps {
     }
 
     /**
-     * Infers the future state of the map
+     * Infers the future state of the map based on the future moves of the agents
      */
     updatePrediction() {
-        //TODO
-        this.predictedMap = new Array(MAX_FUTURE).fill(this.map);
+        let newMap = new Array(MAX_FUTURE).fill().map(() => JSON.parse(JSON.stringify(this.map)));
+        for (let [id, agent] of agents) {
+            let first_pos = this.currentAgentPosition[id];
+            let pos = first_pos;
+            let futureMoves = agent.believedIntetion.futureMoves;
+            if (first_pos === null) {
+                continue;
+            }
+            for (let i = 0; i < MAX_FUTURE; i++) {
+                if (futureMoves[i]) {
+                    let futurePos = futureMoves[i];
+                    if (futurePos.x < 0 || futurePos.y < 0 || futurePos.x >= this.width || futurePos.y >= this.height) {
+                        continue;
+                    }
+                    if (newMap[i][futurePos.x][futurePos.y].type === 'obstacle') {
+                        continue;
+                    }
+                    newMap[i][futurePos.x][futurePos.y].agent = id;
+                    newMap[i][first_pos.x][first_pos.y].agent = null;
+                    pos = futurePos;
+                }
+            }
+        }
+
+        /*for (let i in newMap) {
+            drawMap(`./map_${i}.txt`, newMap[i])
+        }*/
+        this.predictedMap = newMap;
     }
 
     /**
@@ -223,8 +249,6 @@ parcelEmitter.on('deleteParcel', (id) => {
 
 /** @type {Maps} */
 let map = null;
-let visualizer = null;
-let counter = 0;
 
 /**
  * Create the map from scratch with some initial data and heuristics
@@ -232,7 +256,6 @@ let counter = 0;
  */
 function createMap(mapData) {
     map = new Maps(mapData);
-    visualizer = new MapVisualizer();
     setInterval(() => {
         map.updateMap();
     }, me.config.MOVEMENT_DURATION);
