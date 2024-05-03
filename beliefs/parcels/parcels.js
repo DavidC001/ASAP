@@ -2,7 +2,6 @@
 *        - delete parcels that are delivered
 *        - delete parcels that were carried but then we see again the agent that doesn't have them again
 *        - update the parcel based on the agent
-*        - Make update once every decay interval --> partially done
 */
 import {EventEmitter} from 'events';
 import {distance, me} from "../beliefs.js";
@@ -107,14 +106,5 @@ function senseParcels(sensedParcels, decayInterval) {
         }
     }
 }
-
-parcelEmitter.on('deleteParcel', (id) => {
-    let p = parcels.get(id);
-    if (p.carried) {
-        let agent = p.carried;
-        let index = agentsCarrying.get(agent).indexOf(id);
-        agentsCarrying.get(agent).splice(index, 1);
-    }
-});
 
 export {parcels, Parcel, senseParcels, parcelEmitter, agentsCarrying}
