@@ -226,7 +226,7 @@ class Maps {
         }
         actionBuffer.clear();
         this.map = JSON.parse(JSON.stringify(new_map));
-        visualizer.drawMap();
+        drawMap('./map.txt', this.map);
         this.updatePrediction();
     }
 }
@@ -268,53 +268,43 @@ function updateMap() {
     map.updateMap()
 }
 
-class MapVisualizer {
-    file;
 
-    constructor() {
-        this.file = './map.txt';
-    }
-
-    // Write a function that translate a matrix into a file
-
-    drawMap() {
-        let text_map = Array(map.width).fill().map(() => Array(map.height).fill().map(() => ' '));
-        for (let x = 0; x < map.width; x++) {
-            for (let y = 0; y < map.height; y++) {
-                let tile = map.map[x][y];
-                let color = '#';
-                if (tile.type === 'delivery') {
-                    color = '°';
-                } else if (tile.type === 'spawnable') {
-                    color = '*';
-                }
-
-                if (me.x === x && me.y === y) {
-                    if (color === '*') color += '';
-                    color = 'M';
-                }
-
-                if (tile.agent) {
-                    if (color === '*') color = '';
-                    color += 'A';
-                }
-                if (tile.parcel) {
-                    if (color === '*') color = '';
-                    color += 'P';
-                }
-                // Reverse coordinate to match deliveroo visualization system
-                text_map[Math.abs(map.height - y) - 1][Math.abs(map.width - x) - 1] = color;
+function drawMap(filename, tilemap) {
+    let text_map = Array(map.width).fill().map(() => Array(map.height).fill().map(() => ' '));
+    for (let x = 0; x < map.width; x++) {
+        for (let y = 0; y < map.height; y++) {
+            let tile = tilemap[x][y];
+            let color = '#';
+            if (tile.type === 'delivery') {
+                color = '°';
+            } else if (tile.type === 'spawnable') {
+                color = '*';
             }
+
+            if (me.x === x && me.y === y) {
+                if (color === '*') color += '';
+                color = 'M';
+            }
+
+            if (tile.agent) {
+                if (color === '*') color = '';
+                color += 'A';
+            }
+            if (tile.parcel) {
+                if (color === '*') color = '';
+                color += 'P';
+            }
+            // Reverse coordinate to match deliveroo visualization system
+            text_map[Math.abs(map.height - y) - 1][Math.abs(map.width - x) - 1] = color;
         }
-        text_map = text_map.map(row => row.slice().reverse());
-        const data = text_map.map(row => row.join(',')).join('\n');
-        fs.writeFile(this.file, data, (err) => {
-            if (err) {
-                console.error('Error writing file:', err);
-            }
-        });
     }
-
+    text_map = text_map.map(row => row.slice().reverse());
+    const data = text_map.map(row => row.join(',')).join('\n');
+    fs.writeFile(filename, data, (err) => {
+        if (err) {
+            console.error('Error writing file:', err);
+        }
+    });
 }
 
 
