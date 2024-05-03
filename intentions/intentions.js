@@ -159,7 +159,8 @@ class Intention {
             case 'pickup':
                 //TODO: if carried parcel over limit return -1
                 if (map.map[this.goal.x][this.goal.y].agent !== null
-                    || map.map[this.goal.x][this.goal.y].parcel === null) {
+                    || map.map[this.goal.x][this.goal.y].parcel === null
+                    || parcels.get(this.pickUp) === undefined){
                     //if an agent is on the same position as the parcel return -1
                     score = -1;
                 } else {
@@ -172,7 +173,7 @@ class Intention {
                 break;
             case 'deliver':
                 //use the heuristic to the closest delivery point
-                steps = map.map[this.goal.x][this.goal.y].heuristic;
+                steps = map.map[me.x][me.y].heuristic;
                 break;
             case 'explore':
                 score = 1;
@@ -298,6 +299,7 @@ class Intentions {
                 parcelsIDs.set(intention.pickUp, true);
                 if (map.map[intention.goal.x][intention.goal.y].parcel === null
                     || map.map[intention.goal.x][intention.goal.y].agent !== null
+                    || parcels.get(intention.pickUp) === undefined
                     || parcels.get(intention.pickUp).carried !== null) {
                     //The parcel has either been picked up or expired
                     this.intentions.splice(this.intentions.indexOf(intention), 1);
@@ -333,8 +335,8 @@ const intentions = new Intentions();
 function IntentionRevision(client) {
     client.onMap(async () => {
         //wait 0.1 second for the map to be created
-        await new Promise(resolve => setTimeout(resolve, 100));
-        intentions.generateIntentions();
+        await new Promise(resolve => setTimeout(resolve, 200));
+        await intentions.generateIntentions();
         setInterval(() => {
             intentions.updateIntentions();
             intentions.selectIntention(client);
