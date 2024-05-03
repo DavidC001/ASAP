@@ -78,7 +78,7 @@ class Intention {
                 console.log('Invalid intention type');
         }
 
-        console.log('plan', me.x, me.y, this.plan);
+        //console.log('plan', me.x, me.y, this.plan);
 
         //execute the plan (TODO: make it more resilient to failed moves and put it in the planner)
         let retryCount = 0;
@@ -238,7 +238,6 @@ class Intentions {
         let maxIntention = null;
         for (let intention of this.intentions) {
             let utility = intention.utility();
-            //console.log('utility of', intention.type, "is", utility);
             if (utility > maxUtility) {
                 //console.log('utility', utility);
                 maxUtility = utility;
@@ -297,8 +296,7 @@ class Intentions {
             //console.log('old intention', intention);
             if (intention.type === 'pickup') {
                 parcelsIDs.set(intention.pickUp, true);
-                if (map.map[intention.goal.x][intention.goal.y].parcel === null
-                    || map.map[intention.goal.x][intention.goal.y].agent !== null
+                if (map.map[intention.goal.x][intention.goal.y].agent !== null
                     || parcels.get(intention.pickUp) === undefined
                     || parcels.get(intention.pickUp).carried !== null) {
                     //The parcel has either been picked up or expired
@@ -311,7 +309,7 @@ class Intentions {
         for (let [id, parcel] of parcels) {
             if (!parcelsIDs.has(id) && parcel.carried===null) {
                 //Parcel is not in the list of intentions and is not carried
-                console.log('new parcel at', parcel.position);
+                //console.log('new parcel at', parcel.position, 'id', id);
                 let goal = parcel.position;
                 let pickUp = id;
                 let deliver = false;
