@@ -1,4 +1,4 @@
-import {parcels, Parcel, parcelEmitter} from "../parcels/parcels.js";
+import {parcels, Parcel, parcelEmitter, agentsCarrying} from "../parcels/parcels.js";
 import {me, distance} from "../beliefs.js"
 import {agents, Agent} from "../agents/agents.js";
 import {EventEmitter} from 'events';
@@ -209,6 +209,15 @@ parcelEmitter.on('deleteParcel', (id) => {
     let temp_position = map.currentParcelPosition[id];
     delete map.currentParcelPosition[id];
     if (temp_position) actionBuffer.set(id, {action: 'delete', type: 'parcel', position: temp_position});
+    let p = parcels.get(id);
+    if (p.carried) {
+        let agent = p.carried;
+        let agent_carrying = agentsCarrying.get(agent);
+        if (agent_carrying) {
+            let index = agent_carrying.indexOf(id);
+            agent_carrying.splice(index, 1);
+        }
+    }
     parcels.delete(id);
 });
 
