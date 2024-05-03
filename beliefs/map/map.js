@@ -74,6 +74,8 @@ class Maps {
             let currentTile = this.map[tile.x][tile.y];
             if (tile.delivery) {
                 delivery_zones.push({x: tile.x, y: tile.y});
+                bestDistance = 0;
+                closestDelivery = {x: tile.x, y: tile.y};
             } else {
                 delivery_zones.forEach(delivery_zone => {
                     let distance1 = this.BFS(tile, delivery_zone);
