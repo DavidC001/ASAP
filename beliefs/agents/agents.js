@@ -219,7 +219,7 @@ class Agent {
 
     /**
      *
-     * @param {[{x:number,y:number}]} position - The position history of the agent
+     * @param {{x:number,y:number}} position - The position history of the agent
      * @param {string} id - The id of the agent
      */
     constructor(position, id) {
@@ -278,7 +278,7 @@ function senseAgents(sensedAgents) {
         inView.push(agent.id);
         if (agent.x % 1 !== 0 || agent.y % 1 !== 0) continue;
         if (!agents.has(agent.id)) {
-            agents.set(agent.id, new Agent([{x: Math.round(agent.x), y: Math.round(agent.y)}], agent.id));
+            agents.set(agent.id, new Agent({x: Math.round(agent.x), y: Math.round(agent.y)}, agent.id));
         } else {
             agents.get(agent.id).updateHistory({x: Math.round(agent.x), y: Math.round(agent.y)});
         }

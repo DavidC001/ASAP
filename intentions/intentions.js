@@ -68,8 +68,8 @@ class Intention {
             case 'explore':
                 //if the intention is explore, the goal is a random point in the map (TODO: also in the future use a specific planner for this)
                 this.goal = {
-                    x: Math.floor(Math.random() * (map.width-me.config.PARCELS_OBSERVATION_DISTANCE+1)), 
-                    y: Math.floor(Math.random() * (map.height-me.config.PARCELS_OBSERVATION_DISTANCE+1))
+                    x: Math.floor(Math.random() * (map.width) - me.config.PARCELS_OBSERVATION_DISTANCE/1.3 + me.config.PARCELS_OBSERVATION_DISTANCE/1.3),
+                    y: Math.floor(Math.random() * (map.height) - me.config.PARCELS_OBSERVATION_DISTANCE/1.3 + me.config.PARCELS_OBSERVATION_DISTANCE/1.3)
                 };
                 console.log('explore goal', this.goal);
                 this.plan = map.BFS(me, this.goal);
@@ -105,7 +105,10 @@ class Intention {
 
         //execute the intention
         if (this.pickUp && !this.stop) {
-            let res = await client.pickup();
+            let res = await new Promise((resolve)=>{
+                client.pickup(this.pickUp).then((res)=>resolve(res));
+                setTimeout(()=>resolve([]), me.config.MOVEMENT_DURATION*1.1);
+            });
             //console.log('pickup', res.length);
             //if successful add the parcels to the carried parcels
             for (let p of res) { //TODO: check if this works
@@ -115,9 +118,14 @@ class Intention {
         } 
         if (this.deliver && !this.stop) {
             //console.log('deliver');
-            await client.putdown();
+            let dropped_parcels = await new Promise((resolve)=>{
+                client.putdown().then((res)=>resolve(res));
+                setTimeout(()=>resolve([]), me.config.MOVEMENT_DURATION*1.1);
+            });
             //empty carried parcels
-            carriedParcels.length = 0;
+            if (dropped_parcels.length > 0) {
+                carriedParcels.length = 0;
+            }
         }
 
         if (this.stop) {
