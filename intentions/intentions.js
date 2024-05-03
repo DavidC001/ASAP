@@ -84,7 +84,10 @@ class Intention {
         let retryCount = 0;
         for (let i = 0; i < this.plan.length; i++) {
             //console.log(this.type,'move', this.plan[i]);
-            let res = await client.move(this.plan[i].move);
+            let res = await new Promise((resolve)=>{
+                client.move(this.plan[i].move).then((res)=>resolve(res));
+                setTimeout(()=>resolve(false), me.config.MOVEMENT_DURATION*1.1);
+            });
             if(!res) {
                 //console.log('Move failed, retrying...');
                 if (retryCount > MAX_RETRIES) {
