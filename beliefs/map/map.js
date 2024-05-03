@@ -210,7 +210,7 @@ parcelEmitter.on('deleteParcel', (id) => {
     delete map.currentParcelPosition[id];
     if (temp_position) actionBuffer.set(id, {action: 'delete', type: 'parcel', position: temp_position});
     let p = parcels.get(id);
-    if (p.carried) {
+    if (p && p.carried) {
         let agent = p.carried;
         let agent_carrying = agentsCarrying.get(agent);
         if (agent_carrying) {
