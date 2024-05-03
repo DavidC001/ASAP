@@ -1,6 +1,6 @@
-import { map, MAX_FUTURE } from '../map/map.js';
-import { me, distance } from '../beliefs.js';
-import { agentsCarrying } from '../parcels/parcels.js';
+import {map, MAX_FUTURE} from '../map/map.js';
+import {distance, me} from '../beliefs.js';
+import {agentsCarrying} from '../parcels/parcels.js';
 
 const MAX_HISTORY = 5;
 
@@ -12,10 +12,11 @@ let intentions = {
     PICK_UP: "PICK_UP",
     DELIVER: "DELIVER"
 }
+
 /**
  * @class BelievedIntention
- * 
- * 
+ *
+ *
  * @property {string} intention - The believed intention of the agent
  * @property {string} lastMove - The last move of the agent
  * @property {{x:number,y:number}} objective - The objective of the agent
@@ -28,10 +29,10 @@ class BelievedIntention {
     futureMoves;
 
     /**
-     * 
-     * @param {[{x:number,y:number}]} history 
-     * @param {boolean} carrying 
-     * @returns 
+     *
+     * @param {[{x:number,y:number}]} history
+     * @param {boolean} carrying
+     * @returns
      */
     constructor(history, carrying) {
         //console.log("predicting intention");
@@ -63,15 +64,14 @@ class BelievedIntention {
 
         //look around the agent, if a parcel is nearby and it moved closer to it, then the intention is to pick up
         let dist = me.config.AGENTS_OBSERVATION_DISTANCE
-        let clostest_distance = dist;
         for (let i = position.x - dist; i <= position.x + dist; i++) {
-            for (let j = position.y - dist;j <= position.y + dist; j++) {
+            for (let j = position.y - dist; j <= position.y + dist; j++) {
                 if (i < 0 || j < 0 || i >= map.width || j >= map.height) continue;
                 if (map.map[i][j].parcel) {
-                    if (distance(position, map.map[i][j]) < distance(lastPosition, map.map[i][j]) 
-                        && distance(position, map.map[i][j]) < clostest_distance) {
+                    if (distance(position, map.map[i][j]) < distance(lastPosition, map.map[i][j])
+                        && distance(position, map.map[i][j]) < dist) {
                         this.intention = intentions.PICK_UP;
-                        if (this.objective != map.map[i][j]){
+                        if (this.objective !== map.map[i][j]) {
                             this.objective = map.map[i][j];
                             this.goTo(position, this.objective);
                         }
@@ -85,7 +85,7 @@ class BelievedIntention {
         if (carrying) {
             this.intention = intentions.DELIVER;
             //TODO check
-            if (this.objective != map.map[position.x][position.y].closest_delivery){
+            if (this.objective !== map.map[position.x][position.y].closest_delivery) {
                 this.objective = map.map[position.x][position.y].closest_delivery
                 this.goTo(position, this.objective);
             }
@@ -95,7 +95,7 @@ class BelievedIntention {
 
         //else keep moving in the same direction
         this.intention = intentions.MOVE;
-        this.objective = {x:-1,y:-1};
+        this.objective = {x: -1, y: -1};
         this.keepMoving(position);
         //console.log("intention: keep moving")
     }
@@ -120,27 +120,27 @@ class BelievedIntention {
         for (let i = 0; i < MAX_FUTURE; i++) {
             pos = {x: pos.x + dx, y: pos.y + dy};
             if (pos.x < 0 || pos.y < 0 || pos.x >= map.width || pos.y >= map.height) {
-                if (this.futureMoves.length > 0){
+                if (this.futureMoves.length > 0) {
                     this.futureMoves.push(
                         this.futureMoves[this.futureMoves.length - 1]
                     );
-                }else{
-                    this.futureMoves.push({x:pos.x-dx,y:pos.y-dy});
+                } else {
+                    this.futureMoves.push({x: pos.x - dx, y: pos.y - dy});
                 }
             } else if (map.map[pos.x][pos.y].type === "obstacle") {
-                if (this.futureMoves.length > 0){
+                if (this.futureMoves.length > 0) {
                     this.futureMoves.push(
                         this.futureMoves[this.futureMoves.length - 1]
                     );
-                }else{
-                    this.futureMoves.push({x:pos.x-dx,y:pos.y-dy});
+                } else {
+                    this.futureMoves.push({x: pos.x - dx, y: pos.y - dy});
                 }
-            }else {
+            } else {
                 this.futureMoves.push(pos);
             }
             pos = this.futureMoves[this.futureMoves.length - 1];
         }
-        
+
     }
 
     /**
@@ -148,14 +148,14 @@ class BelievedIntention {
      * @param {{x:number,y:number}} pos - The current position of the agent
      * @param {{x:number,y:number}} obj - The objective position of the agent
      */
-    goTo(pos,obj) {
+    goTo(pos, obj) {
         this.futureMoves = [];
         //TODO: use a more efficient path planner
         let steps = map.BFS(pos, obj);
-        
+
         for (let i = 0; i < MAX_FUTURE; i++) {
             if (steps.length === 0) {
-                if (this.futureMoves.length > 0){
+                if (this.futureMoves.length > 0) {
                     this.futureMoves.push(
                         this.futureMoves[this.futureMoves.length - 1]
                     );
@@ -169,8 +169,8 @@ class BelievedIntention {
             }
         }
         //if last move is on a delivery then move away from it
-        if (map.map[this.futureMoves[this.futureMoves.length - 1].x][this.futureMoves[this.futureMoves.length - 1].y].delivery){
-            if (steps.length > 1){
+        if (map.map[this.futureMoves[this.futureMoves.length - 1].x][this.futureMoves[this.futureMoves.length - 1].y].delivery) {
+            if (steps.length > 1) {
                 this.futureMoves[this.futureMoves.length - 1] = steps[steps.length - 2];
             } else {
                 this.futureMoves[this.futureMoves.length - 1] = pos;
@@ -184,7 +184,7 @@ class BelievedIntention {
      */
     nextStep() {
         let next_pos;
-        if (this.futureMoves){
+        if (this.futureMoves) {
             next_pos = this.futureMoves[0];
             this.futureMoves.shift();
             this.futureMoves.push(
@@ -200,8 +200,8 @@ class BelievedIntention {
 
 /**
  * @class Agent
- * 
- * 
+ *
+ *
  * @property {{x:number,y:number}} position - The current position of the agent
  * @property {[{x:number,y:number}]} history - The position history of the agent
  * @property {boolean} carrying - True if the agent is carrying a parcel
@@ -218,8 +218,9 @@ class Agent {
     id;
 
     /**
-     * 
+     *
      * @param {[{x:number,y:number}]} position - The position history of the agent
+     * @param {string} id - The id of the agent
      */
     constructor(position, id) {
         this.id = id;
@@ -232,19 +233,16 @@ class Agent {
 
     /**
      * Update the agent's position
-     * 
+     *
      * @param {{x:number,y:number}} newPosition
-     *  
+     *
      */
     updateHistory(newPosition) {
-        if (!this.inView)
-        {
+        if (!this.inView) {
             this.position = newPosition;
             this.history = [newPosition];
             this.inView = true;
-        }
-        else
-        {
+        } else {
             this.history.push(newPosition);
             if (this.history.length > MAX_HISTORY) {
                 this.history.shift();
@@ -253,7 +251,7 @@ class Agent {
         }
 
         this.carrying = agentsCarrying.has(this.id).length > 0;
-        
+
         this.believedIntetion = new BelievedIntention(this.history, this.carrying);
     }
 
@@ -270,7 +268,7 @@ class Agent {
 const agents = new Map();
 
 /**
- * @param {[ { id:string, name:string, x:number, y:number, score:number } ]} sensedAgents 
+ * @param {[ { id:string, name:string, x:number, y:number, score:number } ]} sensedAgents
  */
 function senseAgents(sensedAgents) {
     //console.log("sensing agents")
@@ -278,11 +276,11 @@ function senseAgents(sensedAgents) {
     //TODO: Implement this function
     for (const agent of sensedAgents) {
         inView.push(agent.id);
-        if(agent.x % 1 !== 0 || agent.y % 1 !== 0) continue;
+        if (agent.x % 1 !== 0 || agent.y % 1 !== 0) continue;
         if (!agents.has(agent.id)) {
-            agents.set(agent.id, new Agent({ x: Math.round(agent.x), y: Math.round(agent.y) }));
+            agents.set(agent.id, new Agent([{x: Math.round(agent.x), y: Math.round(agent.y)}], agent.id));
         } else {
-            agents.get(agent.id).updateHistory({ x: Math.round(agent.x), y: Math.round(agent.y) });
+            agents.get(agent.id).updateHistory({x: Math.round(agent.x), y: Math.round(agent.y)});
         }
     }
 
@@ -290,8 +288,8 @@ function senseAgents(sensedAgents) {
         if (!inView.includes(id)) {
             agent.updatePredicted();
             //if old position is in view then move agent out of bounds
-            if ( distance(agent, me) < me.config.AGENTS_OBSERVATION_DISTANCE){
-                agent.position = {x:-1,y:-1};
+            if (distance(agent, me) < me.config.AGENTS_OBSERVATION_DISTANCE) {
+                agent.position = {x: -1, y: -1};
             }
         }
         //console.log(agent);
