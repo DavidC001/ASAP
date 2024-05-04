@@ -92,7 +92,7 @@ class Intention {
             console.log(this.type,'move', this.plan[i]);
             let res = await new Promise((resolve)=>{
                 let result = false;
-                let timer = setTimeout(()=>resolve(result), Math.min(me.config.MOVEMENT_DURATION*10,500));
+                let timer = setTimeout(()=>resolve(result), me.config.MOVEMENT_DURATION+500);
                 client.move(this.plan[i].move).then((res)=>{
                     result = res;
                     clearTimeout(timer);
