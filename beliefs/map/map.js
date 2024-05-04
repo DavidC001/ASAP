@@ -96,8 +96,8 @@ class Maps {
         let visited = new Array(this.width).fill().map(() => new Array(this.height).fill().map(() => false));
         if(pos instanceof Array) queue.push(pos); else queue.push([pos]);
         if(objective instanceof Array) objective = objective[0];
-        console.log(pos,objective,visited.length, this.width, this.height);
-        console.log(visited[pos.x][pos.y]);
+        //console.log(pos,objective,visited.length, this.width, this.height);
+        //console.log(visited[pos.x][pos.y]);
         visited[pos.x][pos.y] = true;
         let current = null;
         let node = null;
@@ -145,6 +145,9 @@ class Maps {
         let newMap = new Array(MAX_FUTURE).fill().map(() => JSON.parse(JSON.stringify(this.map)));
         for (let [id, agent] of agents) {
             let first_pos = this.currentAgentPosition[id];
+            if (first_pos === null) {
+                continue;
+            }
             let pos = first_pos;
             let futureMoves = agent.believedIntetion.futureMoves;
             if (first_pos === null) {
@@ -192,9 +195,11 @@ class Maps {
         for (let [id, agent] of agents) {
             // Check that the agent is in the bounds of the map and set it to null if it is not
             if (agent.position.x < 0 || agent.position.y < 0 || agent.position.x >= this.width || agent.position.y >= this.height) {
-                new_map[this.currentAgentPosition[id].x][this.currentAgentPosition[id].y].agent = null;
-                this.currentAgentPosition[id] = null;
-                console.log('Agent out of bounds');
+                if (this.currentAgentPosition[id]){
+                    new_map[this.currentAgentPosition[id].x][this.currentAgentPosition[id].y].agent = null;
+                    this.currentAgentPosition[id] = null;
+                }
+                //console.log('Agent out of bounds');
                 continue;
             }
             // If the agent has changed position, update it's current state and remove the previous one from the map

@@ -68,13 +68,13 @@ class Intention {
             case 'pickup':
                 //if the intention is to pick up a parcel, the goal is the parcel position
                 //console.log('picking up', this.goal);
-                map.BFS(me, [this.goal]);
+                this.plan = map.BFS(me, [this.goal]);
                 break;
             case 'deliver':
                 //if the intention is to deliver a parcel, the goal is the closest delivery point (TODO: in the future use a specific planner for this)
                 this.goal = map.map[me.x][me.y].closest_delivery;
                 //console.log('delivering to', this.goal)
-                deliveryBFS(me, map.deliveryZones);
+                this.plan = deliveryBFS(me, map.deliveryZones);
                 break;
             case 'explore':
                 //if the intention is explore, the goal is a random point in the map (TODO: also in the future use a specific planner for this)
@@ -89,7 +89,7 @@ class Intention {
                 //console.log('Invalid intention type');
         }
 
-        //console.log('plan', me.x, me.y, this.plan);
+        //console.log('\tplan', me.x, me.y, this.plan);
 
         //execute the plan (TODO: make it more resilient to failed moves and put it in the planner)
         let retryCount = 0;
@@ -205,7 +205,7 @@ class Intention {
                     //TODO: check if another agent is closer and set the score accordingly
                     let closer = false;
                     for (let [id, agent] of agents) {
-                        if (agent.id !== me.id) {
+                        if (agent.id !== me.id && agent.position.x !== -1) {
                             let distance_agent = map.BFS(agent.position, this.goal).length;
                             //console.log('\tagent', agent.id, 'position', agent.position, 'distance', distance_agent);
                             //let distance_agent = distance(agent, this.goal);

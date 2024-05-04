@@ -288,7 +288,7 @@ function senseAgents(sensedAgents) {
         if (!inView.includes(id)) {
             agent.updatePredicted();
             //if old position is in view then move agent out of bounds
-            if (distance(agent, me) < me.config.AGENTS_OBSERVATION_DISTANCE) {
+            if (distance(agent.position, me) < me.config.AGENTS_OBSERVATION_DISTANCE-1) {
                 agent.position = {x: -1, y: -1};
             }
         }

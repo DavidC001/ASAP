@@ -1,4 +1,4 @@
-import {map, MAX_FUTURE, drawMap} from "../beliefs/map/map.js";
+import {map, MAX_FUTURE} from "../beliefs/map/map.js";
 
 function deliveryBFS(pos, objectiveList) {
     let queue = [];
