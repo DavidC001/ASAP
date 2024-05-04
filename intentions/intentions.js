@@ -85,8 +85,11 @@ class Intention {
         for (let i = 0; i < this.plan.length; i++) {
             //console.log(this.type,'move', this.plan[i]);
             let res = await new Promise((resolve)=>{
-                client.move(this.plan[i].move).then((res)=>resolve(res));
-                setTimeout(()=>resolve(false), me.config.MOVEMENT_DURATION*1.5);
+                let timer = setTimeout(()=>resolve(false), Math.min(me.config.MOVEMENT_DURATION*5,500));
+                client.move(this.plan[i].move).then((res)=>{
+                    clearTimeout(timer);
+                    resolve(res)
+                });
             });
             if(!res) {
                 //console.log('Move failed, retrying...');
@@ -184,7 +187,7 @@ class Intention {
                     steps = map.BFS(me, this.goal).length
                     //console.log('steps', steps);
                     if (steps === 0 && this.goal.x !== me.x && this.goal.y !== me.y) {
-                        score = -1;
+                        score = 0.2;
                     }
                     steps += map.map[this.goal.x][this.goal.y].heuristic; 
                 }
