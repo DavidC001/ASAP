@@ -58,17 +58,23 @@ class Intention {
         this.started = true;
         this.reached = false;
 
+        let planner = {
+            'pickup': map.BFS,
+            'deliver': deliveryBFS,
+            'explore': map.BFS
+        }
+
         switch (this.type) {
             case 'pickup':
                 //if the intention is to pick up a parcel, the goal is the parcel position
                 //console.log('picking up', this.goal);
-                this.plan = map.BFS(me, this.goal);
+                map.BFS(me, [this.goal]);
                 break;
             case 'deliver':
                 //if the intention is to deliver a parcel, the goal is the closest delivery point (TODO: in the future use a specific planner for this)
                 this.goal = map.map[me.x][me.y].closest_delivery;
                 //console.log('delivering to', this.goal)
-                this.plan = deliveryBFS(me)
+                deliveryBFS(me, map.deliveryZones);
                 break;
             case 'explore':
                 //if the intention is explore, the goal is a random point in the map (TODO: also in the future use a specific planner for this)
@@ -105,7 +111,7 @@ class Intention {
                 if (retryCount > MAX_RETRIES) {
                     //console.log('Max retries exceeded');
                     i = 0;
-                    this.plan = map.BFS(me, this.goal);
+                    this.plan = map.BFS(me, [this.goal]);
                 }
                 i--;
                 retryCount++;

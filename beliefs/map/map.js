@@ -94,7 +94,10 @@ class Maps {
     BFS(pos, objective) {
         let queue = [];
         let visited = new Array(this.width).fill().map(() => new Array(this.height).fill().map(() => false));
-        queue.push([pos]);
+        if(pos instanceof Array) queue.push(pos); else queue.push([pos]);
+        if(objective instanceof Array) objective = objective[0];
+        console.log(pos,objective,visited.length, this.width, this.height);
+        console.log(visited[pos.x][pos.y]);
         visited[pos.x][pos.y] = true;
         let current = null;
         let node = null;
@@ -156,8 +159,8 @@ class Maps {
                     if (newMap[i][futurePos.x][futurePos.y].type === 'obstacle') {
                         continue;
                     }
-                    newMap[i][futurePos.x][futurePos.y].agent = id;
                     newMap[i][first_pos.x][first_pos.y].agent = null;
+                    newMap[i][futurePos.x][futurePos.y].agent = id;
                     pos = futurePos;
                 }
             }
