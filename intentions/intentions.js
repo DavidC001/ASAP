@@ -109,8 +109,11 @@ class Intention {
         //execute the intention
         if (this.pickUp && !this.stop) {
             let res = await new Promise((resolve)=>{
-                client.pickup(this.pickUp).then((res)=>resolve(res));
-                setTimeout(()=>resolve([]), 500);
+                let timer = setTimeout(()=>resolve([]), 500);
+                client.pickup(this.pickUp).then((res)=>{
+                    clearTimeout(timer);
+                    resolve(res)
+                });
             });
             //console.log('pickup', res.length);
             //if successful add the parcels to the carried parcels
@@ -122,8 +125,11 @@ class Intention {
         if (this.deliver && !this.stop) {
             //console.log('deliver');
             let dropped_parcels = await new Promise((resolve)=>{
-                client.putdown().then((res)=>resolve(res));
-                setTimeout(()=>resolve([]), 500);
+                let timer = setTimeout(()=>resolve([]), 500);
+                client.putdown().then((res)=>{
+                    clearTimeout(timer);
+                    resolve(res)
+                });
             });
             //empty carried parcels
             //console.log('dropped parcels', dropped_parcels);
