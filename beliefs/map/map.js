@@ -145,12 +145,9 @@ class Maps {
         let newMap = new Array(MAX_FUTURE).fill().map(() => JSON.parse(JSON.stringify(this.map)));
         for (let [id, agent] of agents) {
             let first_pos = this.currentAgentPosition[id];
-            if (first_pos === null) {
-                continue;
-            }
             let pos = first_pos;
             let futureMoves = agent.believedIntetion.futureMoves;
-            if (first_pos === null) {
+            if (!first_pos) {
                 continue;
             }
             for (let i = 0; i < MAX_FUTURE; i++) {
