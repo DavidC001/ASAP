@@ -96,8 +96,7 @@ class Maps {
         let visited = new Array(this.width).fill().map(() => new Array(this.height).fill().map(() => false));
         if(pos instanceof Array) queue.push(pos); else queue.push([pos]);
         if(objective instanceof Array) objective = objective[0];
-        //console.log(pos,objective,visited.length, this.width, this.height);
-        //console.log(visited[pos.x][pos.y]);
+        //console.log(this.width, this.height);
         visited[pos.x][pos.y] = true;
         let current = null;
         let node = null;

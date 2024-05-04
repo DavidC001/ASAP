@@ -3,7 +3,7 @@ import { distance, me } from '../beliefs/beliefs.js';
 import { parcels } from '../beliefs/parcels/parcels.js';
 import { agents } from '../beliefs/agents/agents.js';
 import { EventEmitter } from 'events';
-import { deliveryBFS } from '../planner/planner.js';
+import { deliveryBFS, pickUpDjikstra } from '../planner/planner.js';
 import { DeliverooApi } from '@unitn-asa/deliveroo-js-client';
 
 const MAX_RETRIES = 1;
@@ -59,37 +59,55 @@ class Intention {
         this.reached = false;
 
         let planner = {
-            'pickup': map.BFS,
+            'pickup': pickUpDjikstra,
             'deliver': deliveryBFS,
-            'explore': map.BFS
+            'explore': () => map.BFS(me, this.goal)
         }
 
         switch (this.type) {
-            case 'pickup':
-                //if the intention is to pick up a parcel, the goal is the parcel position
-                //console.log('picking up', this.goal);
-                this.plan = map.BFS(me, [this.goal]);
-                break;
-            case 'deliver':
-                //if the intention is to deliver a parcel, the goal is the closest delivery point (TODO: in the future use a specific planner for this)
-                this.goal = map.map[me.x][me.y].closest_delivery;
-                //console.log('delivering to', this.goal)
-                this.plan = deliveryBFS(me, map.deliveryZones);
-                break;
             case 'explore':
                 //if the intention is explore, the goal is a random point in the map (TODO: also in the future use a specific planner for this)
                 this.goal = {
                     x: Math.floor(Math.random() * (map.width) - me.config.PARCELS_OBSERVATION_DISTANCE/1.3 + me.config.PARCELS_OBSERVATION_DISTANCE/1.3),
                     y: Math.floor(Math.random() * (map.height) - me.config.PARCELS_OBSERVATION_DISTANCE/1.3 + me.config.PARCELS_OBSERVATION_DISTANCE/1.3)
                 };
-                //console.log('explore goal', this.goal);
-                this.plan = map.BFS(me, this.goal);
                 break;
-            default:
-                //console.log('Invalid intention type');
         }
+        this.plan = planner[this.type](me, this.goal);
 
-        //console.log('\tplan', me.x, me.y, this.plan);
+        
+        console.log('\tplan', me.x, me.y, this.plan);
+        //wait input from console
+        // console.log('Press enter to continue');
+        // await new Promise((resolve) => {
+        //     process.stdin.once('data', () => {
+        //         resolve();
+        //     });
+        // });
+
+        let moves = {
+            "up": () => client.move("up"),
+            "down": () => client.move("down"),
+            "left": () => client.move("left"),
+            "right": () => client.move("right"),
+            "pickup": () => new Promise((resolve) => {
+                client.pickup().then((res) => {
+                    resolve(res);
+                    for (let p of res) {
+                        carriedParcels.push(p.id);
+                    }
+                });
+            }),
+            "deliver": () => new Promise((resolve) => {
+                client.putdown().then((res) => {
+                    resolve(res);
+                    if (res.length > 0) {
+                        carriedParcels.length = 0;
+                    }
+                });
+            }),
+            "none": () => new Promise((resolve) => resolve(true))
+        }
 
         //execute the plan (TODO: make it more resilient to failed moves and put it in the planner)
         let retryCount = 0;
@@ -100,7 +118,7 @@ class Intention {
             let res = await new Promise((resolve)=>{
                 let result = false;
                 let timer = setTimeout(()=>resolve(result), me.config.MOVEMENT_DURATION+500);
-                client.move(this.plan[i].move).then((res)=>{
+                moves[this.plan[i].move]().then((res)=>{
                     result = res;
                     clearTimeout(timer);
                     resolve(result)
@@ -111,7 +129,7 @@ class Intention {
                 if (retryCount > MAX_RETRIES) {
                     //console.log('Max retries exceeded');
                     i = 0;
-                    this.plan = map.BFS(me, [this.goal]);
+                    this.plan = planner[this.type](me, this.goal);
                 }
                 i--;
                 retryCount++;
@@ -120,22 +138,6 @@ class Intention {
             }
         }
 
-        //execute the intention
-        if (this.pickUp && !this.stop) {
-            let res = await new Promise((resolve)=>{
-                let timer = setTimeout(()=>resolve([]), 500);
-                client.pickup(this.pickUp).then((res)=>{
-                    clearTimeout(timer);
-                    resolve(res)
-                });
-            });
-            //console.log('pickup', res.length);
-            //if successful add the parcels to the carried parcels
-            for (let p of res) { //TODO: check if this works
-                carriedParcels.push(p.id);
-            }
-            //console.log('carried parcels', carriedParcels);
-        } 
         if (this.deliver && !this.stop) {
             //console.log('deliver');
             let dropped_parcels = await new Promise((resolve)=>{
@@ -333,11 +335,12 @@ class Intentions {
      */
     generateIntentions() {        
         //add deliver intention
-        let goal = {x: 0, y: 0}; 
+        let goal = map.deliveryZones;
         let pickUp = false;
         let deliver = true;
         this.addIntention(new Intention(goal, pickUp, deliver, 'deliver'));
         //explore intention
+        goal = {x:0, y:0};
         pickUp = false;
         deliver = false;
         this.addIntention(new Intention(goal, pickUp, deliver, 'explore'));
