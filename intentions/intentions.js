@@ -1,6 +1,7 @@
 import { map } from '../beliefs/map/map.js';
-import { me } from '../beliefs/beliefs.js';
+import { distance, me } from '../beliefs/beliefs.js';
 import { parcels } from '../beliefs/parcels/parcels.js';
+import { agents } from '../beliefs/agents/agents.js';
 import { EventEmitter } from 'events';
 import { deliveryBFS } from '../planner/planner.js';
 import { DeliverooApi } from '@unitn-asa/deliveroo-js-client';
@@ -60,13 +61,13 @@ class Intention {
         switch (this.type) {
             case 'pickup':
                 //if the intention is to pick up a parcel, the goal is the parcel position
-                console.log('picking up', this.goal);
+                //console.log('picking up', this.goal);
                 this.plan = map.BFS(me, this.goal);
                 break;
             case 'deliver':
                 //if the intention is to deliver a parcel, the goal is the closest delivery point (TODO: in the future use a specific planner for this)
                 this.goal = map.map[me.x][me.y].closest_delivery;
-                console.log('delivering to', this.goal)
+                //console.log('delivering to', this.goal)
                 this.plan = deliveryBFS(me)
                 break;
             case 'explore':
@@ -75,21 +76,21 @@ class Intention {
                     x: Math.floor(Math.random() * (map.width) - me.config.PARCELS_OBSERVATION_DISTANCE/1.3 + me.config.PARCELS_OBSERVATION_DISTANCE/1.3),
                     y: Math.floor(Math.random() * (map.height) - me.config.PARCELS_OBSERVATION_DISTANCE/1.3 + me.config.PARCELS_OBSERVATION_DISTANCE/1.3)
                 };
-                console.log('explore goal', this.goal);
+                //console.log('explore goal', this.goal);
                 this.plan = map.BFS(me, this.goal);
                 break;
             default:
-                console.log('Invalid intention type');
+                //console.log('Invalid intention type');
         }
 
-        console.log('plan', me.x, me.y, this.plan);
+        //console.log('plan', me.x, me.y, this.plan);
 
         //execute the plan (TODO: make it more resilient to failed moves and put it in the planner)
         let retryCount = 0;
         for (let i = 0; i < this.plan.length; i++) {
             if (this.stop) break;
 
-            console.log(this.type,'move', this.plan[i]);
+            //console.log(this.type,'move', this.plan[i]);
             let res = await new Promise((resolve)=>{
                 let result = false;
                 let timer = setTimeout(()=>resolve(result), me.config.MOVEMENT_DURATION+500);
@@ -122,7 +123,7 @@ class Intention {
                     resolve(res)
                 });
             });
-            console.log('pickup', res.length);
+            //console.log('pickup', res.length);
             //if successful add the parcels to the carried parcels
             for (let p of res) { //TODO: check if this works
                 carriedParcels.push(p.id);
@@ -139,7 +140,7 @@ class Intention {
                 });
             });
             //empty carried parcels
-            console.log('dropped parcels', dropped_parcels);
+            //console.log('dropped parcels', dropped_parcels);
             if (dropped_parcels.length > 0) {
                 carriedParcels.length = 0;
             }
@@ -147,7 +148,7 @@ class Intention {
 
         if (this.stop) {
             //if the intention has to stop send a signal
-            console.log('stopped intention', this.type);
+            //console.log('stopped intention', this.type);
             this.stop = false;
             this.started = false;
             stopEmitter.emit('stoppedIntention');
@@ -193,18 +194,31 @@ class Intention {
                     //if an agent is on the same position as the parcel return -1
                     score = -1;
                 } else {
-                    //TODO: check if another agent is closer and set the score accordingly
-                    
-
-                    //otherwise compute the utility as the score of the parcel minus the steps to reach it
-                    score += parcels.get(this.pickUp).score;
-                    //TODO: if too slow use manhattan distance
                     steps = map.BFS(me, this.goal).length
-                    //console.log('steps', steps);
-                    if (steps === 0 && this.goal.x !== me.x && this.goal.y !== me.y) {
-                        score = 0.2;
+                    //console.log('pickup', this.goal, 'steps', steps);
+                    //TODO: check if another agent is closer and set the score accordingly
+                    let closer = false;
+                    for (let [id, agent] of agents) {
+                        if (agent.id !== me.id) {
+                            let distance_agent = map.BFS(agent.position, this.goal).length;
+                            //console.log('\tagent', agent.id, 'position', agent.position, 'distance', distance_agent);
+                            //let distance_agent = distance(agent, this.goal);
+                            if (distance_agent < steps) {
+                                closer = true;
+                                let parcelScore = parcels.get(this.pickUp).score / (me.config.PARCEL_REWARD_AVG + me.config.PARCEL_REWARD_VARIANCE) / 2;
+                                let distanceScore = (steps - distance_agent) / (map.width+map.height) * 0.3;
+                                score = 0.2 + parcelScore + distanceScore;
+                                steps = 0;
+                                //console.log('\t\tcloser agent', agent.id, 'distance', distance_agent, 'score', score);
+                            }
+                        }
                     }
-                    steps += map.map[this.goal.x][this.goal.y].heuristic; 
+                    if (!closer) {
+                        //otherwise compute the utility as the score of the parcel minus the steps to reach it
+                        score += parcels.get(this.pickUp).score;
+                        //TODO: if too slow use manhattan distance
+                        steps += map.map[this.goal.x][this.goal.y].heuristic; 
+                    }
                 }
                 break;
             case 'deliver':
@@ -216,7 +230,7 @@ class Intention {
                 steps = 0;
                 break;
             default:
-                console.log('Invalid intention type');
+                //console.log('Invalid intention type');
         }
                 
         utility = score - steps * (numParcels) / me.moves_per_parcel_decay;
@@ -297,13 +311,13 @@ class Intentions {
             
             //wait for the current intention to stop before starting the new one
             stopEmitter.once('stoppedIntention', () => {
-                console.log("starting intention", maxIntention.type);
+                console.log("starting intention", maxIntention.type, "to", maxIntention.goal);
                 this.currentIntention.executeInt(client);
             });
             oldIntention.stopInt();
         } else if(this.currentIntention.reached && this.currentIntention.type === 'explore') {
             //if the current intention is explore and the goal has been reached, continue with the next intention
-            console.log('continue intention', maxIntention.type);
+            //console.log('continue intention', maxIntention.type);
             this.currentIntention.executeInt(client);
         }
     }
