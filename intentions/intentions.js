@@ -86,7 +86,7 @@ class Intention {
             //console.log(this.type,'move', this.plan[i]);
             let res = await new Promise((resolve)=>{
                 client.move(this.plan[i].move).then((res)=>resolve(res));
-                setTimeout(()=>resolve(false), me.config.MOVEMENT_DURATION*1.1);
+                setTimeout(()=>resolve(false), me.config.MOVEMENT_DURATION*1.5);
             });
             if(!res) {
                 //console.log('Move failed, retrying...');
@@ -107,22 +107,23 @@ class Intention {
         if (this.pickUp && !this.stop) {
             let res = await new Promise((resolve)=>{
                 client.pickup(this.pickUp).then((res)=>resolve(res));
-                setTimeout(()=>resolve([]), me.config.MOVEMENT_DURATION*1.1);
+                setTimeout(()=>resolve([]), 500);
             });
             //console.log('pickup', res.length);
             //if successful add the parcels to the carried parcels
             for (let p of res) { //TODO: check if this works
                 carriedParcels.push(p.id);
             }
-            console.log('carried parcels', carriedParcels);
+            //console.log('carried parcels', carriedParcels);
         } 
         if (this.deliver && !this.stop) {
             //console.log('deliver');
             let dropped_parcels = await new Promise((resolve)=>{
                 client.putdown().then((res)=>resolve(res));
-                setTimeout(()=>resolve([]), me.config.MOVEMENT_DURATION*1.1);
+                setTimeout(()=>resolve([]), 500);
             });
             //empty carried parcels
+            //console.log('dropped parcels', dropped_parcels);
             if (dropped_parcels.length > 0) {
                 carriedParcels.length = 0;
             }
@@ -130,7 +131,7 @@ class Intention {
 
         if (this.stop) {
             //if the intention has to stop send a signal
-            console.log('stopped intention', this.type);
+            //console.log('stopped intention', this.type);
             this.stop = false;
             stopEmitter.emit('stoppedIntention');
         }else{
@@ -175,11 +176,17 @@ class Intention {
                     //if an agent is on the same position as the parcel return -1
                     score = -1;
                 } else {
+                    //TODO: check if another agent is closer and set the score accordingly
+
                     //otherwise compute the utility as the score of the parcel minus the steps to reach it
                     score += parcels.get(this.pickUp).score;
                     //TODO: if too slow use manhattan distance
-                    steps = map.BFS(me, this.goal).length 
-                            + map.map[this.goal.x][this.goal.y].heuristic; 
+                    steps = map.BFS(me, this.goal).length
+                    //console.log('steps', steps);
+                    if (steps === 0 && this.goal.x !== me.x && this.goal.y !== me.y) {
+                        score = -1;
+                    }
+                    steps += map.map[this.goal.x][this.goal.y].heuristic; 
                 }
                 break;
             case 'deliver':
@@ -187,7 +194,7 @@ class Intention {
                 steps = map.map[me.x][me.y].heuristic;
                 break;
             case 'explore':
-                score = 1;
+                score = 0.1;
                 steps = 0;
                 break;
             default:
@@ -203,10 +210,10 @@ class Intention {
      */
     stopInt() {
         this.stop = true;
-        console.log('stopping intention', this.type);
+        //console.log('stopping intention', this.type);
         if (this.reached) {
             this.stop = false;
-            console.log('stopped intention', this.type);
+            //console.log('stopped intention', this.type);
             stopEmitter.emit('stoppedIntention');
         }
     }
@@ -249,6 +256,7 @@ class Intentions {
         let maxIntention = null;
         for (let intention of this.intentions) {
             let utility = intention.utility();
+            //console.log('utility', intention.type, utility);
             if (utility > maxUtility) {
                 //console.log('utility', utility);
                 maxUtility = utility;
@@ -258,25 +266,25 @@ class Intentions {
 
         if (this.currentIntention === null) {
             //if there is no current intention start the one with the highest utility
-            console.log("starting intention", maxIntention.type, "to", maxIntention.goal);
+            //console.log("starting intention", maxIntention.type, "to", maxIntention.goal);
             this.currentIntention = maxIntention;
             this.currentIntention.executeInt(client);
-        } else if (this.currentIntention.goal !== maxIntention.goal) {
+        } else if (this.currentIntention.goal !== maxIntention.goal || this.currentIntention.reached) {
             //if the goal is different from the current intention switch intention
-            console.log('switching intention', maxIntention.type, "to", maxIntention.goal, " from", this.currentIntention.type, "to", this.currentIntention.goal);
+            //console.log('switching intention', maxIntention.type, "to", maxIntention.goal, " from", this.currentIntention.type, "to", this.currentIntention.goal);
 
             let oldIntention = this.currentIntention;
             this.currentIntention = maxIntention;
-
+            
             //wait for the current intention to stop before starting the new one
             stopEmitter.once('stoppedIntention', () => {
-                console.log("starting intention", maxIntention.type);
+                //console.log("starting intention", maxIntention.type);
                 this.currentIntention.executeInt(client);
             });
             oldIntention.stopInt();
         } else if(this.currentIntention.reached && this.currentIntention.type === 'explore') {
             //if the current intention is explore and the goal has been reached, continue with the next intention
-            console.log('continue intention', maxIntention.type);
+            //console.log('continue intention', maxIntention.type);
             this.currentIntention.executeInt(client);
         }
     }
