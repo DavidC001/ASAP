@@ -42,6 +42,7 @@ class Tile {
  * @property {number} height - The height of the map
  * @property {[[{x:number,y:number,delivery:boolean}]]} map - The tiles of the map
  * @property {[[[{x:number,y:number,delivery:boolean}]]]} predictedMap - The predicted tiles of the map
+ * @property {[{x:number,y:number}]} deliveryZones - The positions of the delivery zones
  * @property {Map<string, {x:number,y:number}>} currentAgentPosition - The current position of the agents
  * @property {Map<string, {x:number,y:number}>} currentParcelPosition - The current position of the parcels
  */
@@ -50,6 +51,7 @@ class Maps {
     height;
     map;
     predictedMap;
+    deliveryZones = [];
     currentAgentPosition = new Map();
     currentParcelPosition = new Map();
 
@@ -63,7 +65,6 @@ class Maps {
             closest_delivery: null
         })));
         tiles.sort((a, b) => (b.delivery - a.delivery));
-        let delivery_zones = [];
         tiles.forEach(tile => {
             let currentTile = this.map[tile.x][tile.y];
             currentTile.type = tile.parcelSpawner ? 'spawnable' : 'delivery';
@@ -73,11 +74,11 @@ class Maps {
             let closestDelivery = null;
             let currentTile = this.map[tile.x][tile.y];
             if (tile.delivery) {
-                delivery_zones.push({x: tile.x, y: tile.y});
+                this.deliveryZones.push({x: tile.x, y: tile.y});
                 bestDistance = 0;
                 closestDelivery = {x: tile.x, y: tile.y};
             } else {
-                delivery_zones.forEach(delivery_zone => {
+                this.deliveryZones.forEach(delivery_zone => {
                     let distance1 = this.BFS(tile, delivery_zone);
                     if (distance1.length < bestDistance) {
                         bestDistance = distance1.length;

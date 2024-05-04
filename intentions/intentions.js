@@ -2,6 +2,7 @@ import { map } from '../beliefs/map/map.js';
 import { me } from '../beliefs/beliefs.js';
 import { parcels } from '../beliefs/parcels/parcels.js';
 import { EventEmitter } from 'events';
+import { deliveryBFS } from '../planner/planner.js';
 import { DeliverooApi } from '@unitn-asa/deliveroo-js-client';
 
 const MAX_RETRIES = 1;
@@ -11,7 +12,7 @@ const stopEmitter = new EventEmitter(); //TODO: make a diffierent emitter for ea
  * @class Intention
  * 
  * @property {{x:number,y:number}} goal - The goal of the intention
- * @property {string} pickUp - The id of the parcel to pick up, null if the intention is not to pick up a parcel
+ * @property {string|boolean} pickUp - The id of the parcel to pick up, false if the intention is not to pick up a parcel
  * @property {boolean} deliver - True if the intention is to deliver a parcel
  * @property {string} type - The type of the intention
  * @property {Array<{move:string}>} plan - The plan to reach the goal
@@ -31,7 +32,7 @@ class Intention {
      * Creates an instance of Intention.
      * 
      * @param {{x:number,y:number}} goal - The goal of the intention 
-     * @param {string} pickUp - The id of the parcel to pick up, null if the intention is not to pick up a parcel
+     * @param {string|boolean} pickUp - The id of the parcel to pick up, false if the intention is not to pick up a parcel
      * @param {boolean} deliver - True if the intention is to deliver a parcel
      * @param {string} type - The type of the intention
      */
@@ -63,7 +64,7 @@ class Intention {
                 //if the intention is to deliver a parcel, the goal is the closest delivery point (TODO: in the future use a specific planner for this)
                 this.goal = map.map[me.x][me.y].closest_delivery;
                 console.log('delivering to', this.goal)
-                this.plan = map.BFS(me, this.goal)
+                this.plan = deliveryBFS(me)
                 break;
             case 'explore':
                 //if the intention is explore, the goal is a random point in the map (TODO: also in the future use a specific planner for this)
