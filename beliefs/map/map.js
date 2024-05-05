@@ -158,8 +158,10 @@ class Maps {
                     if (newMap[i][futurePos.x][futurePos.y].type === 'obstacle') {
                         continue;
                     }
-                    newMap[i][first_pos.x][first_pos.y].agent = null;
-                    newMap[i][futurePos.x][futurePos.y].agent = id;
+                    if((first_pos.x !== futurePos.x || first_pos.y !== futurePos.y)){
+                        newMap[i][first_pos.x][first_pos.y].agent = null;
+                        newMap[i][futurePos.x][futurePos.y].agent = id;
+                    }
                     pos = futurePos;
                 }
             }

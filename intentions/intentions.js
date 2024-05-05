@@ -1,17 +1,17 @@
-import { map } from '../beliefs/map/map.js';
-import { distance, me } from '../beliefs/beliefs.js';
-import { parcels } from '../beliefs/parcels/parcels.js';
-import { agents } from '../beliefs/agents/agents.js';
-import { EventEmitter } from 'events';
-import { deliveryBFS, pickUpDjikstra } from '../planner/planner.js';
-import { DeliverooApi } from '@unitn-asa/deliveroo-js-client';
+import {map} from '../beliefs/map/map.js';
+import {distance, me} from '../beliefs/beliefs.js';
+import {parcels} from '../beliefs/parcels/parcels.js';
+import {agents} from '../beliefs/agents/agents.js';
+import {EventEmitter} from 'events';
+import {BFStoObjective, pickUpDjikstra} from '../planner/planner.js';
+import {DeliverooApi} from '@unitn-asa/deliveroo-js-client';
 
 const MAX_RETRIES = 1;
 const stopEmitter = new EventEmitter(); //TODO: make a diffierent emitter for each intention
 
 /**
  * @class Intention
- * 
+ *
  * @property {{x:number,y:number}} goal - The goal of the intention
  * @property {string|boolean} pickUp - The id of the parcel to pick up, false if the intention is not to pick up a parcel
  * @property {boolean} deliver - True if the intention is to deliver a parcel
@@ -32,13 +32,13 @@ class Intention {
 
     /**
      * Creates an instance of Intention.
-     * 
-     * @param {{x:number,y:number}} goal - The goal of the intention 
+     *
+     * @param {{x:number,y:number}} goal - The goal of the intention
      * @param {string|boolean} pickUp - The id of the parcel to pick up, false if the intention is not to pick up a parcel
      * @param {boolean} deliver - True if the intention is to deliver a parcel
      * @param {string} type - The type of the intention
      */
-    constructor(goal, pickUp=false, deliver=false, type) {
+    constructor(goal, pickUp = false, deliver = false, type) {
         this.goal = goal;
         this.pickUp = pickUp;
         this.deliver = deliver;
@@ -51,7 +51,7 @@ class Intention {
 
     /**
      * Plans and executes the intention, tries to be resilient to failed moves and can be stopped
-     * 
+     *
      * @param {DeliverooApi} client
      */
     async executeInt(client) {
@@ -60,7 +60,7 @@ class Intention {
 
         let planner = {
             'pickup': pickUpDjikstra,
-            'deliver': deliveryBFS,
+            'deliver': BFStoObjective,
             'explore': () => map.BFS(me, this.goal)
         }
 
@@ -68,14 +68,14 @@ class Intention {
             case 'explore':
                 //if the intention is explore, the goal is a random point in the map (TODO: also in the future use a specific planner for this)
                 this.goal = {
-                    x: Math.floor(Math.random() * (map.width) - me.config.PARCELS_OBSERVATION_DISTANCE/1.3 + me.config.PARCELS_OBSERVATION_DISTANCE/1.3),
-                    y: Math.floor(Math.random() * (map.height) - me.config.PARCELS_OBSERVATION_DISTANCE/1.3 + me.config.PARCELS_OBSERVATION_DISTANCE/1.3)
+                    x: Math.floor(Math.random() * (map.width) - me.config.PARCELS_OBSERVATION_DISTANCE / 1.3 + me.config.PARCELS_OBSERVATION_DISTANCE / 1.3),
+                    y: Math.floor(Math.random() * (map.height) - me.config.PARCELS_OBSERVATION_DISTANCE / 1.3 + me.config.PARCELS_OBSERVATION_DISTANCE / 1.3)
                 };
                 break;
         }
         this.plan = planner[this.type](me, this.goal);
 
-        
+
         console.log('\tplan', me.x, me.y, this.plan);
         //wait input from console
         // console.log('Press enter to continue');
@@ -115,34 +115,34 @@ class Intention {
             if (this.stop) break;
 
             //console.log(this.type,'move', this.plan[i]);
-            let res = await new Promise((resolve)=>{
+            let res = await new Promise((resolve) => {
                 let result = false;
-                let timer = setTimeout(()=>resolve(result), me.config.MOVEMENT_DURATION+500);
-                moves[this.plan[i].move]().then((res)=>{
+                let timer = setTimeout(() => resolve(result), me.config.MOVEMENT_DURATION + 500);
+                moves[this.plan[i].move]().then((res) => {
                     result = res;
                     clearTimeout(timer);
                     resolve(result)
                 });
             });
-            if(!res) {
-                //console.log('Move failed, retrying...');
+            if (!res) {
+                console.log('Move failed, retrying...');
                 if (retryCount > MAX_RETRIES) {
-                    //console.log('Max retries exceeded');
+                    console.log('Max retries exceeded', this.type, this.goal===map.deliveryZones);
                     i = 0;
                     this.plan = planner[this.type](me, this.goal);
                 }
                 i--;
                 retryCount++;
-            }else{
+            } else {
                 retryCount = 0; // reset retry count if move was successful
             }
         }
 
         if (this.deliver && !this.stop) {
             //console.log('deliver');
-            let dropped_parcels = await new Promise((resolve)=>{
-                let timer = setTimeout(()=>resolve([]), 500);
-                client.putdown().then((res)=>{
+            let dropped_parcels = await new Promise((resolve) => {
+                let timer = setTimeout(() => resolve([]), 500);
+                client.putdown().then((res) => {
                     clearTimeout(timer);
                     resolve(res)
                 });
@@ -160,7 +160,7 @@ class Intention {
             this.stop = false;
             this.started = false;
             stopEmitter.emit('stoppedIntention');
-        }else{
+        } else {
             //if the goal has been reached set the reached flag
             this.reached = true;
         }
@@ -168,7 +168,7 @@ class Intention {
 
     /**
      * Computes the utility of the intention
-     * 
+     *
      * @returns {number} the utility of the intention
      */
     utility() {
@@ -192,13 +192,13 @@ class Intention {
             carriedParcels.splice(carriedParcels.indexOf(id), 1);
         }
 
-        let steps=0;
+        let steps = 0;
         switch (this.type) {
             case 'pickup':
                 //TODO: if carried parcel over limit return -1
                 if (map.map[this.goal.x][this.goal.y].agent !== null
                     || map.map[this.goal.x][this.goal.y].parcel === null
-                    || parcels.get(this.pickUp) === undefined){
+                    || parcels.get(this.pickUp) === undefined) {
                     //if an agent is on the same position as the parcel return -1
                     score = -1;
                 } else {
@@ -214,7 +214,7 @@ class Intention {
                             if (distance_agent < steps) {
                                 closer = true;
                                 let parcelScore = parcels.get(this.pickUp).score / (me.config.PARCEL_REWARD_AVG + me.config.PARCEL_REWARD_VARIANCE) / 2;
-                                let distanceScore = (steps - distance_agent) / (map.width+map.height) * 0.3;
+                                let distanceScore = (steps - distance_agent) / (map.width + map.height) * 0.3;
                                 score = 0.2 + parcelScore + distanceScore;
                                 steps = 0;
                                 //console.log('\t\tcloser agent', agent.id, 'distance', distance_agent, 'score', score);
@@ -225,7 +225,7 @@ class Intention {
                         //otherwise compute the utility as the score of the parcel minus the steps to reach it
                         score += parcels.get(this.pickUp).score;
                         //TODO: if too slow use manhattan distance
-                        steps += map.map[this.goal.x][this.goal.y].heuristic; 
+                        steps += map.map[this.goal.x][this.goal.y].heuristic;
                     }
                 }
                 break;
@@ -238,9 +238,9 @@ class Intention {
                 steps = 0;
                 break;
             default:
-                //console.log('Invalid intention type');
+            //console.log('Invalid intention type');
         }
-                
+
         utility = score - steps * (numParcels) / me.moves_per_parcel_decay;
         return utility;
     }
@@ -262,7 +262,7 @@ class Intention {
 
 /**
  * @class Intentions
- * 
+ *
  * @property {Array<Intention>} intentions - The list of intentions
  * @property {Intention} currentIntention - The current intention
  */
@@ -279,7 +279,7 @@ class Intentions {
 
     /**
      * Adds an intention to the list of intentions
-     * @param {Intention} intention 
+     * @param {Intention} intention
      */
     addIntention(intention) {
         this.intentions.push(intention);
@@ -316,14 +316,14 @@ class Intentions {
 
             let oldIntention = this.currentIntention;
             this.currentIntention = maxIntention;
-            
+
             //wait for the current intention to stop before starting the new one
             stopEmitter.once('stoppedIntention', () => {
                 console.log("starting intention", maxIntention.type, "to", maxIntention.goal);
                 this.currentIntention.executeInt(client);
             });
             oldIntention.stopInt();
-        } else if(this.currentIntention.reached && this.currentIntention.type === 'explore') {
+        } else if (this.currentIntention.reached && this.currentIntention.type === 'explore') {
             //if the current intention is explore and the goal has been reached, continue with the next intention
             //console.log('continue intention', maxIntention.type);
             this.currentIntention.executeInt(client);
@@ -333,14 +333,14 @@ class Intentions {
     /**
      * Generates the base intentions for the agent (deliver and expolore)
      */
-    generateIntentions() {        
+    generateIntentions() {
         //add deliver intention
         let goal = map.deliveryZones;
         let pickUp = false;
         let deliver = true;
         this.addIntention(new Intention(goal, pickUp, deliver, 'deliver'));
         //explore intention
-        goal = {x:0, y:0};
+        goal = {x: 0, y: 0};
         pickUp = false;
         deliver = false;
         this.addIntention(new Intention(goal, pickUp, deliver, 'explore'));
@@ -368,7 +368,7 @@ class Intentions {
 
         //add intentions for new parcels
         for (let [id, parcel] of parcels) {
-            if (!parcelsIDs.has(id) && parcel.carried===null) {
+            if (!parcelsIDs.has(id) && parcel.carried === null) {
                 //Parcel is not in the list of intentions and is not carried
                 //console.log('new parcel at', parcel.position, 'id', id);
                 let goal = parcel.position;
@@ -388,7 +388,7 @@ const intentions = new Intentions();
 
 /**
  * Registers the intention revision functions
- * 
+ *
  * @param {DeliverooApi} client
  */
 function IntentionRevision(client) {
