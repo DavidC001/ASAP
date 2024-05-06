@@ -94,7 +94,6 @@ class Intention {
             "none": () => new Promise((resolve) => resolve(true))
         }
 
-        //execute the plan (TODO: make it more resilient to failed moves and put it in the planner)
         let retryCount = 0;
         for (let i = 0; i < this.plan.length; i++) {
             if (this.stop) break;
@@ -124,7 +123,7 @@ class Intention {
                 retryCount++;
             } else {
                 retryCount = 0; // reset retry count if move was successful
-                if (TIMEOUT>200) TIMEOUT--;
+                if (TIMEOUT>250) TIMEOUT--;
             }
         }
 

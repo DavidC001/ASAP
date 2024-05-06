@@ -6,7 +6,10 @@ const MAX_HISTORY = 5;
 
 //believed intentions
 
-let intentions = {
+/**
+ * @enum {string}
+ */
+const intentions = {
     STILL: "STILL",
     MOVE: "MOVE",
     PICK_UP: "PICK_UP",
@@ -46,6 +49,7 @@ class BelievedIntention {
         let position = history[history.length - 1];
         let lastPosition = history[history.length - 2];
 
+        // look at the last move of the agent to predict the direction of movement
         if (position.x < lastPosition.x) {
             this.lastMove = "LEFT";
         } else if (position.x > lastPosition.x) {
@@ -83,21 +87,20 @@ class BelievedIntention {
         }
 
         if (carrying) {
+            //if the agent is carrying a parcel then the intention is to deliver
             this.intention = intentions.DELIVER;
-            //TODO check
             if (this.objective !== map.map[position.x][position.y].closest_delivery) {
                 this.objective = map.map[position.x][position.y].closest_delivery
                 this.goTo(position, this.objective);
             }
             //console.log("intention: deliver")
-            return;
+        }else{
+            //else keep moving in the same direction
+            this.intention = intentions.MOVE;
+            this.objective = {x: -1, y: -1};
+            this.keepMoving(position);
+            //console.log("intention: keep moving")
         }
-
-        //else keep moving in the same direction
-        this.intention = intentions.MOVE;
-        this.objective = {x: -1, y: -1};
-        this.keepMoving(position);
-        //console.log("intention: keep moving")
     }
 
     /**
@@ -106,6 +109,7 @@ class BelievedIntention {
      */
     keepMoving(pos) {
         this.futureMoves = [];
+
         let dx = 0;
         let dy = 0;
         if (this.lastMove === "UP") {
@@ -117,6 +121,7 @@ class BelievedIntention {
         if (this.lastMove === "LEFT") {
             dx = -1;
         }
+
         for (let i = 0; i < MAX_FUTURE; i++) {
             pos = {x: pos.x + dx, y: pos.y + dy};
             if (pos.x < 0 || pos.y < 0 || pos.x >= map.width || pos.y >= map.height) {
@@ -239,10 +244,12 @@ class Agent {
      */
     updateHistory(newPosition) {
         if (!this.inView) {
+            //if the agent reappears in the field of view then reset the history
             this.position = newPosition;
             this.history = [newPosition];
             this.inView = true;
         } else {
+            //update the history
             this.history.push(newPosition);
             if (this.history.length > MAX_HISTORY) {
                 this.history.shift();
@@ -273,7 +280,7 @@ const agents = new Map();
 function senseAgents(sensedAgents) {
     //console.log("sensing agents")
     let inView = []
-    //TODO: Implement this function
+    
     for (const agent of sensedAgents) {
         inView.push(agent.id);
         if (agent.x % 1 !== 0 || agent.y % 1 !== 0) continue;

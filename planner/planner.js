@@ -3,6 +3,14 @@ import {me} from "../beliefs/beliefs.js";
 
 const MAX_EXPLORE_PATH_LENGTH = 20;
 
+/**
+ * BFS to find the path to the closest objective
+ * 
+ * @param {{x: number, y: number}} pos The starting position
+ * @param {[{x: number, y: number}]} objectiveList The list of objectives to reach
+ * @param {number} startTime The time to start the search from for future predictions (default 0)
+ * @returns {[{x: number, y: number, move: string}]} The path to the objective
+ */
 function BFStoObjective(pos, objectiveList, startTime = 0) {
     let queue = [];
     let visited = new Array(map.width).fill().map(() => new Array(map.height).fill().map(() => false));
@@ -56,6 +64,13 @@ function BFStoObjective(pos, objectiveList, startTime = 0) {
     return [];
 }
 
+/**
+ * BFS to find the path to the closest delivery zone and deliver the package
+ * 
+ * @param {{x: number, y: number}} pos The starting position
+ * @param {[{x: number, y: number}]} objectiveList The list of delivery zones
+ * @returns {[{x: number, y: number, move: string}]} The path to the objective
+ */
 function deliveryBFS(pos, objectiveList) {
     let list = beamPackageSearch(pos, map.deliveryZones);
     if (list.length === 1) {
@@ -69,6 +84,14 @@ function deliveryBFS(pos, objectiveList) {
     return list;
 }
 
+/**
+ * Beam search to find the path to the closest objective
+ * 
+ * @param {{x: number, y: number}} pos The starting position
+ * @param {[{x: number, y: number}]} objective The objective to reach
+ * @param {number} deviations The number of allowed deviations from the path
+ * @returns {[{x: number, y: number, move: string}]} The path to the objective
+ */
 function beamPackageSearch(pos, objective, deviations = 1) {
     //use BFS to create a path to the objective, then allow for slight deviations to gather other packages on the way
     if (!(objective instanceof Array)) objective = [objective];
@@ -138,6 +161,14 @@ function beamPackageSearch(pos, objective, deviations = 1) {
     return path;
 }
 
+/**
+ * Hill climbing for exploring unknown areas
+ * 
+ * @param {{x: number, y: number}} pos
+ * @param {*} goal
+ * 
+ * @returns {[{x: number, y: number, move: string}]} The explore path
+ */
 function exploreBFS(pos, goal) {
     // Select goal based on the last sensed time of the tile
     // map.map.sort((a, b) => (a.last_seen - b.last_seen));
