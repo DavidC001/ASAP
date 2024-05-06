@@ -27,6 +27,7 @@ class Tile {
     type = 'obstacle';
     agent = null;
     parcel = null;
+    last_seen = 0;
 
 
     constructor(tileData) {
@@ -314,5 +315,20 @@ function drawMap(filename, tilemap) {
     });
 }
 
+function updateSenseTime() {
+    /*let maxY = Math.min(me.y + me.config.PARCELS_OBSERVATION_DISTANCE, map.height - 1);
+    let minY = Math.max(me.y - me.config.PARCELS_OBSERVATION_DISTANCE, 0);
+    let maxX = Math.min(me.x + me.config.PARCELS_OBSERVATION_DISTANCE, map.width - 1);
+    let minX = Math.max(me.x - me.config.PARCELS_OBSERVATION_DISTANCE, 0);
 
-export {createMap, map, MAX_FUTURE, updateMap}
+    let timestamp = Date.now();
+    for (let i = minY; i <= maxY; i++) {
+        for (let j = minX; j <= maxX; j++) {
+            map.map[i][j].last_seen = timestamp;
+        }
+    }*/
+    let timestamp = Date.now();
+    map.map[me.x][me.y].last_seen = timestamp;
+}
+
+export {createMap, map, MAX_FUTURE, updateMap, updateSenseTime}
