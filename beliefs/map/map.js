@@ -79,13 +79,7 @@ class Maps {
                 bestDistance = 0;
                 closestDelivery = {x: tile.x, y: tile.y};
             } else {
-                this.deliveryZones.forEach(delivery_zone => {
-                    let distance1 = this.BFS(tile, delivery_zone);
-                    if (distance1.length < bestDistance) {
-                        bestDistance = distance1.length;
-                        closestDelivery = delivery_zone;
-                    }
-                });
+                bestDistance = this.cleanBFS({x: tile.x, y: tile.y}, this.deliveryZones);
             }
             currentTile.heuristic = bestDistance;
             currentTile.closest_delivery = closestDelivery;
@@ -126,6 +120,55 @@ class Maps {
                     && (!visited[newX][newY])
                     && this.map[newX][newY].type !== 'obstacle'
                     && this.map[newX][newY].agent === null) {
+                    let newCurrent = JSON.parse(JSON.stringify(current));
+                    newCurrent.push({x: newX, y: newY, move: dir[2]});
+                    queue.push(newCurrent);
+                    visited[newX][newY] = true;
+                }
+            }
+        }
+
+        // If we don't find a path, return an empty array
+        return [];
+    }
+
+    cleanBFS(pos, objectiveList) {
+        let queue = [];
+        let visited = new Array(this.width).fill().map(() => new Array(this.height).fill().map(() => false));
+        if (pos instanceof Array) queue.push(pos); else queue.push([pos]);
+        if (!objectiveList instanceof Array) objectiveList = [objectiveList];
+        visited[pos.x][pos.y] = true;
+        let current = null;
+        let node = null;
+        let directions = [[[0, 1, 'up'], [0, -1, 'down'], [1, 0, 'right'], [-1, 0, 'left']],
+            [[1, 0, 'right'], [-1, 0, 'left'], [0, 1, 'up'], [0, -1, 'down']]];
+        let blocked_goals = [];
+
+        for (let goal of objectiveList) {
+            if (this.map[goal.x][goal.y].type === 'obstacle') {
+                blocked_goals.push(goal);
+            }
+        }
+
+        while (queue.length > 0) {
+            current = queue.shift();
+            node = current.at(-1)
+
+            // Se la posizione di consegna è bloccata, la salto
+            for (let goal of objectiveList) {
+                if (!blocked_goals.includes(goal)) {
+                    if ((node.x === goal.x && node.y === goal.y)) {
+                        return current.slice(1);
+                    }
+                }
+            }
+
+            for (let dir of directions[current.length % 2]) {
+                let newX = node.x + dir[0];
+                let newY = node.y + dir[1];
+                if ((newX >= 0) && (newX < this.width) && (newY >= 0) && (newY < this.height)
+                    && (!visited[newX][newY])
+                    && this.map[newX][newY].type !== 'obstacle') {
                     let newCurrent = JSON.parse(JSON.stringify(current));
                     newCurrent.push({x: newX, y: newY, move: dir[2]});
                     queue.push(newCurrent);
@@ -329,7 +372,7 @@ function updateSenseTime() {
         }
     }*/
     let timestamp = Date.now();
-    map.map[me.x][me.y].last_seen = timestamp;
+    if(map) map.map[me.x][me.y].last_seen = timestamp;
 }
 
 export {createMap, map, MAX_FUTURE, updateMap, updateSenseTime}
