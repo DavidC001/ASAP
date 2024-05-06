@@ -138,22 +138,6 @@ class Intention {
             }
         }
 
-        if (this.deliver && !this.stop) {
-            //console.log('deliver');
-            let dropped_parcels = await new Promise((resolve) => {
-                let timer = setTimeout(() => resolve([]), 500);
-                client.putdown().then((res) => {
-                    clearTimeout(timer);
-                    resolve(res)
-                });
-            });
-            //empty carried parcels
-            //console.log('dropped parcels', dropped_parcels);
-            if (dropped_parcels.length > 0) {
-                carriedParcels.length = 0;
-            }
-        }
-
         if (this.stop) {
             //if the intention has to stop send a signal
             //console.log('stopped intention', this.type);
