@@ -79,7 +79,9 @@ class Maps {
                 bestDistance = 0;
                 closestDelivery = {x: tile.x, y: tile.y};
             } else {
-                bestDistance = this.cleanBFS({x: tile.x, y: tile.y}, this.deliveryZones).length;
+                let route = this.cleanBFS({x: tile.x, y: tile.y}, this.deliveryZones);
+                bestDistance = route.length;
+                closestDelivery = route.at(-1);
             }
             currentTile.heuristic = bestDistance;
             currentTile.closest_delivery = closestDelivery;
