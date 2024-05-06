@@ -6,6 +6,7 @@ import {EventEmitter} from 'events';
 import {deliveryBFS, pickUpDjikstra} from '../planner/planner.js';
 import {DeliverooApi} from '@unitn-asa/deliveroo-js-client';
 
+let TIMEOUT = 250;
 const MAX_RETRIES = 1;
 const stopEmitter = new EventEmitter(); //TODO: make a diffierent emitter for each intention
 
@@ -117,7 +118,7 @@ class Intention {
             //console.log(this.type,'move', this.plan[i]);
             let res = await new Promise((resolve) => {
                 let result = false;
-                let timer = setTimeout(() => resolve(result), me.config.MOVEMENT_DURATION + 250);
+                let timer = setTimeout(() => resolve(result), me.config.MOVEMENT_DURATION + TIMEOUT);
                 moves[this.plan[i].move]().then((res) => {
                     result = res;
                     clearTimeout(timer);
@@ -125,8 +126,13 @@ class Intention {
                 });
             });
             if (!res) {
+                //if the failure wasn't because of another agent, increase the timeout
+                if (i+1===this.plan.length || map.map[this.plan[i + 1].x][this.plan[i + 1].y].agent === null) {
+                    console.log('Timeout setting to', TIMEOUT + 10);
+                    TIMEOUT += 10;
+                }
                 //console.log('Move failed, retrying...');
-                if (retryCount > MAX_RETRIES) {
+                if (retryCount >= MAX_RETRIES) {
                     console.log('Max retries exceeded', this.type);
                     i = 0;
                     this.plan = planner[this.type](me, this.goal);
@@ -135,6 +141,7 @@ class Intention {
                 retryCount++;
             } else {
                 retryCount = 0; // reset retry count if move was successful
+                TIMEOUT--;
             }
         }
 
@@ -156,8 +163,6 @@ class Intention {
      * @returns {number} the utility of the intention
      */
     utility() {
-        //TODO: consider other agents going after them
-
         let utility = 0;
         let numParcels = carriedParcels.length;
         let toRemove = []
