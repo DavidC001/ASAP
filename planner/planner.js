@@ -34,7 +34,7 @@ function BFStoObjective(pos, objectiveList, startTime = 0) {
             }
         }
         // Controllo che il nodo che sto esplorando non abbia sopra un agente, prima di esplorarlo
-        if (map.map[node.x][node.y].agent === null) {
+        if (startTime>1 || map.map[node.x][node.y].agent === null) {
             for (let dir of directions[current.length % 2]) {
                 let newX = node.x + dir[0];
                 let newY = node.y + dir[1];
@@ -86,21 +86,18 @@ function cleanBFS(pos, objectiveList) {
             }
         }
         // Controllo che il nodo che sto esplorando non abbia sopra un agente, prima di esplorarlo
-        if (map.map[node.x][node.y].agent === null) {
-            for (let dir of directions[current.length % 2]) {
-                let newX = node.x + dir[0];
-                let newY = node.y + dir[1];
-                if ((newX >= 0) && (newX < map.width) && (newY >= 0) && (newY < map.height)
-                    && (!visited[newX][newY])
-                    && map.predictedMap[startTime][newX][newY].type !== 'obstacle') {
+        for (let dir of directions[current.length % 2]) {
+            let newX = node.x + dir[0];
+            let newY = node.y + dir[1];
+            if ((newX >= 0) && (newX < map.width) && (newY >= 0) && (newY < map.height)
+                && (!visited[newX][newY])
+                && map.map[newX][newY].type !== 'obstacle') {
                     let newCurrent = JSON.parse(JSON.stringify(current));
                     newCurrent.push({x: newX, y: newY, move: dir[2]});
                     queue.push(newCurrent);
                     visited[newX][newY] = true;
-                }
             }
         }
-        if (startTime < (MAX_FUTURE - 1)) startTime++;
     }
 
     // If we don't find a path, return an empty array
