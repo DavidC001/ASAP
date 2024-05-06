@@ -76,7 +76,7 @@ class Intention {
         this.plan = planner[this.type](me, this.goal);
 
 
-        console.log('\tplan', me.x, me.y, this.plan);
+        // console.log('\tplan', me.x, me.y, this.plan);
         //wait input from console
         // console.log('Press enter to continue');
         // await new Promise((resolve) => {
@@ -117,7 +117,7 @@ class Intention {
             //console.log(this.type,'move', this.plan[i]);
             let res = await new Promise((resolve) => {
                 let result = false;
-                let timer = setTimeout(() => resolve(result), me.config.MOVEMENT_DURATION + 500);
+                let timer = setTimeout(() => resolve(result), me.config.MOVEMENT_DURATION + 250);
                 moves[this.plan[i].move]().then((res) => {
                     result = res;
                     clearTimeout(timer);
@@ -125,9 +125,9 @@ class Intention {
                 });
             });
             if (!res) {
-                console.log('Move failed, retrying...');
+                //console.log('Move failed, retrying...');
                 if (retryCount > MAX_RETRIES) {
-                    console.log('Max retries exceeded', this.type, this.goal===map.deliveryZones);
+                    console.log('Max retries exceeded', this.type);
                     i = 0;
                     this.plan = planner[this.type](me, this.goal);
                 }
@@ -203,6 +203,10 @@ class Intention {
                     score = -1;
                 } else {
                     steps = map.BFS(me, this.goal).length
+                    if (steps === 0 && (me.x !== this.goal.x || me.y !== this.goal.y)) {
+                        score = 0;
+                        break;
+                    }
                     //console.log('pickup', this.goal, 'steps', steps);
                     //TODO: check if another agent is closer and set the score accordingly
                     let closer = false;
@@ -307,19 +311,19 @@ class Intentions {
 
         if (this.currentIntention === null) {
             //if there is no current intention start the one with the highest utility
-            console.log("starting intention", maxIntention.type, "to", maxIntention.goal);
+            console.log("starting intention", maxIntention.type, "to", (maxIntention.type!=="deliver")?maxIntention.goal:"delivery zone");
             this.currentIntention = maxIntention;
             this.currentIntention.executeInt(client);
         } else if ((this.currentIntention.goal !== maxIntention.goal || this.currentIntention.reached) && this.currentIntention.started) {
             //if the goal is different from the current intention switch intention
-            console.log('switching intention', maxIntention.type, "to", maxIntention.goal, " from", this.currentIntention.type, "to", this.currentIntention.goal);
+            console.log('switching intention', maxIntention.type, "to", (maxIntention.type!=="deliver")?maxIntention.goal:"delivery zone", " from", this.currentIntention.type, "to", (this.currentIntention.type!=="deliver")?this.currentIntention.goal:"delivery zone");
 
             let oldIntention = this.currentIntention;
             this.currentIntention = maxIntention;
 
             //wait for the current intention to stop before starting the new one
             stopEmitter.once('stoppedIntention', () => {
-                console.log("starting intention", maxIntention.type, "to", maxIntention.goal);
+                console.log("starting intention", this.currentIntention.type, "to", (this.currentIntention.type!=="deliver")?this.currentIntention.goal:"delivery zone");
                 this.currentIntention.executeInt(client);
             });
             oldIntention.stopInt();
