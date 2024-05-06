@@ -126,10 +126,6 @@ class Intention {
                 retryCount = 0; // reset retry count if move was successful
                 if (TIMEOUT>200) TIMEOUT--;
             }
-            let message = 'Timeout setting to ' + TIMEOUT;
-            process.stdout.clearLine(0);
-            process.stdout.cursorTo(0);
-            process.stdout.write(message);
         }
 
         if (this.stop) {

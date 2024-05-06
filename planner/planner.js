@@ -134,6 +134,7 @@ function beamPackageSearch(pos, objective, deviations = 1) {
         if (move < (MAX_FUTURE - 1)) move++;
     }
 
+    // console.log("Beam search", path);
     return path;
 }
 
@@ -149,8 +150,8 @@ function exploreBFS(pos, goal) {
     let visited = new Map();
     let selected_move = null;
     let key = "";
-    let heuristic = Math.max(me.config.PARCELS_OBSERVATION_DISTANCE - 2, 1);
-    if (pos.x <= (heuristic) || pos.x >= (map.width - heuristic - 1) || pos.y <= (heuristic) || pos.y >= (map.height - heuristic - 1)) {
+    let heuristic = Math.max(me.config.PARCELS_OBSERVATION_DISTANCE - 3, 1);
+    if (pos.x <= (heuristic+2) || pos.x >= (map.width - heuristic - 2) || pos.y <= (heuristic+2) || pos.y >= (map.height - heuristic - 2)) {
         heuristic = 0;
     }
     while (path_length < MAX_EXPLORE_PATH_LENGTH) {
@@ -160,7 +161,7 @@ function exploreBFS(pos, goal) {
             let newY = pos.y + dir[1];
             key = newX + "_" + newY;
             //console.log("visited", visited.has(key), key);
-            if ((newX >= heuristic) && (newX < (map.width - heuristic - 1)) && (newY >= heuristic) && (newY < (map.height - heuristic - 1))
+            if ((newX >= heuristic) && (newX < (map.width - heuristic)) && (newY >= heuristic) && (newY < (map.height - heuristic))
                 && map.map[newX][newY].last_seen < oldest_last_seen && (!visited.has(key))
                 && map.map[newX][newY].type !== 'obstacle' && map.map[newX][newY].agent === null) {
                 selected_move = {x: newX, y: newY, move: dir[2]};
@@ -180,7 +181,7 @@ function exploreBFS(pos, goal) {
         }
         path_length++;
     }
-    console.log(path, path.length);
+    // console.log(path, path.length);
     return path;
 }
 
