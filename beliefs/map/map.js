@@ -264,6 +264,7 @@ let map = null;
  */
 function createMap(mapData) {
     map = new Maps(mapData);
+    console.log('Map created');
     setInterval(() => {
         map.updateMap();
     }, me.config.MOVEMENT_DURATION);

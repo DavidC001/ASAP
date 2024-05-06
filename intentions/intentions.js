@@ -112,12 +112,11 @@ class Intention {
             if (!res) {
                 //if the failure wasn't because of another agent, increase the timeout
                 if (i+1===this.plan.length || map.map[this.plan[i + 1].x][this.plan[i + 1].y].agent === null) {
-                    console.log('Timeout setting to', TIMEOUT + 10);
                     TIMEOUT += 10;
                 }
                 //console.log('Move failed, retrying...');
                 if (retryCount >= MAX_RETRIES) {
-                    console.log('Max retries exceeded', this.type);
+                    //console.log('Max retries exceeded', this.type);
                     i = 0;
                     this.plan = planner[this.type](me, this.goal);
                 }
@@ -127,6 +126,10 @@ class Intention {
                 retryCount = 0; // reset retry count if move was successful
                 TIMEOUT--;
             }
+            let message = 'Timeout setting to ' + TIMEOUT;
+            process.stdout.clearLine(0);
+            process.stdout.cursorTo(0);
+            process.stdout.write(message);
         }
 
         if (this.stop) {
@@ -284,19 +287,19 @@ class Intentions {
 
         if (this.currentIntention === null) {
             //if there is no current intention start the one with the highest utility
-            console.log("starting intention", maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone");
+            //console.log("starting intention", maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone");
             this.currentIntention = maxIntention;
             this.currentIntention.executeInt(client);
         } else if ((this.currentIntention.goal !== maxIntention.goal || this.currentIntention.reached) && this.currentIntention.started) {
             //if the goal is different from the current intention switch intention
-            console.log('switching intention', maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone", " from", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");
+            //console.log('switching intention', maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone", " from", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");
 
             let oldIntention = this.currentIntention;
             this.currentIntention = maxIntention;
 
             //wait for the current intention to stop before starting the new one
             stopEmitter.once('stoppedIntention', () => {
-                console.log("starting intention", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");
+                //console.log("starting intention", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");
                 this.currentIntention.executeInt(client);
             });
             oldIntention.stopInt();
@@ -371,7 +374,6 @@ const intentions = new Intentions();
 function IntentionRevision(client) {
     client.onMap(async () => {
         //wait 0.1 second for the map to be created
-        await new Promise(resolve => setTimeout(resolve, 200));
         await intentions.generateIntentions();
         setInterval(() => {
             intentions.updateIntentions();
