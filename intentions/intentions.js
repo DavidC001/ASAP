@@ -3,7 +3,7 @@ import {distance, me} from '../beliefs/beliefs.js';
 import {parcels} from '../beliefs/parcels/parcels.js';
 import {agents} from '../beliefs/agents/agents.js';
 import {EventEmitter} from 'events';
-import {BFStoObjective, pickUpDjikstra} from '../planner/planner.js';
+import {deliveryBFS, pickUpDjikstra} from '../planner/planner.js';
 import {DeliverooApi} from '@unitn-asa/deliveroo-js-client';
 
 const MAX_RETRIES = 1;
@@ -60,7 +60,7 @@ class Intention {
 
         let planner = {
             'pickup': pickUpDjikstra,
-            'deliver': BFStoObjective,
+            'deliver': deliveryBFS,
             'explore': () => map.BFS(me, this.goal)
         }
 
