@@ -1,6 +1,6 @@
 import {senseParcels} from "./parcels/parcels.js";
 import {senseAgents} from "./agents/agents.js";
-import {createMap} from "./map/map.js";
+import {createMap, updateSenseTime} from "./map/map.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
 
 /**
@@ -40,6 +40,7 @@ function updateMe({id, name, x, y, score}) {
     me.x = Math.round(x);
     me.y = Math.round(y);
     me.score = score;
+    updateSenseTime();
 }
 
 /**

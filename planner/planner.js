@@ -1,6 +1,8 @@
 import {map, MAX_FUTURE} from "../beliefs/map/map.js";
 import {me} from "../beliefs/beliefs.js";
 
+const MAX_EXPLORE_PATH_LENGTH = 20;
+
 function BFStoObjective(pos, objectiveList, startTime = 0) {
     let queue = [];
     let visited = new Array(map.width).fill().map(() => new Array(map.height).fill().map(() => false));
@@ -58,13 +60,13 @@ function deliveryBFS(pos, objectiveList) {
     let list = pickUpDjikstra(pos, map.deliveryZones);
     let last_move = list.at(-1);
     // Add a move to the last position to deliver the package
-    if(last_move) list.push({x: last_move.x, y: last_move.y, move: "deliver"});
+    if (last_move) list.push({x: last_move.x, y: last_move.y, move: "deliver"});
     return list;
 }
 
 function pickUpDjikstra(pos, objective, deviations = 1) {
     //use BFS to create a path to the objective, then allow for slight deviations to gather other packages on the way
-    if(!(objective instanceof Array)) objective = [objective];
+    if (!(objective instanceof Array)) objective = [objective];
     let path = [{x: pos.x, y: pos.y, move: "none"}].concat(BFStoObjective(pos, objective));
 
     let directions = [[0, 0, "still"],
@@ -124,10 +126,53 @@ function pickUpDjikstra(pos, objective, deviations = 1) {
                 }
             }
         }
-        if (move < (MAX_FUTURE-1)) move++;
+        if (move < (MAX_FUTURE - 1)) move++;
     }
 
     return path;
 }
 
-export {BFStoObjective, pickUpDjikstra, deliveryBFS};
+function exploreBFS(pos, goal) {
+    // Select goal based on the last sensed time of the tile
+    // map.map.sort((a, b) => (a.last_seen - b.last_seen));
+    // let goal = map.map[0][0];
+    // console.log("Exploring goal", goal,map.map[19][19]);
+    let path = [];
+    let directions = [[0, 1, 'up'], [0, -1, 'down'], [1, 0, 'right'], [-1, 0, 'left']];
+    let path_length = 0;
+    let oldest_last_seen = Infinity;
+    let visited = new Map();
+    let selected_move = null;
+    let key = "";
+    while (path_length < MAX_EXPLORE_PATH_LENGTH) {
+        //console.log("Exploring", pos);
+        for (let dir of directions) {
+            let newX = pos.x + dir[0];
+            let newY = pos.y + dir[1];
+            key = newX + "_" + newY;
+            //console.log("visited", visited.has(key), key);
+            if ((newX >= 0) && (newX < map.width) && (newY >= 0) && (newY < map.height)
+                && map.map[newX][newY].last_seen < oldest_last_seen && (!visited.has(key))
+                && map.map[newX][newY].type !== 'obstacle' && map.map[newX][newY].agent === null) {
+                selected_move = {x: newX, y: newY, move: dir[2]};
+                oldest_last_seen = map.map[newX][newY].last_seen;
+            }
+        }
+        // console.log("Selected move", selected_move);
+        if (selected_move) {
+            pos = {x: selected_move.x, y: selected_move.y};
+            key = pos.x + "_" + pos.y;
+            visited.set(key, true);
+            path.push(selected_move);
+            selected_move = null;
+            oldest_last_seen = Infinity;
+        } else {
+            break;
+        }
+        path_length++;
+    }
+    console.log(path, path.length);
+    return path;
+}
+
+export {BFStoObjective, pickUpDjikstra, deliveryBFS, exploreBFS};

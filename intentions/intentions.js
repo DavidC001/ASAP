@@ -3,7 +3,7 @@ import {distance, me} from '../beliefs/beliefs.js';
 import {parcels} from '../beliefs/parcels/parcels.js';
 import {agents} from '../beliefs/agents/agents.js';
 import {EventEmitter} from 'events';
-import {deliveryBFS, pickUpDjikstra} from '../planner/planner.js';
+import {deliveryBFS, pickUpDjikstra, exploreBFS} from '../planner/planner.js';
 import {DeliverooApi} from '@unitn-asa/deliveroo-js-client';
 
 let TIMEOUT = 250;
@@ -62,7 +62,7 @@ class Intention {
         let planner = {
             'pickup': pickUpDjikstra,
             'deliver': deliveryBFS,
-            'explore': () => map.BFS(me, this.goal)
+            'explore': exploreBFS,
         }
 
         switch (this.type) {
@@ -72,6 +72,7 @@ class Intention {
                     x: Math.floor(Math.random() * (map.width) - me.config.PARCELS_OBSERVATION_DISTANCE / 1.3 + me.config.PARCELS_OBSERVATION_DISTANCE / 1.3),
                     y: Math.floor(Math.random() * (map.height) - me.config.PARCELS_OBSERVATION_DISTANCE / 1.3 + me.config.PARCELS_OBSERVATION_DISTANCE / 1.3)
                 };
+                // exploreBFS(me);
                 break;
         }
         this.plan = planner[this.type](me, this.goal);
@@ -300,19 +301,19 @@ class Intentions {
 
         if (this.currentIntention === null) {
             //if there is no current intention start the one with the highest utility
-            console.log("starting intention", maxIntention.type, "to", (maxIntention.type!=="deliver")?maxIntention.goal:"delivery zone");
+            console.log("starting intention", maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone");
             this.currentIntention = maxIntention;
             this.currentIntention.executeInt(client);
         } else if ((this.currentIntention.goal !== maxIntention.goal || this.currentIntention.reached) && this.currentIntention.started) {
             //if the goal is different from the current intention switch intention
-            console.log('switching intention', maxIntention.type, "to", (maxIntention.type!=="deliver")?maxIntention.goal:"delivery zone", " from", this.currentIntention.type, "to", (this.currentIntention.type!=="deliver")?this.currentIntention.goal:"delivery zone");
+            console.log('switching intention', maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone", " from", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");
 
             let oldIntention = this.currentIntention;
             this.currentIntention = maxIntention;
 
             //wait for the current intention to stop before starting the new one
             stopEmitter.once('stoppedIntention', () => {
-                console.log("starting intention", this.currentIntention.type, "to", (this.currentIntention.type!=="deliver")?this.currentIntention.goal:"delivery zone");
+                console.log("starting intention", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");
                 this.currentIntention.executeInt(client);
             });
             oldIntention.stopInt();
