@@ -144,6 +144,10 @@ function exploreBFS(pos, goal) {
     let visited = new Map();
     let selected_move = null;
     let key = "";
+    let heuristic = Math.max(me.config.PARCELS_OBSERVATION_DISTANCE - 2, 1);
+    if (pos.x < (heuristic + 2) || pos.x > (map.width - heuristic - 2) || pos.y < (heuristic + 2) || pos.y > (map.height - heuristic - 2)) {
+        heuristic = 1;
+    }
     while (path_length < MAX_EXPLORE_PATH_LENGTH) {
         //console.log("Exploring", pos);
         for (let dir of directions) {
@@ -151,7 +155,7 @@ function exploreBFS(pos, goal) {
             let newY = pos.y + dir[1];
             key = newX + "_" + newY;
             //console.log("visited", visited.has(key), key);
-            if ((newX >= 0) && (newX < map.width) && (newY >= 0) && (newY < map.height)
+            if ((newX >= heuristic) && (newX < (map.width - heuristic)) && (newY >= heuristic) && (newY < (map.height - heuristic))
                 && map.map[newX][newY].last_seen < oldest_last_seen && (!visited.has(key))
                 && map.map[newX][newY].type !== 'obstacle' && map.map[newX][newY].agent === null) {
                 selected_move = {x: newX, y: newY, move: dir[2]};
@@ -171,7 +175,7 @@ function exploreBFS(pos, goal) {
         }
         path_length++;
     }
-    console.log(path, path.length);
+    // console.log(path, path.length);
     return path;
 }
 
