@@ -80,7 +80,7 @@ function pickUpDjikstra(pos, objective, deviations = 1) {
             }
         }
 
-        if (move < MAX_FUTURE - 1) move++;
+        if (move < (MAX_FUTURE - 1)) move++;
     }
 
     move = 0;
@@ -115,7 +115,7 @@ function pickUpDjikstra(pos, objective, deviations = 1) {
                 }
             }
         }
-        if (move < MAX_FUTURE) move++;
+        if (move < (MAX_FUTURE-1)) move++;
     }
 
     return path;
