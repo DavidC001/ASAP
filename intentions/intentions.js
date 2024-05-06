@@ -3,7 +3,7 @@ import {distance, me} from '../beliefs/beliefs.js';
 import {parcels} from '../beliefs/parcels/parcels.js';
 import {agents} from '../beliefs/agents/agents.js';
 import {EventEmitter} from 'events';
-import {deliveryBFS, pickUpDjikstra, exploreBFS} from '../planner/planner.js';
+import {deliveryBFS, beamPackageSearch, exploreBFS} from '../planner/planner.js';
 import {DeliverooApi} from '@unitn-asa/deliveroo-js-client';
 
 let TIMEOUT = 250;
@@ -60,32 +60,15 @@ class Intention {
         this.reached = false;
 
         let planner = {
-            'pickup': pickUpDjikstra,
+            'pickup': beamPackageSearch,
             'deliver': deliveryBFS,
             'explore': exploreBFS,
         }
 
-        switch (this.type) {
-            case 'explore':
-                //if the intention is explore, the goal is a random point in the map (TODO: also in the future use a specific planner for this)
-                this.goal = {
-                    x: Math.floor(Math.random() * (map.width) - me.config.PARCELS_OBSERVATION_DISTANCE / 1.3 + me.config.PARCELS_OBSERVATION_DISTANCE / 1.3),
-                    y: Math.floor(Math.random() * (map.height) - me.config.PARCELS_OBSERVATION_DISTANCE / 1.3 + me.config.PARCELS_OBSERVATION_DISTANCE / 1.3)
-                };
-                // exploreBFS(me);
-                break;
-        }
         this.plan = planner[this.type](me, this.goal);
 
 
         // console.log('\tplan', me.x, me.y, this.plan);
-        //wait input from console
-        // console.log('Press enter to continue');
-        // await new Promise((resolve) => {
-        //     process.stdin.once('data', () => {
-        //         resolve();
-        //     });
-        // });
 
         let moves = {
             "up": () => client.move("up"),

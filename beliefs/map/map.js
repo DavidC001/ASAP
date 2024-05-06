@@ -234,7 +234,7 @@ class Maps {
         }
         actionBuffer.clear();
         this.map = JSON.parse(JSON.stringify(new_map));
-        drawMap('./map.txt', this.map);
+        // drawMap('./map.txt', this.map);
         this.updatePrediction();
     }
 }

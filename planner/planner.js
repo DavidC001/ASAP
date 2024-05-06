@@ -57,14 +57,14 @@ function BFStoObjective(pos, objectiveList, startTime = 0) {
 }
 
 function deliveryBFS(pos, objectiveList) {
-    let list = pickUpDjikstra(pos, map.deliveryZones);
+    let list = beamPackageSearch(pos, map.deliveryZones);
     let last_move = list.at(-1);
     // Add a move to the last position to deliver the package
     if (last_move) list.push({x: last_move.x, y: last_move.y, move: "deliver"});
     return list;
 }
 
-function pickUpDjikstra(pos, objective, deviations = 1) {
+function beamPackageSearch(pos, objective, deviations = 1) {
     //use BFS to create a path to the objective, then allow for slight deviations to gather other packages on the way
     if (!(objective instanceof Array)) objective = [objective];
     let path = [{x: pos.x, y: pos.y, move: "none"}].concat(BFStoObjective(pos, objective));
@@ -179,4 +179,4 @@ function exploreBFS(pos, goal) {
     return path;
 }
 
-export {BFStoObjective, pickUpDjikstra, deliveryBFS, exploreBFS};
+export {BFStoObjective, beamPackageSearch, deliveryBFS, exploreBFS};
