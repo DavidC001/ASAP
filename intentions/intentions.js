@@ -111,7 +111,7 @@ class Intention {
             });
             if (!res) {
                 //if the failure wasn't because of another agent, increase the timeout
-                if (i+1===this.plan.length || map.map[this.plan[i + 1].x][this.plan[i + 1].y].agent === null) {
+                if (map.map[this.plan[i].x][this.plan[i].y].agent === null) {
                     TIMEOUT += 10;
                 }
                 //console.log('Move failed, retrying...');

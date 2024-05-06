@@ -107,14 +107,14 @@ function cleanBFS(pos, objectiveList) {
 
 function deliveryBFS(pos, objectiveList) {
     let list = beamPackageSearch(pos, map.deliveryZones);
-    if (list.length === 0) {
+    if (list.length === 1) {
         //as close as possible
         list = cleanBFS(pos, objectiveList);
-    } else {
-        let last_move = list.at(-1);
-        // Add a move to the last position to deliver the package
-        if (last_move) list.push({x: last_move.x, y: last_move.y, move: "deliver"});
     }
+    let last_move = list.at(-1);
+    // Add a move to the last position to deliver the package
+    if (last_move) list.push({x: last_move.x, y: last_move.y, move: "deliver"});
+
     return list;
 }
 
