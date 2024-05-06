@@ -55,7 +55,7 @@ function BFStoObjective(pos, objectiveList, startTime = 0) {
 }
 
 function deliveryBFS(pos, objectiveList) {
-    let list = BFStoObjective(pos, map.deliveryZones);
+    let list = pickUpDjikstra(pos, map.deliveryZones);
     let last_move = list.at(-1);
     // Add a move to the last position to deliver the package
     if(last_move) list.push({x: last_move.x, y: last_move.y, move: "deliver"});
@@ -64,7 +64,8 @@ function deliveryBFS(pos, objectiveList) {
 
 function pickUpDjikstra(pos, objective, deviations = 1) {
     //use BFS to create a path to the objective, then allow for slight deviations to gather other packages on the way
-    let path = [{x: pos.x, y: pos.y, move: "none"}].concat(BFStoObjective(pos, [objective]));
+    if(!(objective instanceof Array)) objective = [objective];
+    let path = [{x: pos.x, y: pos.y, move: "none"}].concat(BFStoObjective(pos, objective));
 
     let directions = [[0, 0, "still"],
         [1, 0, "right"], [-1, 0, "left"],
@@ -117,7 +118,7 @@ function pickUpDjikstra(pos, objective, deviations = 1) {
                     path = path.slice(0, stepNum + 1).concat(deviation).concat(BFStoObjective({
                         x: x,
                         y: y
-                    }, [objective], move));
+                    }, objective, move));
                     //console.log("\t\tdeviation added to the path", path);
                     break;
                 }

@@ -18,8 +18,8 @@ const actionBuffer = new Map();
  * @property {number} heuristic - The heuristic value of the tile
  * @property {{x:number,y:number}} closest_delivery - The closest delivery zone
  * @property {string} type - The type of the tile between spawnable, delivery and obstacle
- * @property {Agent} agent - The agent on the tile
- * @property {Parcel} parcel - The parcel on the tile
+ * @property {id:string} agent - The id of the agent on the tile
+ * @property {{id:string,carried:string,score:number}} parcel - The parcel on the tile
  */
 class Tile {
     heuristic;
@@ -94,8 +94,8 @@ class Maps {
     BFS(pos, objective) {
         let queue = [];
         let visited = new Array(this.width).fill().map(() => new Array(this.height).fill().map(() => false));
-        if(pos instanceof Array) queue.push(pos); else queue.push([pos]);
-        if(objective instanceof Array) objective = objective[0];
+        if (pos instanceof Array) queue.push(pos); else queue.push([pos]);
+        if (objective instanceof Array) objective = objective[0];
         //console.log(this.width, this.height);
         visited[pos.x][pos.y] = true;
         let current = null;
@@ -158,7 +158,7 @@ class Maps {
                     if (newMap[i][futurePos.x][futurePos.y].type === 'obstacle') {
                         continue;
                     }
-                    if((first_pos.x !== futurePos.x || first_pos.y !== futurePos.y)){
+                    if ((first_pos.x !== futurePos.x || first_pos.y !== futurePos.y)) {
                         newMap[i][first_pos.x][first_pos.y].agent = null;
                         newMap[i][futurePos.x][futurePos.y].agent = id;
                     }
@@ -193,7 +193,7 @@ class Maps {
         for (let [id, agent] of agents) {
             // Check that the agent is in the bounds of the map and set it to null if it is not
             if (agent.position.x < 0 || agent.position.y < 0 || agent.position.x >= this.width || agent.position.y >= this.height) {
-                if (this.currentAgentPosition[id]){
+                if (this.currentAgentPosition[id]) {
                     new_map[this.currentAgentPosition[id].x][this.currentAgentPosition[id].y].agent = null;
                     this.currentAgentPosition[id] = null;
                 }
