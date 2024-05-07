@@ -3,10 +3,11 @@ import {distance, me} from '../beliefs/beliefs.js';
 import {parcels} from '../beliefs/parcels/parcels.js';
 import {agents} from '../beliefs/agents/agents.js';
 import {EventEmitter} from 'events';
-import {deliveryBFS, beamPackageSearch, exploreBFS} from '../planner/planner.js';
+import {deliveryBFS, beamPackageSearch, exploreBFS, exploreBFS2} from '../planner/planner.js';
 import {DeliverooApi} from '@unitn-asa/deliveroo-js-client';
 
 let TIMEOUT = 250;
+const TIMEOUT_THRESH = 500;
 const MAX_RETRIES = 1;
 const stopEmitter = new EventEmitter(); //TODO: make a diffierent emitter for each intention
 
@@ -62,7 +63,7 @@ class Intention {
         let planner = {
             'pickup': beamPackageSearch,
             'deliver': deliveryBFS,
-            'explore': exploreBFS,
+            'explore': exploreBFS2,
         }
 
         this.plan = planner[this.type](me, this.goal);
@@ -123,7 +124,7 @@ class Intention {
                 retryCount++;
             } else {
                 retryCount = 0; // reset retry count if move was successful
-                if (TIMEOUT>250) TIMEOUT--;
+                if (TIMEOUT>TIMEOUT_THRESH) TIMEOUT--;
             }
         }
 

@@ -1,7 +1,7 @@
 import {parcels, Parcel, parcelEmitter, agentsCarrying} from "../parcels/parcels.js";
 import {me, distance} from "../beliefs.js"
 import {agents, Agent} from "../agents/agents.js";
-import {EventEmitter} from 'events';
+import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
 import * as fs from 'node:fs';
 
 /**
@@ -72,7 +72,7 @@ class Maps {
         tiles.sort((a, b) => (b.delivery - a.delivery));
         tiles.forEach(tile => {
             let currentTile = this.map[tile.x][tile.y];
-            currentTile.type = tile.parcelSpawner ? 'spawnable' : 'delivery';
+            currentTile.type = tile.parcelSpawner ? 'spawnable' : 'unspawnable';
         });
         tiles.forEach(tile => {
             let bestDistance = Infinity;
@@ -326,13 +326,15 @@ let map = null;
 /**
  * Create the map from scratch with some initial data and heuristics
  * @param { { width:number, height:number, tiles:[{x:number,y:number,delivery:boolean,parcelSpawner:boolean}] } } mapData
+ * @param {DeliverooApi} client
  */
-function createMap(mapData) {
+function createMap(mapData, client) {
     map = new Maps(mapData);
     console.log('Map created');
     setInterval(() => {
         map.updateMap();
     }, me.config.MOVEMENT_DURATION);
+    client.onYou(updateSenseTime);
 }
 
 /**
@@ -386,19 +388,22 @@ function drawMap(filename, tilemap) {
 }
 
 function updateSenseTime() {
-    /*let maxY = Math.min(me.y + me.config.PARCELS_OBSERVATION_DISTANCE, map.height - 1);
-    let minY = Math.max(me.y - me.config.PARCELS_OBSERVATION_DISTANCE, 0);
-    let maxX = Math.min(me.x + me.config.PARCELS_OBSERVATION_DISTANCE, map.width - 1);
-    let minX = Math.max(me.x - me.config.PARCELS_OBSERVATION_DISTANCE, 0);
+    let parcelObsDist = me.config.PARCELS_OBSERVATION_DISTANCE;
+    let maxY = Math.min(me.y + parcelObsDist, map.height - 1);
+    let minY = Math.max(me.y - parcelObsDist, 0);
+    let maxX = Math.min(me.x + parcelObsDist, map.width - 1);
+    let minX = Math.max(me.x - parcelObsDist, 0);
 
     let timestamp = Date.now();
-    for (let i = minY; i <= maxY; i++) {
-        for (let j = minX; j <= maxX; j++) {
-            map.map[i][j].last_seen = timestamp;
+    for (let i = minX; i <= maxX; i++) {
+        for (let j = minY; j <= maxY; j++) {
+            if(distance({x: i, y: j}, me) <= parcelObsDist){
+                map.map[i][j].last_seen = timestamp;
+            }
         }
-    }*/
-    let timestamp = Date.now();
-    if (map) map.map[me.x][me.y].last_seen = timestamp;
+    }
+    // let timestamp = Date.now();
+    // if (map) map.map[me.x][me.y].last_seen = timestamp;
 }
 
 export {createMap, map, MAX_FUTURE, updateMap, updateSenseTime}

@@ -40,7 +40,6 @@ function updateMe({id, name, x, y, score}) {
     me.x = Math.round(x);
     me.y = Math.round(y);
     me.score = score;
-    updateSenseTime();
 }
 
 /**
@@ -96,7 +95,7 @@ function RegisterBeliefsRevisions(client) {
     })
 
     client.onMap(async (width, height, tiles) => {
-        createMap({width, height, tiles});
+        createMap({width, height, tiles},client);
     })
 
     client.onAgentsSensing(async (agents) => {
