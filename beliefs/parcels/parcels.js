@@ -1,11 +1,10 @@
-/* TODO: - check if we can get only those out of sensing range
-*        - delete parcels that are delivered
-*        - delete parcels that were carried but then we see again the agent that doesn't have them again
-*        - update the parcel based on the agent
-*/
 import {EventEmitter} from 'events';
 import {distance, me} from "../beliefs.js";
 
+/**
+ * Event emitter for the parcels
+ * @type {module:events.EventEmitter<DefaultEventMap>}
+ */
 const parcelEmitter = new EventEmitter();
 /**
  * Maps an agent with its carried parcels
@@ -14,11 +13,12 @@ const parcelEmitter = new EventEmitter();
 const agentsCarrying = new Map();
 
 /**
+ * Representation of the parcels with all the important information
  * @class parcel
  *
  * @param {{x:number,y:number}} position - The position of the parcel
  * @param {number} score - The score of the parcel
- * @param {string} carried - True if the parcel is carried by the robot
+ * @param {string|null} carried - A string of who is carrying the parcel, null otherwise
  */
 class Parcel {
     id;
@@ -29,11 +29,11 @@ class Parcel {
 
     /**
      *
-     * @param {string} id
-     * @param {{x:number,y:number}} position
-     * @param {number} score
-     * @param {string} carried
-     * @param {number} decayInterval
+     * @param {string} id - The id of the parcel
+     * @param {{x:number,y:number}} position - The position of the parcel
+     * @param {number} score - The score of the parcel
+     * @param {string|null} carried - By whom is carried the parcel, null if none is carrying it
+     * @param {number} decayInterval - If the parcel has a decay interval
      */
     constructor(id, position, score, carried, decayInterval) {
         this.id = id;
@@ -56,20 +56,13 @@ class Parcel {
 }
 
 /**
+ * A map accessible to everyone that contains all the sensed parcels
  * @type {Map<string, Parcel>} parcels
  */
 const parcels = new Map();
 
 /**
- * Updates the parcels informations when carried by an agent
- * TODO: collect information from the agents
- */
-function updateParcels() {
-
-}
-
-/**
- * All the logic to sense the
+ * In this function we sense the parcels and update all the important variables
  * @param {[ { id:string, x:number, y:number, carriedBy:string, reward:number } ]} sensedParcels
  * @param {number} decayInterval
  */
@@ -77,7 +70,7 @@ function senseParcels(sensedParcels, decayInterval) {
     let inView = [];
     for (let parcel of sensedParcels) {
         inView.push(parcel.id);
-        if (parcel.x % 1 !== 0 || parcel.y % 1 !== 0) continue;
+        if (parcel.x % 1 !== 0 || parcel.y % 1 !== 0) continue; // We skip intermediate positions
         let position = {x: parcel.x, y: parcel.y};
         let score = parcel.reward;
         let carried = parcel.carriedBy;
@@ -100,6 +93,7 @@ function senseParcels(sensedParcels, decayInterval) {
         }
     }
 
+    // We remove parcels that are no more inView because they are moved by someone else
     for (let [id, p] of parcels) {
         if (!inView.includes(id) && (distance(p.position, me) < me.config.PARCELS_OBSERVATION_DISTANCE)) {
             parcelEmitter.emit('deleteParcel', id);

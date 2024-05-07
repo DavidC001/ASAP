@@ -5,7 +5,7 @@ const MAX_EXPLORE_PATH_LENGTH = 20;
 
 /**
  * BFS to find the path to the closest objective
- * 
+ *
  * @param {{x: number, y: number}} pos The starting position
  * @param {[{x: number, y: number}]} objectiveList The list of objectives to reach
  * @param {number} startTime The time to start the search from for future predictions (default 0)
@@ -46,6 +46,7 @@ function BFStoObjective(pos, objectiveList, startTime = 0) {
             for (let dir of directions[current.length % 2]) {
                 let newX = node.x + dir[0];
                 let newY = node.y + dir[1];
+                // We don't push the node if out of bound or there is an agent on it
                 if ((newX >= 0) && (newX < map.width) && (newY >= 0) && (newY < map.height)
                     && (!visited[newX][newY])
                     && map.predictedMap[startTime][newX][newY].type !== 'obstacle'
@@ -57,6 +58,7 @@ function BFStoObjective(pos, objectiveList, startTime = 0) {
                 }
             }
         }
+        // Increase startTime until we reached the MAX_FUTURE for the predictedMap
         if (startTime < (MAX_FUTURE - 1)) startTime++;
     }
 
@@ -66,7 +68,7 @@ function BFStoObjective(pos, objectiveList, startTime = 0) {
 
 /**
  * BFS to find the path to the closest delivery zone and deliver the package
- * 
+ *
  * @param {{x: number, y: number}} pos The starting position
  * @param {[{x: number, y: number}]} objectiveList The list of delivery zones
  * @returns {[{x: number, y: number, move: string}]} The path to the objective
@@ -74,7 +76,7 @@ function BFStoObjective(pos, objectiveList, startTime = 0) {
 function deliveryBFS(pos, objectiveList) {
     let list = beamPackageSearch(pos, map.deliveryZones);
     if (list.length === 1) {
-        //as close as possible
+        // We reach the last possible position if it is blocked
         list = map.cleanBFS(pos, objectiveList);
     }
     let last_move = list.at(-1);
@@ -86,7 +88,7 @@ function deliveryBFS(pos, objectiveList) {
 
 /**
  * Beam search to find the path to the closest objective
- * 
+ *
  * @param {{x: number, y: number}} pos The starting position
  * @param {[{x: number, y: number}]} objective The objective to reach
  * @param {number} deviations The number of allowed deviations from the path
@@ -163,10 +165,10 @@ function beamPackageSearch(pos, objective, deviations = 1) {
 
 /**
  * Hill climbing for exploring unknown areas
- * 
- * @param {{x: number, y: number}} pos
- * @param {*} goal
- * 
+ *
+ * @param {{x: number, y: number}} pos - The starting position
+ * @param {*} goal The goal to reach, not used, just here for parameter expansion
+ *
  * @returns {[{x: number, y: number, move: string}]} The explore path
  */
 function exploreBFS(pos, goal) {
@@ -182,7 +184,7 @@ function exploreBFS(pos, goal) {
     let selected_move = null;
     let key = "";
     let heuristic = Math.max(me.config.PARCELS_OBSERVATION_DISTANCE - 3, 1);
-    if (pos.x <= (heuristic+2) || pos.x >= (map.width - heuristic - 2) || pos.y <= (heuristic+2) || pos.y >= (map.height - heuristic - 2)) {
+    if (pos.x <= (heuristic + 2) || pos.x >= (map.width - heuristic - 2) || pos.y <= (heuristic + 2) || pos.y >= (map.height - heuristic - 2)) {
         heuristic = 0;
     }
     while (path_length < MAX_EXPLORE_PATH_LENGTH) {

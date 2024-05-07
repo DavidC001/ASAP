@@ -4,7 +4,10 @@ import {agents, Agent} from "../agents/agents.js";
 import {EventEmitter} from 'events';
 import * as fs from 'node:fs';
 
-const mapEmitter = new EventEmitter();
+/**
+ * A variable that sets the maximum prediction of the map
+ * @type {number}
+ */
 const MAX_FUTURE = 10;
 /**
  * Buffer in which I put the updated actions of my agents and parcels
@@ -13,13 +16,14 @@ const MAX_FUTURE = 10;
 const actionBuffer = new Map();
 
 /**
+ * A tile of the map
  * @class Tile
  *
  * @property {number} heuristic - The heuristic value of the tile
  * @property {{x:number,y:number}} closest_delivery - The closest delivery zone
  * @property {string} type - The type of the tile between spawnable, delivery and obstacle
  * @property {id:string} agent - The id of the agent on the tile
- * @property {{id:string,carried:string,score:number}} parcel - The parcel on the tile
+ * @property {{id:string,carried:string,score:number}} parcel - Some information about the parcel on the tile
  */
 class Tile {
     heuristic;
@@ -57,7 +61,7 @@ class Maps {
     currentParcelPosition = new Map();
 
     /**
-     * Generates the map
+     * Generates the map given the tiles received from the server
      * @param {[{x:number,y:number,delivery:boolean,parcelSpawner:boolean}]} tiles
      */
     generateMap(tiles) {
@@ -88,6 +92,12 @@ class Maps {
         });
     }
 
+    /**
+     * A simple BFS that gives the path to the objective. Considers the current map and does count Agents as obstacles
+     * @param pos - The starting position
+     * @param objective - The objective of the BFS
+     * @returns {*|*[]} - A path to the objective if possible to reach
+     */
     BFS(pos, objective) {
         let queue = [];
         let visited = new Array(this.width).fill().map(() => new Array(this.height).fill().map(() => false));
@@ -134,6 +144,13 @@ class Maps {
         return [];
     }
 
+    /**
+     * A BFS that doesn't count the agents in its path. This always return a path if there is one, even if there are
+     * agents blocking the path
+     * @param pos - The starting position
+     * @param objectiveList - The objective list of the BFS
+     * @returns {*|*[]} - A path to the objective if possible to reach
+     */
     cleanBFS(pos, objectiveList) {
         let queue = [];
         let visited = new Array(this.width).fill().map(() => new Array(this.height).fill().map(() => false));
@@ -156,7 +173,7 @@ class Maps {
             current = queue.shift();
             node = current.at(-1)
 
-            // Se la posizione di consegna è bloccata, la salto
+            // If the current objective is blocked, I will skip the blocked objective
             for (let goal of objectiveList) {
                 if (!blocked_goals.includes(goal)) {
                     if ((node.x === goal.x && node.y === goal.y)) {
@@ -184,7 +201,7 @@ class Maps {
     }
 
     /**
-     * Infers the future state of the map based on the future moves of the agents
+     * Infers the future state of the map based on the future moves of the agents. Sets the predictedMap
      */
     updatePrediction() {
         let newMap = new Array(MAX_FUTURE).fill().map(() => JSON.parse(JSON.stringify(this.map)));
@@ -220,7 +237,7 @@ class Maps {
     }
 
     /**
-     *
+     * Generates the first informations of the map
      * @param {{ width: number, height: number, tiles: [{x:number,y:number,delivery:boolean,parcelSpawner:boolean}]} } mapData
      */
     constructor(mapData) {
@@ -284,6 +301,9 @@ class Maps {
     }
 }
 
+/**
+ * This emitter handles the deletion of the parcels on the map and in the parcel array
+ */
 parcelEmitter.on('deleteParcel', (id) => {
     let temp_position = map.currentParcelPosition[id];
     delete map.currentParcelPosition[id];
@@ -322,7 +342,11 @@ function updateMap() {
     map.updateMap()
 }
 
-
+/**
+ * Simple helper to visualize the map on a simple text file
+ * @param filename - The filename to save to
+ * @param tilemap - The map that we want to save, it can be a normal map or a predictedMap
+ */
 function drawMap(filename, tilemap) {
     let text_map = Array(map.width).fill().map(() => Array(map.height).fill().map(() => ' '));
     for (let x = 0; x < map.width; x++) {
@@ -374,7 +398,7 @@ function updateSenseTime() {
         }
     }*/
     let timestamp = Date.now();
-    if(map) map.map[me.x][me.y].last_seen = timestamp;
+    if (map) map.map[me.x][me.y].last_seen = timestamp;
 }
 
 export {createMap, map, MAX_FUTURE, updateMap, updateSenseTime}
