@@ -100,7 +100,7 @@ class Maps {
 
         if ((this.spawnableTiles.length + this.deliveryZones.length) === tiles.length) {
             this.spawnableTiles.forEach(spawnableTile => {
-                spawnableTile.probability = 1;
+                spawnableTile.probability = 0;
             });
         } else {
             this.spawnableTiles.forEach(spawnableTile => {
@@ -108,6 +108,7 @@ class Maps {
                 let region = [spawnableTile];
                 let minDist = MAX_SPAWNABLE_TILES_DISTANCE;
                 this.spawnableTiles.forEach(otherSpawnableTile => {
+                    if (otherSpawnableTile.probability) return;
                     if (spawnableTile.x === otherSpawnableTile.x && spawnableTile.y === otherSpawnableTile.y) return;
                     let dist = distance(spawnableTile, otherSpawnableTile);
                     if (dist < minDist) {
@@ -119,7 +120,7 @@ class Maps {
                 console.log(region, region.length, this.spawnableTiles.length);
 
                 region.forEach(tile => {
-                    tile.probability = 1 + region.length / this.spawnableTiles.length;
+                    tile.probability = region.length / this.spawnableTiles.length;
                 });
             });
         }
@@ -422,6 +423,7 @@ function drawMap(filename, tilemap) {
     });
 }
 
+const startingTime = Date.now()/1000;
 function updateSenseTime() {
     let parcelObsDist = me.config.PARCELS_OBSERVATION_DISTANCE;
     let maxY = Math.min(me.y + parcelObsDist, map.height - 1);
@@ -433,7 +435,7 @@ function updateSenseTime() {
     for (let i = minX; i <= maxX; i++) {
         for (let j = minY; j <= maxY; j++) {
             if (distance({x: i, y: j}, me) <= parcelObsDist) {
-                map.map[i][j].last_seen = timestamp;
+                map.map[i][j].last_seen = timestamp/1000 - startingTime;
             }
         }
     }

@@ -99,7 +99,7 @@ function beamPackageSearch(pos, objective, deviations = 1) {
     if (!(objective instanceof Array)) objective = [objective];
     let path = [{x: pos.x, y: pos.y, move: "none"}].concat(BFStoObjective(pos, objective));
 
-    let directions = [[0, 0, "still"],
+    let directions = [[0, 0, "none"],
         [1, 0, "right"], [-1, 0, "left"],
         [0, 1, "up"], [0, -1, "down"]];
     let move = 0;
@@ -139,7 +139,7 @@ function beamPackageSearch(pos, objective, deviations = 1) {
                     //console.log("\t\tfound a package at", x, y);
                     //add a deviation to the path
                     let deviation;
-                    if (dir[2] === "still") {
+                    if (dir[2] === "none") {
                         deviation = [{x: x, y: y, move: "pickup"}];
                         allowedDeviations[x][y] = false;
                     } else {
@@ -219,28 +219,32 @@ function exploreBFS(pos, goal) {
 }
 
 function exploreBFS2(pos, goal) {
-    let farthest_distance = Infinity;
-    let last_seen = -1;
-    let last_position = {x: -1, y: -1, probability: 1};
+    let best_last_seen = -1;
+    let best_tile = {x: -1, y: -1, probability: 1};
+
     for (let tile of map.spawnableTiles) {
         let tileX = tile.x;
         let tileY = tile.y;
-        let tile_last_seen = Math.max(map.map[tileX][tileY].last_seen,tile.last_seen);
-        console.log(tile_last_seen, Math.abs((tile_last_seen - last_seen) * last_position.probability), 1000 * tile.probability);
-        if (((last_position.x === -1 && last_position.y === -1) ||
-                (Math.abs((tile_last_seen - last_seen) * last_position.probability)) > 1000 * tile.probability)
-            && tile.x !== me.x && tile.y !== me.y && map.map[tileX][tileY].type === 'spawnable') {
-            last_seen = map.map[tileX][tileY].last_seen;
-            if(last_seen>0) tile.last_seen = last_seen;
-                last_position = {x: tile.x, y: tile.y, probability: tile.probability};
+        let tile_last_seen = map.map[tileX][tileY].last_seen;
+        
+        if (
+            (
+                (best_tile.x === -1 && best_tile.y === -1) ||
+                ( best_last_seen * (1-best_tile.probability) ) > ( tile_last_seen * (1-tile.probability) )
+            )
+            && tile.x !== me.x && tile.y !== me.y ) {
+
+            best_last_seen = map.map[tileX][tileY].last_seen;
+
+            best_tile = {x: tile.x, y: tile.y, probability: tile.probability};
         }
     }
 
-    console.log(last_position);
+    console.log(best_tile);
     // console.log("Exploring goal", goal,map.map[19][19]);
-    let plan = beamPackageSearch(pos, [last_position]);
+    let plan = beamPackageSearch(pos, [best_tile]);
     if (plan.length === 1) {
-        plan = map.cleanBFS(pos, [last_position]);
+        plan = map.cleanBFS(pos, [best_tile]);
     }
     //console.log(plan);
     return plan;

@@ -6,8 +6,6 @@ import {EventEmitter} from 'events';
 import {deliveryBFS, beamPackageSearch, exploreBFS, exploreBFS2} from '../planner/planner.js';
 import {DeliverooApi} from '@unitn-asa/deliveroo-js-client';
 
-let TIMEOUT = 250;
-const TIMEOUT_THRESH = 500;
 const MAX_RETRIES = 1;
 const stopEmitter = new EventEmitter(); //TODO: make a diffierent emitter for each intention
 
@@ -28,7 +26,7 @@ class Intention {
     pickUp;
     deliver;
     plan;
-    stop; //TODO: use events to stop intentions
+    stop;
     reached;
     started;
 
@@ -78,18 +76,18 @@ class Intention {
             "right": () => client.move("right"),
             "pickup": () => new Promise((resolve) => {
                 client.pickup().then((res) => {
-                    resolve(res);
                     for (let p of res) {
                         carriedParcels.push(p.id);
                     }
+                    resolve(res);
                 });
             }),
             "deliver": () => new Promise((resolve) => {
                 client.putdown().then((res) => {
-                    resolve(res);
                     if (res.length > 0) {
                         carriedParcels.length = 0;
                     }
+                    resolve(res);
                 });
             }),
             "none": () => new Promise((resolve) => resolve(true))
@@ -100,20 +98,9 @@ class Intention {
             if (this.stop) break;
 
             //console.log(this.type,'move', this.plan[i]);
-            let res = await new Promise((resolve) => {
-                let result = false;
-                let timer = setTimeout(() => resolve(result), me.config.MOVEMENT_DURATION + TIMEOUT);
-                moves[this.plan[i].move]().then((res) => {
-                    result = res;
-                    clearTimeout(timer);
-                    resolve(result)
-                });
-            });
+            let res = await moves[this.plan[i].move]();
+
             if (!res) {
-                //if the failure wasn't because of another agent, increase the timeout
-                if (map.map[this.plan[i].x][this.plan[i].y].agent === null) {
-                    TIMEOUT += 10;
-                }
                 //console.log('Move failed, retrying...');
                 if (retryCount >= MAX_RETRIES) {
                     //console.log('Max retries exceeded', this.type);
@@ -124,7 +111,6 @@ class Intention {
                 retryCount++;
             } else {
                 retryCount = 0; // reset retry count if move was successful
-                if (TIMEOUT>TIMEOUT_THRESH) TIMEOUT--;
             }
         }
 
