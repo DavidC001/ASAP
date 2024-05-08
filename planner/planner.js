@@ -1,5 +1,6 @@
 import {map, MAX_FUTURE} from "../beliefs/map/map.js";
 import {me} from "../beliefs/beliefs.js";
+import { agents } from "../beliefs/agents/agents.js";
 
 const MAX_EXPLORE_PATH_LENGTH = 20;
 
@@ -220,27 +221,30 @@ function exploreBFS(pos, goal) {
 
 function exploreBFS2(pos, goal) {
     let best_last_seen = -1;
+    let best_agent_heat = -1;
     let best_tile = {x: -1, y: -1, probability: 1};
 
     for (let tile of map.spawnableTiles) {
         let tileX = tile.x;
         let tileY = tile.y;
         let tile_last_seen = map.map[tileX][tileY].last_seen;
+        let tile_agent_heat = map.map[tileX][tileY].agent_heat / Math.max(1, agents.size);
         
         if (
             (
                 (best_tile.x === -1 && best_tile.y === -1) ||
-                ( best_last_seen * (1-best_tile.probability) ) > ( tile_last_seen * (1-tile.probability) )
+                ( best_last_seen * (1-best_tile.probability) * (best_agent_heat)) > ( tile_last_seen * (1-tile.probability) * (tile_agent_heat))
             )
             && tile.x !== me.x && tile.y !== me.y ) {
 
-            best_last_seen = map.map[tileX][tileY].last_seen;
+            best_last_seen = tile_last_seen;
+            best_agent_heat = tile_agent_heat;
 
             best_tile = {x: tile.x, y: tile.y, probability: tile.probability};
         }
     }
 
-    console.log(best_tile);
+    console.log(best_tile, best_last_seen, best_agent_heat);
     // console.log("Exploring goal", goal,map.map[19][19]);
     let plan = beamPackageSearch(pos, [best_tile]);
     if (plan.length === 1) {

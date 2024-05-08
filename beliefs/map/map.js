@@ -11,6 +11,7 @@ import * as fs from 'node:fs';
 const MAX_FUTURE = 10;
 
 const MAX_SPAWNABLE_TILES_DISTANCE = 2.5;
+const MAX_AGENT_HEATMAP_DISTANCE = 3;
 /**
  * Buffer in which I put the updated actions of my agents and parcels
  * @type {Map<string, Object>}
@@ -26,6 +27,8 @@ const actionBuffer = new Map();
  * @property {string} type - The type of the tile between spawnable, delivery and obstacle
  * @property {id:string} agent - The id of the agent on the tile
  * @property {{id:string,carried:string,score:number}} parcel - Some information about the parcel on the tile
+ * @property {number} last_seen - The last time the tile was seen
+ * @property {number} agent_heat - The number of agents that are in the vicinity of the tile
  */
 class Tile {
     heuristic;
@@ -33,7 +36,8 @@ class Tile {
     type = 'obstacle';
     agent = null;
     parcel = null;
-    last_seen = 0;
+    last_seen = 1;
+    agent_heat = 1;
 
 
     constructor(tileData) {
@@ -293,18 +297,46 @@ class Maps {
             // Check that the agent is in the bounds of the map and set it to null if it is not
             if (agent.position.x < 0 || agent.position.y < 0 || agent.position.x >= this.width || agent.position.y >= this.height) {
                 if (this.currentAgentPosition[id]) {
+                    for (let i = Math.max(0, this.currentAgentPosition[id].x - MAX_AGENT_HEATMAP_DISTANCE); i < Math.min(this.width, this.currentAgentPosition[id].x + MAX_AGENT_HEATMAP_DISTANCE); i++) {
+                        for (let j = Math.max(0, this.currentAgentPosition[id].y - MAX_AGENT_HEATMAP_DISTANCE); j < Math.min(this.height, this.currentAgentPosition[id].y + MAX_AGENT_HEATMAP_DISTANCE); j++) {
+                            if (distance({x: i, y: j}, this.currentAgentPosition[id]) <= MAX_AGENT_HEATMAP_DISTANCE) {
+                                new_map[i][j].agent_heat -= 1;
+                            }
+                        }
+                    }
+
                     new_map[this.currentAgentPosition[id].x][this.currentAgentPosition[id].y].agent = null;
                     this.currentAgentPosition[id] = null;
                 }
                 //console.log('Agent out of bounds');
-                continue;
+            } else {
+                // If the agent has changed position, update it's current state and remove the previous one from the map
+
+                // update agent heatmap
+                for (let i = Math.max(0, agent.position.x - MAX_AGENT_HEATMAP_DISTANCE); i < Math.min(this.width, agent.position.x + MAX_AGENT_HEATMAP_DISTANCE); i++) {
+                    for (let j = Math.max(0, agent.position.y - MAX_AGENT_HEATMAP_DISTANCE); j < Math.min(this.height, agent.position.y + MAX_AGENT_HEATMAP_DISTANCE); j++) {
+                        if (distance({x: i, y: j}, agent.position) <= MAX_AGENT_HEATMAP_DISTANCE) {
+                            new_map[i][j].agent_heat += 1;
+                        }
+                    }
+                }
+
+                if (this.currentAgentPosition[id]){
+                    for (let i = Math.max(0, this.currentAgentPosition[id].x - MAX_AGENT_HEATMAP_DISTANCE); i < Math.min(this.width, this.currentAgentPosition[id].x + MAX_AGENT_HEATMAP_DISTANCE); i++) {
+                        for (let j = Math.max(0, this.currentAgentPosition[id].y - MAX_AGENT_HEATMAP_DISTANCE); j < Math.min(this.height, this.currentAgentPosition[id].y + MAX_AGENT_HEATMAP_DISTANCE); j++) {
+                            if (distance({x: i, y: j}, this.currentAgentPosition[id]) <= MAX_AGENT_HEATMAP_DISTANCE) {
+                                new_map[i][j].agent_heat -= 1;
+                            }
+                        }
+                    }
+
+                    if ((this.currentAgentPosition[id].x !== agent.position.x) || (this.currentAgentPosition[id].y !== agent.position.y)) {
+                        new_map[this.currentAgentPosition[id].x][this.currentAgentPosition[id].y].agent = null;
+                    }
+                }
+                new_map[agent.position.x][agent.position.y].agent = id;
+                this.currentAgentPosition[id] = {x: agent.position.x, y: agent.position.y};
             }
-            // If the agent has changed position, update it's current state and remove the previous one from the map
-            if (this.currentAgentPosition[id] && ((this.currentAgentPosition[id].x !== agent.position.x) || (this.currentAgentPosition[id].y !== agent.position.y))) {
-                new_map[this.currentAgentPosition[id].x][this.currentAgentPosition[id].y].agent = null;
-            }
-            new_map[agent.position.x][agent.position.y].agent = id;
-            this.currentAgentPosition[id] = {x: agent.position.x, y: agent.position.y};
         }
 
         for (let [id, parcel] of parcels) {
@@ -411,7 +443,7 @@ function drawMap(filename, tilemap) {
                 color += 'P';
             }
             // Reverse coordinate to match deliveroo visualization system
-            text_map[Math.abs(map.height - y) - 1][Math.abs(map.width - x) - 1] = color;
+            text_map[Math.abs(map.height - y) - 1][Math.abs(map.width - x) - 1] = color + map.map[x][y].agent_heat;
         }
     }
     text_map = text_map.map(row => row.slice().reverse());
