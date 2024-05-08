@@ -184,6 +184,17 @@ class BelievedIntention {
     }
 
     /**
+     * Method to reset the intention to still
+     * 
+     */
+    invalidate() {
+        this.intention = intentions.STILL;
+        this.lastMove = "NONE";
+        this.objective = {x: -1, y: -1};
+        this.futureMoves = new Array(MAX_FUTURE).fill({x: -1, y: -1});
+    }
+
+    /**
      * Method to predict the next position of the agent
      * @returns {{x:number,y:number}} The next position of the agent
      */
@@ -269,6 +280,14 @@ class Agent {
         this.inView = false;
         this.position = this.believedIntetion.nextStep();
     }
+
+    /**
+     * Method to reset the agent's intention to still
+     */
+    invalidatePrediction() {
+        this.position = {x: -1, y: -1};
+        this.believedIntetion.invalidate();
+    }
 }
 
 /** @type {Map<string, Agent>} */
@@ -296,7 +315,7 @@ function senseAgents(sensedAgents) {
             agent.updatePredicted();
             //if old position is in view then move agent out of bounds
             if (distance(agent.position, me) < me.config.AGENTS_OBSERVATION_DISTANCE-1) {
-                agent.position = {x: -1, y: -1};
+                agent.invalidatePrediction();
             }
         }
         //console.log(agent);
