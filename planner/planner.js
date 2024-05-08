@@ -217,27 +217,32 @@ function exploreBFS(pos, goal) {
     // console.log(path, path.length);
     return path;
 }
-// TODO: add spawnable list to map
+
 function exploreBFS2(pos, goal) {
     let farthest_distance = Infinity;
     let last_seen = -1;
-    let last_position = {x: -1, y: -1};
-    for (let i = 0; i < map.width; i++) {
-        for (let j = 0; j < map.height; j++) {
-            if (((last_position.x === -1 && last_position.y === -1) || (map.map[i][j].last_seen < map.map[last_position.x][last_position.y].last_seen))
-                && i!==me.x && j!==me.y && map.map[i][j].type==='spawnable') {
-                last_position = {x: i, y: j};
-            }
+    let last_position = {x: -1, y: -1, probability: 1};
+    for (let tile of map.spawnableTiles) {
+        let tileX = tile.x;
+        let tileY = tile.y;
+        let tile_last_seen = Math.max(map.map[tileX][tileY].last_seen,tile.last_seen);
+        console.log(tile_last_seen, Math.abs((tile_last_seen - last_seen) * last_position.probability), 1000 * tile.probability);
+        if (((last_position.x === -1 && last_position.y === -1) ||
+                (Math.abs((tile_last_seen - last_seen) * last_position.probability)) > 1000 * tile.probability)
+            && tile.x !== me.x && tile.y !== me.y && map.map[tileX][tileY].type === 'spawnable') {
+            last_seen = map.map[tileX][tileY].last_seen;
+            if(last_seen>0) tile.last_seen = last_seen;
+                last_position = {x: tile.x, y: tile.y, probability: tile.probability};
         }
     }
 
     console.log(last_position);
     // console.log("Exploring goal", goal,map.map[19][19]);
     let plan = beamPackageSearch(pos, [last_position]);
-    if(plan.length===1){
+    if (plan.length === 1) {
         plan = map.cleanBFS(pos, [last_position]);
     }
-    console.log(plan);
+    //console.log(plan);
     return plan;
 
 }

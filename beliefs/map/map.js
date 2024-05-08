@@ -9,6 +9,8 @@ import * as fs from 'node:fs';
  * @type {number}
  */
 const MAX_FUTURE = 10;
+
+const MAX_SPAWNABLE_TILES_DISTANCE = 2.5;
 /**
  * Buffer in which I put the updated actions of my agents and parcels
  * @type {Map<string, Object>}
@@ -57,6 +59,7 @@ class Maps {
     map;
     predictedMap;
     deliveryZones = [];
+    spawnableTiles = [];
     currentAgentPosition = new Map();
     currentParcelPosition = new Map();
 
@@ -70,13 +73,9 @@ class Maps {
             closest_delivery: null
         })));
         tiles.sort((a, b) => (b.delivery - a.delivery));
+
         tiles.forEach(tile => {
-            let currentTile = this.map[tile.x][tile.y];
-            currentTile.type = tile.parcelSpawner ? 'spawnable' : 'unspawnable';
-        });
-        tiles.forEach(tile => {
-            let bestDistance = Infinity;
-            let closestDelivery = null;
+            let bestDistance, closestDelivery;
             let currentTile = this.map[tile.x][tile.y];
             if (tile.delivery) {
                 this.deliveryZones.push({x: tile.x, y: tile.y});
@@ -90,6 +89,42 @@ class Maps {
             currentTile.heuristic = bestDistance;
             currentTile.closest_delivery = closestDelivery;
         });
+
+        tiles.forEach(tile => {
+            let currentTile = this.map[tile.x][tile.y];
+            currentTile.type = tile.parcelSpawner ? 'spawnable' : 'unspawnable';
+            if (tile.parcelSpawner) {
+                this.spawnableTiles.push({x: tile.x, y: tile.y, last_seen: Number.MAX_SAFE_INTEGER});
+            }
+        });
+
+        if ((this.spawnableTiles.length + this.deliveryZones.length) === tiles.length) {
+            this.spawnableTiles.forEach(spawnableTile => {
+                spawnableTile.probability = 1;
+            });
+        } else {
+            this.spawnableTiles.forEach(spawnableTile => {
+                if (spawnableTile.probability) return;
+                let region = [spawnableTile];
+                let minDist = MAX_SPAWNABLE_TILES_DISTANCE;
+                this.spawnableTiles.forEach(otherSpawnableTile => {
+                    if (spawnableTile.x === otherSpawnableTile.x && spawnableTile.y === otherSpawnableTile.y) return;
+                    let dist = distance(spawnableTile, otherSpawnableTile);
+                    if (dist < minDist) {
+                        minDist += dist;
+                        region.push(otherSpawnableTile);
+                    }
+                    console.log('this');
+                });
+                console.log(region, region.length, this.spawnableTiles.length);
+
+                region.forEach(tile => {
+                    tile.probability = 1 + region.length / this.spawnableTiles.length;
+                });
+            });
+        }
+        console.log(this.spawnableTiles);
+        console.log();
     }
 
     /**
@@ -397,7 +432,7 @@ function updateSenseTime() {
     let timestamp = Date.now();
     for (let i = minX; i <= maxX; i++) {
         for (let j = minY; j <= maxY; j++) {
-            if(distance({x: i, y: j}, me) <= parcelObsDist){
+            if (distance({x: i, y: j}, me) <= parcelObsDist) {
                 map.map[i][j].last_seen = timestamp;
             }
         }
