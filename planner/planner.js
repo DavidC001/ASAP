@@ -82,7 +82,7 @@ function deliveryBFS(pos, objectiveList) {
     }
     let last_move = list.at(-1);
     // Add a move to the last position to deliver the package
-    if (last_move) list.push({x: last_move.x, y: last_move.y, move: "deliver"});
+    list.push({x: last_move.x, y: last_move.y, move: "deliver"});
 
     return list;
 }
@@ -138,22 +138,15 @@ function beamPackageSearch(pos, objective, deviations = 1) {
                 //console.log("\texploring deviation at", x, y);
                 if (map.map[x][y].parcel && !map.map[x][y].parcel.carried) {
                     //console.log("\t\tfound a package at", x, y);
+
                     //add a deviation to the path
-                    let deviation;
-                    if (dir[2] === "none") {
-                        deviation = [{x: x, y: y, move: "pickup"}];
-                        allowedDeviations[x][y] = false;
-                    } else {
-                        deviation = [{x: x, y: y, move: dir[2]}, {x: x, y: y, move: "pickup"}];
-                        allowedDeviations[x][y] = false;
-                    }
-                    //add the deviation to the path
-                    path = path.slice(0, stepNum + 1).concat(deviation).concat(BFStoObjective({
-                        x: x,
-                        y: y
-                    }, objective, move));
+                    let deviation = [{x: x, y: y, move: dir[2]}, {x: x, y: y, move: "pickup"}];
+                    allowedDeviations[x][y] = false;
+                    path = path.slice(0, stepNum + 1)
+                                .concat(deviation)
+                                .concat(BFStoObjective({ x: x, y: y}, objective, move));
+
                     //console.log("\t\tdeviation added to the path", path);
-                    break;
                 }
             }
         }
