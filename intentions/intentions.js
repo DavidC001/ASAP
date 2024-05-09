@@ -7,6 +7,7 @@ import {deliveryBFS, beamPackageSearch, exploreBFS, exploreBFS2} from '../planne
 import {DeliverooApi} from '@unitn-asa/deliveroo-js-client';
 
 const MAX_RETRIES = 1;
+const REPLAN_MOVE_INTERVAL = 5;
 const stopEmitter = new EventEmitter(); //TODO: make a diffierent emitter for each intention
 
 /**
@@ -104,6 +105,8 @@ class Intention {
                 //console.log('Move failed, retrying...');
                 if (retryCount >= MAX_RETRIES) {
                     //console.log('Max retries exceeded', this.type);
+                    //wait 1 or 2 moves before replanning
+                    await new Promise((resolve) => setTimeout(resolve, me.config.MOVEMENT_DURATION * (Math.floor(Math.random() * 2) + 1)));
                     i = 0;
                     this.plan = planner[this.type](me, this.goal);
                 }
@@ -111,6 +114,10 @@ class Intention {
                 retryCount++;
             } else {
                 retryCount = 0; // reset retry count if move was successful
+                if (i%REPLAN_MOVE_INTERVAL === 0) {
+                    i = 0;
+                    this.plan = planner[this.type](me, this.goal);
+                }
             }
         }
 
