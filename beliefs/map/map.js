@@ -12,6 +12,8 @@ const MAX_FUTURE = 10;
 
 const MAX_SPAWNABLE_TILES_DISTANCE = 2.5;
 const MAX_AGENT_HEATMAP_DISTANCE = 3;
+const MAX_TIME = 500;
+let startingTime = Date.now()/1000;
 /**
  * Buffer in which I put the updated actions of my agents and parcels
  * @type {Map<string, Object>}
@@ -194,20 +196,21 @@ class Maps {
     cleanBFS(pos, objectiveList) {
         let queue = [];
         let visited = new Array(this.width).fill().map(() => new Array(this.height).fill().map(() => false));
-        if (pos instanceof Array) queue.push(pos); else queue.push([pos]);
+
+        queue.push([{x: pos.x, y: pos.y, move: 'none'}]);
+
         if (!objectiveList instanceof Array) objectiveList = [objectiveList];
+
         visited[pos.x][pos.y] = true;
         let current = null;
         let node = null;
         let directions = [[[0, 1, 'up'], [0, -1, 'down'], [1, 0, 'right'], [-1, 0, 'left']],
             [[1, 0, 'right'], [-1, 0, 'left'], [0, 1, 'up'], [0, -1, 'down']]];
-        let blocked_goals = [];
 
-        for (let goal of objectiveList) {
-            if (this.map[goal.x][goal.y].type === 'obstacle') {
-                blocked_goals.push(goal);
-            }
-        }
+        //fiter objectives that are blocked
+        objectiveList = objectiveList.filter(objective => {
+            return this.map[objective.x][objective.y].type !== 'obstacle';
+        });
 
         while (queue.length > 0) {
             current = queue.shift();
@@ -215,10 +218,8 @@ class Maps {
 
             // If the current objective is blocked, I will skip the blocked objective
             for (let goal of objectiveList) {
-                if (!blocked_goals.includes(goal)) {
-                    if ((node.x === goal.x && node.y === goal.y)) {
-                        return current.slice(1);
-                    }
+                if ((node.x === goal.x && node.y === goal.y)) {
+                    return current;
                 }
             }
 
@@ -228,10 +229,10 @@ class Maps {
                 if ((newX >= 0) && (newX < this.width) && (newY >= 0) && (newY < this.height)
                     && (!visited[newX][newY])
                     && this.map[newX][newY].type !== 'obstacle') {
-                    let newCurrent = JSON.parse(JSON.stringify(current));
-                    newCurrent.push({x: newX, y: newY, move: dir[2]});
-                    queue.push(newCurrent);
-                    visited[newX][newY] = true;
+                        let newCurrent = JSON.parse(JSON.stringify(current));
+                        newCurrent.push({x: newX, y: newY, move: dir[2]});
+                        queue.push(newCurrent);
+                        visited[newX][newY] = true;
                 }
             }
         }
@@ -455,7 +456,6 @@ function drawMap(filename, tilemap) {
     });
 }
 
-const startingTime = Date.now()/1000;
 function updateSenseTime() {
     let parcelObsDist = me.config.PARCELS_OBSERVATION_DISTANCE;
     let maxY = Math.min(me.y + parcelObsDist, map.height - 1);
@@ -463,16 +463,25 @@ function updateSenseTime() {
     let maxX = Math.min(me.x + parcelObsDist, map.width - 1);
     let minX = Math.max(me.x - parcelObsDist, 0);
 
-    let timestamp = Date.now();
+    let timestamp = Date.now()/1000;
     for (let i = minX; i <= maxX; i++) {
         for (let j = minY; j <= maxY; j++) {
             if (distance({x: i, y: j}, me) <= parcelObsDist) {
-                map.map[i][j].last_seen = timestamp/1000 - startingTime;
+                map.map[i][j].last_seen = timestamp - startingTime;
             }
         }
     }
     // let timestamp = Date.now();
     // if (map) map.map[me.x][me.y].last_seen = timestamp;
+
+    if (timestamp-startingTime > MAX_TIME) {
+        for (let i = 0; i < map.width; i++) {
+            for (let j = 0; j < map.height; j++) {
+                map.map[i][j].last_seen = 1;
+            }
+        }
+        startingTime = timestamp;
+    }
 }
 
 export {createMap, map, MAX_FUTURE, updateMap, updateSenseTime}
