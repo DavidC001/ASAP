@@ -368,6 +368,35 @@ class Maps {
         // drawMap('./map.txt', this.map);
         this.updatePrediction();
     }
+
+    /**
+     * Updates the last seen of the tiles in the map
+     */
+    updateSenseTime() {
+        let parcelObsDist = me.config.PARCELS_OBSERVATION_DISTANCE;
+        let maxY = Math.min(me.y + parcelObsDist, this.height - 1);
+        let minY = Math.max(me.y - parcelObsDist, 0);
+        let maxX = Math.min(me.x + parcelObsDist, this.width - 1);
+        let minX = Math.max(me.x - parcelObsDist, 0);
+    
+        let timestamp = Date.now()/1000;
+        for (let i = minX; i <= maxX; i++) {
+            for (let j = minY; j <= maxY; j++) {
+                if (distance({x: i, y: j}, me) <= parcelObsDist) {
+                    this.map[i][j].last_seen = timestamp - startingTime;
+                }
+            }
+        }
+    
+        if (timestamp-startingTime > MAX_TIME) {
+            for (let i = 0; i < this.width; i++) {
+                for (let j = 0; j < this.height; j++) {
+                    this.map[i][j].last_seen = 1;
+                }
+            }
+            startingTime = timestamp;
+        }
+    }
 }
 
 /**
@@ -400,10 +429,11 @@ let map = null;
 function createMap(mapData, client) {
     map = new Maps(mapData);
     console.log('Map created');
-    setInterval(() => {
+
+    client.onYou(()=>{
         map.updateMap();
-    }, me.config.MOVEMENT_DURATION);
-    client.onYou(updateSenseTime);
+        map.updateSenseTime();
+    });
 }
 
 /**
@@ -456,32 +486,5 @@ function drawMap(filename, tilemap) {
     });
 }
 
-function updateSenseTime() {
-    let parcelObsDist = me.config.PARCELS_OBSERVATION_DISTANCE;
-    let maxY = Math.min(me.y + parcelObsDist, map.height - 1);
-    let minY = Math.max(me.y - parcelObsDist, 0);
-    let maxX = Math.min(me.x + parcelObsDist, map.width - 1);
-    let minX = Math.max(me.x - parcelObsDist, 0);
 
-    let timestamp = Date.now()/1000;
-    for (let i = minX; i <= maxX; i++) {
-        for (let j = minY; j <= maxY; j++) {
-            if (distance({x: i, y: j}, me) <= parcelObsDist) {
-                map.map[i][j].last_seen = timestamp - startingTime;
-            }
-        }
-    }
-    // let timestamp = Date.now();
-    // if (map) map.map[me.x][me.y].last_seen = timestamp;
-
-    if (timestamp-startingTime > MAX_TIME) {
-        for (let i = 0; i < map.width; i++) {
-            for (let j = 0; j < map.height; j++) {
-                map.map[i][j].last_seen = 1;
-            }
-        }
-        startingTime = timestamp;
-    }
-}
-
-export {createMap, map, MAX_FUTURE, updateMap, updateSenseTime}
+export {createMap, map, MAX_FUTURE, updateMap}

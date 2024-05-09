@@ -238,7 +238,6 @@ function exploreBFS2(pos, goal) {
     }
 
     console.log(best_tile, best_last_seen, best_agent_heat);
-    // console.log("Exploring goal", goal,map.map[19][19]);
     let plan = beamPackageSearch(pos, [best_tile]);
     if (plan.length === 1) {
         plan = map.cleanBFS(pos, [best_tile]);
