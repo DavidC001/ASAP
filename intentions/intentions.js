@@ -213,13 +213,13 @@ class Intention {
                         }
                     }
                     if (!closer) {
-                        steps += map.map[this.goal.x][this.goal.y].heuristic;
+                        steps += map.BFS(me, this.goal).length;
                     }
                 }
                 break;
             case 'deliver':
                 //use the heuristic to the closest delivery point
-                steps = map.map[me.x][me.y].heuristic;
+                steps = map.BFS(me, this.goal).length;
                 break;
             case 'explore':
                 score = 0.1;
