@@ -6,6 +6,13 @@ import {EventEmitter} from 'events';
 import {deliveryBFS, beamPackageSearch, exploreBFS, exploreBFS2} from '../planner/planner.js';
 import {DeliverooApi} from '@unitn-asa/deliveroo-js-client';
 
+//wait console input
+import readline from 'readline';
+
+const input = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
 const MAX_RETRIES = 1;
 const REPLAN_MOVE_INTERVAL = 5;
 const stopEmitter = new EventEmitter(); //TODO: make a diffierent emitter for each intention
@@ -66,6 +73,8 @@ class Intention {
         }
 
         this.plan = planner[this.type](me, this.goal);
+        //await input from console
+        // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
 
 
         // console.log('\tplan', me.x, me.y, this.plan);
@@ -109,6 +118,7 @@ class Intention {
                     await new Promise((resolve) => setTimeout(resolve, me.config.MOVEMENT_DURATION * (Math.floor(Math.random() * 2) + 1)));
                     i = 0;
                     this.plan = planner[this.type](me, this.goal);
+                    // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
                 }
                 i--;
                 retryCount++;
@@ -117,6 +127,7 @@ class Intention {
                 if (i%REPLAN_MOVE_INTERVAL === 0) {
                     i = 0;
                     this.plan = planner[this.type](me, this.goal);
+                    // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
                 }
             }
         }

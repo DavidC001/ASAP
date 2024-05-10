@@ -121,17 +121,16 @@ class Maps {
                         minDist += dist;
                         region.push(otherSpawnableTile);
                     }
-                    console.log('this');
+                    //console.log('this');
                 });
-                console.log(region, region.length, this.spawnableTiles.length);
+                //console.log(region, region.length, this.spawnableTiles.length);
 
                 region.forEach(tile => {
                     tile.probability = region.length / this.spawnableTiles.length;
                 });
             });
         }
-        console.log(this.spawnableTiles);
-        console.log();
+        //console.log(this.spawnableTiles);
     }
 
     /**
@@ -343,7 +342,7 @@ class Maps {
         for (let [id, parcel] of parcels) {
             // Check that the parcel is in the bounds of the map
             if (parcel.position.x < 0 || parcel.position.y < 0 || parcel.position.x >= this.width || parcel.position.y >= this.height) {
-                console.log('Parcel out of bounds');
+                //console.log('Parcel out of bounds');
                 continue;
             }
             // If a parcel has changed position, update it's current state and remove the previous one from the map

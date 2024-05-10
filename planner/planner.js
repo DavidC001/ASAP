@@ -100,7 +100,7 @@ function beamPackageSearch(pos, objective, deviations = 1) {
     if (!(objective instanceof Array)) objective = [objective];
     let path = [{x: pos.x, y: pos.y, move: "none"}].concat(BFStoObjective(pos, objective));
 
-    let directions = [[0, 0, "none"],
+    let directions = [[0, 0, "pickup"],
         [1, 0, "right"], [-1, 0, "left"],
         [0, 1, "up"], [0, -1, "down"]];
     let move = 0;
@@ -115,7 +115,7 @@ function beamPackageSearch(pos, objective, deviations = 1) {
                 let x = step.x + dir[0];
                 let y = step.y + dir[1];
                 if (x >= 0 && x < map.width && y >= 0 && y < map.height
-                    && (!map.predictedMap[move][x][y].agent || map.predictedMap[move][x][y].agent === me.id)
+                    && !(map.predictedMap[move][x][y].agent)
                     && !(map.predictedMap[move][x][y].type === "obstacle")) {
                     allowedDeviations[x][y] = true;
                 }
@@ -124,6 +124,14 @@ function beamPackageSearch(pos, objective, deviations = 1) {
 
         if (move < (MAX_FUTURE - 1)) move++;
     }
+    // console.log("Allowed deviations");
+    // for (let i = map.width - 1; i >= 0; i--) {
+    //     for (let j = 0; j < map.height; j++) {
+    //         process.stdout.write(allowedDeviations[j][i] ? "1 " : "0 ");
+    //     }
+    //     console.log();
+    // }
+
 
     move = 0;
     for (let stepNum = 0; stepNum < path.length; stepNum++) {
@@ -140,20 +148,29 @@ function beamPackageSearch(pos, objective, deviations = 1) {
                     //console.log("\t\tfound a package at", x, y);
 
                     //add a deviation to the path
-                    let deviation = [{x: x, y: y, move: dir[2]}, {x: x, y: y, move: "pickup"}];
-                    allowedDeviations[x][y] = false;
-                    path = path.slice(0, stepNum + 1)
-                                .concat(deviation)
-                                .concat(BFStoObjective({ x: x, y: y}, objective, move));
-
+                    let deviation = [{x: x, y: y, move: dir[2]}];
+                    let newPath;
+                    if (dir[2] === "pickup") {
+                        // console.log("\t\tcollecting package at", x, y);
+                        allowedDeviations[x][y] = false;
+                        newPath = path.slice(stepNum + 1);
+                    } else {
+                        newPath = BFStoObjective({ x: x, y: y}, objective, move);
+                    }
+                    if (newPath.length > 0 || (x === path.at(-1).x && y === path.at(-1).y)) {
+                        path = path.slice(0, stepNum + 1)
+                            .concat(deviation)
+                            .concat(newPath);
+                    }
                     //console.log("\t\tdeviation added to the path", path);
+                    break;
                 }
             }
         }
         if (move < (MAX_FUTURE - 1)) move++;
     }
 
-    // console.log("Beam search", path);
+    //console.log("Beam search", path);
     return path;
 }
 
@@ -237,7 +254,7 @@ function exploreBFS2(pos, goal) {
         }
     }
 
-    console.log(best_tile, best_last_seen, best_agent_heat);
+    console.log("\t",best_tile, best_last_seen, best_agent_heat);
     let plan = beamPackageSearch(pos, [best_tile]);
     if (plan.length === 1) {
         plan = map.cleanBFS(pos, [best_tile]);
