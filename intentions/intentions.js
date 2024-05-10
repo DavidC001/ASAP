@@ -113,11 +113,12 @@ class Intention {
             if (!res) {
                 //console.log('Move failed, retrying...');
                 if (retryCount >= MAX_RETRIES) {
-                    //console.log('Max retries exceeded', this.type);
-                    //wait 1 or 2 moves before replanning
+                    // console.log('\tMax retries exceeded', this.type);
+                    //wait some moves before replanning
                     await new Promise((resolve) => setTimeout(resolve, me.config.MOVEMENT_DURATION * (Math.floor(Math.random() * 2) + 1)));
                     i = 0;
                     this.plan = planner[this.type](me, this.goal);
+                    // console.log('replanning', this.type, this.plan);
                     // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
                 }
                 i--;
@@ -127,6 +128,7 @@ class Intention {
                 if (i%REPLAN_MOVE_INTERVAL === 0) {
                     i = 0;
                     this.plan = planner[this.type](me, this.goal);
+                    // console.log('replanning', this.type, this.plan);
                     // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
                 }
             }
@@ -178,13 +180,22 @@ class Intention {
                     //if an agent is on the same position as the parcel return -1
                     score = -1;
                 } else {
-                    steps = map.BFS(me, this.goal).length
+                    let plan = beamPackageSearch(me, this.goal, 0); //TODO: check if 0 or 1 is better
+                    for (let move of plan) {
+                        if (move.move !== 'none' && move.move !== 'pickup') {
+                            steps++;
+                        } else if (move.move === 'pickup') {
+                            score += map.map[move.x][move.y].parcel.score;
+                            numParcels++;
+                        }
+                    }
                     if (steps === 0 && (me.x !== this.goal.x || me.y !== this.goal.y)) {
                         score = 0;
                         break;
                     }
                     //console.log('pickup', this.goal, 'steps', steps);
-                    //TODO: check if another agent is closer and set the score accordingly
+
+                    //check if another agent is closer and set the score accordingly
                     let closer = false;
                     for (let [id, agent] of agents) {
                         if (agent.id !== me.id && agent.position.x !== -1) {
@@ -202,9 +213,6 @@ class Intention {
                         }
                     }
                     if (!closer) {
-                        //otherwise compute the utility as the score of the parcel minus the steps to reach it
-                        score += parcels.get(this.pickUp).score;
-                        //TODO: if too slow use manhattan distance
                         steps += map.map[this.goal.x][this.goal.y].heuristic;
                     }
                 }
