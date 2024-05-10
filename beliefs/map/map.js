@@ -143,7 +143,7 @@ class Maps {
         let queue = [];
         let visited = new Array(this.width).fill().map(() => new Array(this.height).fill().map(() => false));
         if (pos instanceof Array) queue.push(pos); else queue.push([pos]);
-        if (objective instanceof Array) objective = objective[0];
+        if (!(objective instanceof Array)) objective = [objective];
         //console.log(this.width, this.height);
         visited[pos.x][pos.y] = true;
         let current = null;
@@ -152,18 +152,22 @@ class Maps {
             [[1, 0, 'right'], [-1, 0, 'left'], [0, 1, 'up'], [0, -1, 'down']]];
 
         //if objective is obstracted, return empty array
-        if (this.map[objective.x][objective.y].type === 'obstacle'
-            || this.map[objective.x][objective.y].agent !== null) {
-            return [];
+        for (let obj of objective) {
+            if (this.map[obj.x][obj.y].type === 'obstacle'
+                || this.map[obj.x][obj.y].agent !== null) {
+                return [];
+            }
         }
 
         while (queue.length > 0) {
             current = queue.shift();
             node = current.at(-1)
 
-            if (node.x === objective.x && node.y === objective.y) {
-                //remove the first element of the array
-                return current.slice(1);
+            for (let obj of objective) {
+                if (node.x === obj.x && node.y === obj.y) {
+                    //remove the first element of the array
+                    return current.slice(1);
+                }
             }
 
             for (let dir of directions[current.length % 2]) {
@@ -428,11 +432,10 @@ let map = null;
 function createMap(mapData, client) {
     map = new Maps(mapData);
     console.log('Map created');
-
-    client.onYou(()=>{
+    setInterval(()=>{
         map.updateMap();
         map.updateSenseTime();
-    });
+    }, me.config.MOVEMENT_DURATION);
 }
 
 /**
