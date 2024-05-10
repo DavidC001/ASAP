@@ -43,20 +43,19 @@ function BFStoObjective(pos, objectiveList, startTime = 0) {
             }
         }
         // Controllo che il nodo che sto esplorando non abbia sopra un agente, prima di esplorarlo
-        if (startTime > 1 || map.map[node.x][node.y].agent === null) {
-            for (let dir of directions[current.length % 2]) {
-                let newX = node.x + dir[0];
-                let newY = node.y + dir[1];
-                // We don't push the node if out of bound or there is an agent on it
-                if ((newX >= 0) && (newX < map.width) && (newY >= 0) && (newY < map.height)
-                    && (!visited[newX][newY])
-                    && map.predictedMap[startTime][newX][newY].type !== 'obstacle'
-                    && map.predictedMap[startTime][newX][newY].agent === null) {
-                    let newCurrent = JSON.parse(JSON.stringify(current));
-                    newCurrent.push({x: newX, y: newY, move: dir[2]});
-                    queue.push(newCurrent);
-                    visited[newX][newY] = true;
-                }
+        for (let dir of directions[current.length % 2]) {
+            let newX = node.x + dir[0];
+            let newY = node.y + dir[1];
+            // We don't push the node if out of bound or there is an agent on it
+            if ((newX >= 0) && (newX < map.width) && (newY >= 0) && (newY < map.height) 
+                && (!visited[newX][newY])
+                && map.predictedMap[startTime][newX][newY].type !== 'obstacle'
+                && map.predictedMap[startTime][newX][newY].agent === null
+                && (startTime > 1 || map.map[newX][newY].agent === null) ) {
+                let newCurrent = current.slice();
+                newCurrent.push({x: newX, y: newY, move: dir[2]});
+                queue.push(newCurrent);
+                visited[newX][newY] = true;
             }
         }
         // Increase startTime until we reached the MAX_FUTURE for the predictedMap
@@ -99,6 +98,20 @@ function beamPackageSearch(pos, objective, deviations = 1) {
     //use BFS to create a path to the objective, then allow for slight deviations to gather other packages on the way
     if (!(objective instanceof Array)) objective = [objective];
     let path = [{x: pos.x, y: pos.y, move: "none"}].concat(BFStoObjective(pos, objective));
+    if (path.length === 1) {
+        //use normal BFS to find the path
+        // console.log("\t[BEAM SEARCH] No path found, using BFS");
+        path = path.concat(map.BFS(pos, objective));
+        // console.log("\t[BEAM SEARCH] BFS path", path);
+        if (path.length === 1) {
+            //fallback to clean BFS
+            // console.log("\t[BEAM SEARCH] No path found, using clean BFS");
+            path = path.concat(map.cleanBFS(pos, objective));
+            // console.log("\t[BEAM SEARCH] Clean BFS path", path);
+        }
+    }
+    
+    // console.log("\t[BEAM SEARCH] Original path", path);
 
     let directions = [[0, 0, "pickup"],
         [1, 0, "right"], [-1, 0, "left"],
@@ -108,21 +121,22 @@ function beamPackageSearch(pos, objective, deviations = 1) {
     //calculate allowed deviations tiles
     let allowedDeviations = new Array(map.width).fill().map(() => new Array(map.height).fill().map(() => false));
     for (let step of path) {
-        if (step.move === "pickup") continue;
-
-        for (let i = 1; i <= deviations; i++) {
-            for (let dir of directions) {
-                let x = step.x + dir[0];
-                let y = step.y + dir[1];
-                if (x >= 0 && x < map.width && y >= 0 && y < map.height
-                    && !(map.predictedMap[move][x][y].agent)
-                    && !(map.predictedMap[move][x][y].type === "obstacle")) {
-                    allowedDeviations[x][y] = true;
+        if (deviations === 0) {
+            allowedDeviations[step.x][step.y] = true;
+        } else {
+            for (let i = 0; i < deviations; i++) {
+                for (let dir of directions) {
+                    let x = step.x + dir[0];
+                    let y = step.y + dir[1];
+                    if (x >= 0 && x < map.width && y >= 0 && y < map.height
+                        && !(map.predictedMap[move][x][y].agent)
+                        && !(map.predictedMap[move][x][y].type === "obstacle")) {
+                        allowedDeviations[x][y] = true;
+                    }
                 }
             }
+            if (move < (MAX_FUTURE - 1)) move++;
         }
-
-        if (move < (MAX_FUTURE - 1)) move++;
     }
     // console.log("Allowed deviations");
     // for (let i = map.width - 1; i >= 0; i--) {
@@ -153,16 +167,16 @@ function beamPackageSearch(pos, objective, deviations = 1) {
                     if (dir[2] === "pickup") {
                         // console.log("\t\tcollecting package at", x, y);
                         allowedDeviations[x][y] = false;
-                        newPath = path.slice(stepNum + 1);
+                        // newPath = path.slice(stepNum + 1);
+                        newPath = BFStoObjective({ x: x, y: y}, objective, move);
                     } else {
                         newPath = BFStoObjective({ x: x, y: y}, objective, move);
+                        if (move < (MAX_FUTURE - 1)) move++;
                     }
-                    if (newPath.length > 0 || (x === path.at(-1).x && y === path.at(-1).y)) {
-                        path = path.slice(0, stepNum + 1)
+                    path = path.slice(0, stepNum + 1)
                             .concat(deviation)
                             .concat(newPath);
-                    }
-                    //console.log("\t\tdeviation added to the path", path);
+                    // console.log("\t\t[BEAM SEARCH] deviation added to the path", path);
                     break;
                 }
             }
@@ -257,6 +271,7 @@ function exploreBFS2(pos, goal) {
     console.log("\t",best_tile, best_last_seen, best_agent_heat);
     let plan = beamPackageSearch(pos, [best_tile]);
     if (plan.length === 1) {
+        // console.log("\tPlan length 1");
         plan = map.cleanBFS(pos, [best_tile]);
     }
     //console.log(plan);
