@@ -13,7 +13,7 @@ const MAX_FUTURE = 10;
 const MAX_SPAWNABLE_TILES_DISTANCE = 2.5;
 const MAX_AGENT_HEATMAP_DISTANCE = 3;
 const MAX_TIME = 500;
-let startingTime = Date.now()/1000;
+let startingTime = Date.now() / 1000;
 /**
  * Buffer in which I put the updated actions of my agents and parcels
  * @type {Map<string, Object>}
@@ -100,7 +100,7 @@ class Maps {
             let currentTile = this.map[tile.x][tile.y];
             currentTile.type = tile.parcelSpawner ? 'spawnable' : 'unspawnable';
             if (tile.parcelSpawner) {
-                this.spawnableTiles.push({x: tile.x, y: tile.y, last_seen: Number.MAX_SAFE_INTEGER});
+                this.spawnableTiles.push({x: tile.x, y: tile.y, last_seen: MAX_TIME + 1});
             }
         });
 
@@ -232,10 +232,10 @@ class Maps {
                 if ((newX >= 0) && (newX < this.width) && (newY >= 0) && (newY < this.height)
                     && (!visited[newX][newY])
                     && this.map[newX][newY].type !== 'obstacle') {
-                        let newCurrent = JSON.parse(JSON.stringify(current));
-                        newCurrent.push({x: newX, y: newY, move: dir[2]});
-                        queue.push(newCurrent);
-                        visited[newX][newY] = true;
+                    let newCurrent = JSON.parse(JSON.stringify(current));
+                    newCurrent.push({x: newX, y: newY, move: dir[2]});
+                    queue.push(newCurrent);
+                    visited[newX][newY] = true;
                 }
             }
         }
@@ -325,7 +325,7 @@ class Maps {
                     }
                 }
 
-                if (this.currentAgentPosition[id]){
+                if (this.currentAgentPosition[id]) {
                     for (let i = Math.max(0, this.currentAgentPosition[id].x - MAX_AGENT_HEATMAP_DISTANCE); i < Math.min(this.width, this.currentAgentPosition[id].x + MAX_AGENT_HEATMAP_DISTANCE); i++) {
                         for (let j = Math.max(0, this.currentAgentPosition[id].y - MAX_AGENT_HEATMAP_DISTANCE); j < Math.min(this.height, this.currentAgentPosition[id].y + MAX_AGENT_HEATMAP_DISTANCE); j++) {
                             if (distance({x: i, y: j}, this.currentAgentPosition[id]) <= MAX_AGENT_HEATMAP_DISTANCE) {
@@ -381,8 +381,8 @@ class Maps {
         let minY = Math.max(me.y - parcelObsDist, 0);
         let maxX = Math.min(me.x + parcelObsDist, this.width - 1);
         let minX = Math.max(me.x - parcelObsDist, 0);
-    
-        let timestamp = Date.now()/1000;
+
+        let timestamp = Date.now() / 1000;
         for (let i = minX; i <= maxX; i++) {
             for (let j = minY; j <= maxY; j++) {
                 if (distance({x: i, y: j}, me) <= parcelObsDist) {
@@ -390,8 +390,8 @@ class Maps {
                 }
             }
         }
-    
-        if (timestamp-startingTime > MAX_TIME) {
+
+        if (timestamp - startingTime > MAX_TIME) {
             for (let i = 0; i < this.width; i++) {
                 for (let j = 0; j < this.height; j++) {
                     this.map[i][j].last_seen = 1;
@@ -432,7 +432,7 @@ let map = null;
 function createMap(mapData, client) {
     map = new Maps(mapData);
     console.log('Map created');
-    setInterval(()=>{
+    setInterval(() => {
         map.updateMap();
         map.updateSenseTime();
     }, me.config.MOVEMENT_DURATION);
