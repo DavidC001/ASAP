@@ -1,6 +1,6 @@
 import {map, MAX_FUTURE} from "../beliefs/map/map.js";
 import {me} from "../beliefs/beliefs.js";
-import { agents } from "../beliefs/agents/agents.js";
+import {agents} from "../beliefs/agents/agents.js";
 
 const MAX_EXPLORE_PATH_LENGTH = 20;
 
@@ -47,11 +47,11 @@ function BFStoObjective(pos, objectiveList, startTime = 0) {
             let newX = node.x + dir[0];
             let newY = node.y + dir[1];
             // We don't push the node if out of bound or there is an agent on it
-            if ((newX >= 0) && (newX < map.width) && (newY >= 0) && (newY < map.height) 
+            if ((newX >= 0) && (newX < map.width) && (newY >= 0) && (newY < map.height)
                 && (!visited[newX][newY])
                 && map.predictedMap[startTime][newX][newY].type !== 'obstacle'
                 && map.predictedMap[startTime][newX][newY].agent === null
-                && (startTime > 1 || map.map[newX][newY].agent === null) ) {
+                && (startTime > 1 || map.map[newX][newY].agent === null)) {
                 let newCurrent = current.slice();
                 newCurrent.push({x: newX, y: newY, move: dir[2]});
                 queue.push(newCurrent);
@@ -110,7 +110,7 @@ function beamPackageSearch(pos, objective, deviations = 1) {
             // console.log("\t[BEAM SEARCH] Clean BFS path", path);
         }
     }
-    
+
     // console.log("\t[BEAM SEARCH] Original path", path);
 
     let directions = [[0, 0, "pickup"],
@@ -168,14 +168,14 @@ function beamPackageSearch(pos, objective, deviations = 1) {
                         // console.log("\t\tcollecting package at", x, y);
                         allowedDeviations[x][y] = false;
                         // newPath = path.slice(stepNum + 1);
-                        newPath = BFStoObjective({ x: x, y: y}, objective, move);
+                        newPath = BFStoObjective({x: x, y: y}, objective, move);
                     } else {
-                        newPath = BFStoObjective({ x: x, y: y}, objective, move);
+                        newPath = BFStoObjective({x: x, y: y}, objective, move);
                         if (move < (MAX_FUTURE - 1)) move++;
                     }
                     path = path.slice(0, stepNum + 1)
-                            .concat(deviation)
-                            .concat(newPath);
+                        .concat(deviation)
+                        .concat(newPath);
                     // console.log("\t\t[BEAM SEARCH] deviation added to the path", path);
                     break;
                 }
@@ -243,6 +243,12 @@ function exploreBFS(pos, goal) {
     return path;
 }
 
+/**
+ * Improved BFS searching in least seen areas and based on a simple agent heat map
+ * @param pos - Where to start the search
+ * @param goal - Where to go
+ * @returns {{x: number, y: number, move: string}[]} - A list of nodes containing the path to the goal
+ */
 function exploreBFS2(pos, goal) {
     let best_last_seen = -1;
     let best_agent_heat = -1;
@@ -253,13 +259,13 @@ function exploreBFS2(pos, goal) {
         let tileY = tile.y;
         let tile_last_seen = map.map[tileX][tileY].last_seen;
         let tile_agent_heat = map.map[tileX][tileY].agent_heat / Math.max(1, agents.size);
-        
+
         if (
             (
                 (best_tile.x === -1 && best_tile.y === -1) ||
-                ( best_last_seen * (1-best_tile.probability) * (best_agent_heat)) > ( tile_last_seen * (1-tile.probability) * (tile_agent_heat))
+                (best_last_seen * (1 - best_tile.probability) * (best_agent_heat)) > (tile_last_seen * (1 - tile.probability) * (tile_agent_heat))
             )
-            && tile.x !== me.x && tile.y !== me.y ) {
+            && tile.x !== me.x && tile.y !== me.y) {
 
             best_last_seen = tile_last_seen;
             best_agent_heat = tile_agent_heat;
@@ -268,7 +274,7 @@ function exploreBFS2(pos, goal) {
         }
     }
 
-    console.log("\t",best_tile, best_last_seen, best_agent_heat);
+    console.log("\t", best_tile, best_last_seen, best_agent_heat);
     let plan = beamPackageSearch(pos, [best_tile]);
     if (plan.length === 1) {
         // console.log("\tPlan length 1");
