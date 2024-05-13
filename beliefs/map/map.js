@@ -450,7 +450,7 @@ function createMap(mapData, client) {
     map = new Maps(mapData);
     console.log('Map created');
     setInterval(() => {
-        timeTaken(updateMap);
+        // timeTaken(updateMap);
         map.updateSenseTime();
     }, me.config.MOVEMENT_DURATION);
 }
