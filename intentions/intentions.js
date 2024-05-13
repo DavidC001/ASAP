@@ -180,7 +180,7 @@ class Intention {
                     //if an agent is on the same position as the parcel return -1
                     score = -1;
                 } else {
-                    let plan = beamPackageSearch(me, this.goal, 0); //TODO: check if 0 or 1 is better
+                    let plan = beamPackageSearch(me, this.goal, 0, false); //TODO: check if 0 or 1 is better
                     for (let move of plan) {
                         if (move.move !== 'none' && move.move !== 'pickup') {
                             steps++;
