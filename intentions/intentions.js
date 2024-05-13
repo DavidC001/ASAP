@@ -14,6 +14,7 @@ const input = readline.createInterface({
     output: process.stdout
 });
 const MAX_RETRIES = 1;
+const MAX_WAIT_FAIL = 5;
 const REPLAN_MOVE_INTERVAL = 2;
 const stopEmitter = new EventEmitter(); //TODO: make a diffierent emitter for each intention
 
@@ -115,7 +116,7 @@ class Intention {
                 if (retryCount >= MAX_RETRIES) {
                     // console.log('\tMax retries exceeded', this.type);
                     //wait some moves before replanning
-                    await new Promise((resolve) => setTimeout(resolve, me.config.MOVEMENT_DURATION * (Math.round(Math.random() * 3) + 1)));
+                    await new Promise((resolve) => setTimeout(resolve, me.config.MOVEMENT_DURATION * (Math.round(Math.random() * MAX_WAIT_FAIL) + 1)));
                     i = 0;
                     this.plan = planner[this.type](me, this.goal);
                     // console.log('replanning', this.type, this.plan);
