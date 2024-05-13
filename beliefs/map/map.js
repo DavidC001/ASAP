@@ -251,7 +251,19 @@ class Maps {
      * Infers the future state of the map based on the future moves of the agents. Sets the predictedMap
      */
     updatePrediction() {
-        let newMap = new Array(MAX_FUTURE).fill().map(() => JSON.parse(JSON.stringify(this.map)));
+        let newMap = new Array(MAX_FUTURE).fill().map(() => new Array(this.width).fill().map(() => new Array(this.height).fill().map(() => {
+        })));
+        for (let row = 0; row < this.width; row++) {
+            for (let column = 0; column < this.height; column++) {
+                for (let i = 0; i < MAX_FUTURE; i++) {
+                    let tile = this.map[row][column];
+                    newMap[i][row][column] = new Tile({});
+                    newMap[i][row][column].type = tile.type;
+                    newMap[i][row][column].agent = tile.agent;
+                }
+            }
+        }
+
         for (let [id, agent] of agents) {
             let first_pos = this.currentAgentPosition[id];
             let pos = first_pos;
@@ -372,7 +384,7 @@ class Maps {
         actionBuffer.clear();
         this.map = JSON.parse(JSON.stringify(new_map));
         // drawMap('./map.txt', this.map);
-        timeTaken(function predictionMap(){
+        timeTaken(function predictionMap() {
             map.updatePrediction()
         });
     }
