@@ -384,9 +384,7 @@ class Maps {
         actionBuffer.clear();
         this.map = JSON.parse(JSON.stringify(new_map));
         // drawMap('./map.txt', this.map);
-        timeTaken(function predictionMap() {
-            map.updatePrediction()
-        });
+        this.updatePrediction();
     }
 
     /**
@@ -451,6 +449,7 @@ function createMap(mapData, client) {
     console.log('Map created');
     setInterval(() => {
         // timeTaken(updateMap);
+        updateMap();
         map.updateSenseTime();
     }, me.config.MOVEMENT_DURATION);
 }
