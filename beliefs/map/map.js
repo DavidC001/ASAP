@@ -2,13 +2,16 @@ import {parcels, Parcel, parcelEmitter, agentsCarrying} from "../parcels/parcels
 import {me, distance} from "../beliefs.js"
 import {agents, Agent} from "../agents/agents.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
+
+import {timeTaken} from '../../helper.js';
+
 import * as fs from 'node:fs';
 
 /**
  * A variable that sets the maximum prediction of the map
  * @type {number}
  */
-const MAX_FUTURE = 10;
+const MAX_FUTURE = 50;
 
 const MAX_SPAWNABLE_TILES_DISTANCE = 2.5;
 const MAX_AGENT_HEATMAP_DISTANCE = 3;
@@ -369,7 +372,9 @@ class Maps {
         actionBuffer.clear();
         this.map = JSON.parse(JSON.stringify(new_map));
         // drawMap('./map.txt', this.map);
-        this.updatePrediction();
+        timeTaken(function predictionMap(){
+            map.updatePrediction()
+        });
     }
 
     /**
@@ -433,7 +438,7 @@ function createMap(mapData, client) {
     map = new Maps(mapData);
     console.log('Map created');
     setInterval(() => {
-        map.updateMap();
+        timeTaken(updateMap);
         map.updateSenseTime();
     }, me.config.MOVEMENT_DURATION);
 }
