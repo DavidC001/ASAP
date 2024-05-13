@@ -94,11 +94,11 @@ function deliveryBFS(pos, objectiveList) {
  * @param {number} deviations The number of allowed deviations from the path
  * @returns {[{x: number, y: number, move: string}]} The path to the objective
  */
-function beamPackageSearch(pos, objective, deviations = 1) {
+function beamPackageSearch(pos, objective, deviations = 1, fallback = true) {
     //use BFS to create a path to the objective, then allow for slight deviations to gather other packages on the way
     if (!(objective instanceof Array)) objective = [objective];
     let path = [{x: pos.x, y: pos.y, move: "none"}].concat(BFStoObjective(pos, objective));
-    if (path.length === 1) {
+    if (path.length === 1 && fallback) {
         //use normal BFS to find the path
         // console.log("\t[BEAM SEARCH] No path found, using BFS");
         path = path.concat(map.BFS(pos, objective));
@@ -253,28 +253,30 @@ function exploreBFS2(pos, goal) {
     let best_last_seen = -1;
     let best_agent_heat = -1;
     let best_tile = {x: -1, y: -1, probability: 1};
+    let best_utility = -1;
 
     for (let tile of map.spawnableTiles) {
         let tileX = tile.x;
         let tileY = tile.y;
         let tile_last_seen = map.map[tileX][tileY].last_seen;
         let tile_agent_heat = map.map[tileX][tileY].agent_heat / Math.max(1, agents.size);
+        let tile_utility = Math.round(tile_last_seen * (1 - tile.probability) * (tile_agent_heat));
 
         if (
             (
                 (best_tile.x === -1 && best_tile.y === -1) ||
-                (best_last_seen * (1 - best_tile.probability) * (best_agent_heat)) > (tile_last_seen * (1 - tile.probability) * (tile_agent_heat))
+                best_utility > tile_utility
             )
-            && tile.x !== me.x && tile.y !== me.y) {
-
+            && (tile.x !== me.x && tile.y !== me.y)) {
             best_last_seen = tile_last_seen;
             best_agent_heat = tile_agent_heat;
 
             best_tile = {x: tile.x, y: tile.y, probability: tile.probability};
+            best_utility = tile_utility
         }
     }
 
-    console.log("\t", best_tile, best_last_seen, best_agent_heat);
+    console.log("\t", best_tile, best_last_seen, best_agent_heat, "Utility", best_utility);
     let plan = beamPackageSearch(pos, [best_tile]);
     if (plan.length === 1) {
         // console.log("\tPlan length 1");
