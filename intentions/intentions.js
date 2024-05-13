@@ -14,7 +14,7 @@ const input = readline.createInterface({
     output: process.stdout
 });
 const MAX_RETRIES = 1;
-const REPLAN_MOVE_INTERVAL = 5;
+const REPLAN_MOVE_INTERVAL = 2;
 const stopEmitter = new EventEmitter(); //TODO: make a diffierent emitter for each intention
 
 /**
@@ -213,7 +213,7 @@ class Intention {
                         }
                     }
                     if (!closer) {
-                        steps += map.BFS(me, this.goal).length;
+                        steps += map.map[this.goal.x][this.goal.y].heuristic;
                     }
                 }
                 break;
