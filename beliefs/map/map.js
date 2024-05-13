@@ -113,11 +113,11 @@ class Maps {
             });
         } else {
             this.spawnableTiles.forEach(spawnableTile => {
-                if (spawnableTile.probability) return;
+                if (spawnableTile.probability !== undefined) return;
                 let region = [spawnableTile];
                 let minDist = MAX_SPAWNABLE_TILES_DISTANCE;
                 this.spawnableTiles.forEach(otherSpawnableTile => {
-                    if (otherSpawnableTile.probability) return;
+                    if (otherSpawnableTile.probability !== undefined) return;
                     if (spawnableTile.x === otherSpawnableTile.x && spawnableTile.y === otherSpawnableTile.y) return;
                     let dist = distance(spawnableTile, otherSpawnableTile);
                     if (dist < minDist) {
@@ -126,11 +126,17 @@ class Maps {
                     }
                     //console.log('this');
                 });
-                //console.log(region, region.length, this.spawnableTiles.length);
+                // console.log(region, region.length, this.spawnableTiles.length);
 
-                region.forEach(tile => {
-                    tile.probability = region.length / this.spawnableTiles.length;
-                });
+                if (region.length === this.spawnableTiles.length){
+                    region.forEach(tile => {
+                        tile.probability = 0;
+                    });
+                } else {
+                    region.forEach(tile => {
+                        tile.probability = region.length / this.spawnableTiles.length;
+                    });
+                }
             });
         }
         //console.log(this.spawnableTiles);
