@@ -115,7 +115,7 @@ class Intention {
                 if (retryCount >= MAX_RETRIES) {
                     // console.log('\tMax retries exceeded', this.type);
                     //wait some moves before replanning
-                    await new Promise((resolve) => setTimeout(resolve, me.config.MOVEMENT_DURATION * (Math.round(Math.random() * 2) + 1)));
+                    await new Promise((resolve) => setTimeout(resolve, me.config.MOVEMENT_DURATION * (Math.round(Math.random() * 3) + 1)));
                     i = 0;
                     this.plan = planner[this.type](me, this.goal);
                     // console.log('replanning', this.type, this.plan);
