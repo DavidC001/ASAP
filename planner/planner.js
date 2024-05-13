@@ -3,6 +3,7 @@ import {me} from "../beliefs/beliefs.js";
 import {agents} from "../beliefs/agents/agents.js";
 
 const MAX_EXPLORE_PATH_LENGTH = 20;
+const MAX_WAIT = 5;
 
 /**
  * BFS to find the path to the closest objective
@@ -14,13 +15,13 @@ const MAX_EXPLORE_PATH_LENGTH = 20;
  */
 function BFStoObjective(pos, objectiveList, startTime = 0) {
     let queue = [];
-    let visited = new Array(map.width).fill().map(() => new Array(map.height).fill().map(() => false));
+    let visited = new Array(map.width).fill().map(() => new Array(map.height).fill().map(() => 0));
     queue.push([pos]);
-    visited[pos.x][pos.y] = true;
+    visited[pos.x][pos.y] = 1;
     let current = null;
     let node = null;
-    let directions = [[[0, 1, 'up'], [0, -1, 'down'], [1, 0, 'right'], [-1, 0, 'left']],
-        [[1, 0, 'right'], [-1, 0, 'left'], [0, 1, 'up'], [0, -1, 'down']]];
+    let directions = [[[0, 1, 'up'], [0, -1, 'down'], [1, 0, 'right'], [-1, 0, 'left'], [0, 0, 'none']],
+        [[1, 0, 'right'], [-1, 0, 'left'], [0, 1, 'up'], [0, -1, 'down'], [0, 0, 'none']]];
     let blocked_goals = [];
 
     for (let goal of objectiveList) {
@@ -48,14 +49,14 @@ function BFStoObjective(pos, objectiveList, startTime = 0) {
             let newY = node.y + dir[1];
             // We don't push the node if out of bound or there is an agent on it
             if ((newX >= 0) && (newX < map.width) && (newY >= 0) && (newY < map.height)
-                && (!visited[newX][newY])
+                && (!visited[newX][newY] || (dir[2] === 'none' && visited[newX][newY] < MAX_WAIT))
                 && map.predictedMap[startTime][newX][newY].type !== 'obstacle'
                 && map.predictedMap[startTime][newX][newY].agent === null
                 && (startTime > 1 || map.map[newX][newY].agent === null)) {
                 let newCurrent = current.slice();
                 newCurrent.push({x: newX, y: newY, move: dir[2]});
                 queue.push(newCurrent);
-                visited[newX][newY] = true;
+                visited[newX][newY]++;
             }
         }
         // Increase startTime until we reached the MAX_FUTURE for the predictedMap
