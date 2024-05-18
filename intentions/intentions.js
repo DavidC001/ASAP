@@ -14,8 +14,8 @@ const input = readline.createInterface({
     output: process.stdout
 });
 const MAX_RETRIES = 1;
-const MAX_WAIT_FAIL = 5;
-const REPLAN_MOVE_INTERVAL = 2;
+const MAX_WAIT_FAIL = 8;
+const REPLAN_MOVE_INTERVAL = 5;
 const stopEmitter = new EventEmitter(); //TODO: make a diffierent emitter for each intention
 
 /**
@@ -287,7 +287,7 @@ class Intentions {
         for (let intention of this.intentions) {
             let utility = intention.utility();
             //console.log('utility', intention.type, utility);
-            if (utility >= maxUtility) {
+            if (utility > maxUtility || (utility === maxUtility && distance(me, intention.goal) < distance(me, maxIntention.goal))) {
                 //console.log('utility', utility);
                 maxUtility = utility;
                 maxIntention = intention;
@@ -296,25 +296,25 @@ class Intentions {
 
         if (this.currentIntention === null) {
             //if there is no current intention start the one with the highest utility
-            console.log("starting intention", maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone");
+            // console.log("starting intention", maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone");
             this.currentIntention = maxIntention;
             this.currentIntention.executeInt(client);
         } else if ((this.currentIntention.goal !== maxIntention.goal || this.currentIntention.reached) && this.currentIntention.started) {
             //if the goal is different from the current intention switch intention
-            console.log('switching intention', maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone", " from", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");
+            // console.log('switching intention', maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone", " from", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");
 
             let oldIntention = this.currentIntention;
             this.currentIntention = maxIntention;
 
             //wait for the current intention to stop before starting the new one
             stopEmitter.once('stoppedIntention', () => {
-                console.log("starting intention", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");
+                // console.log("starting intention", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");
                 this.currentIntention.executeInt(client);
             });
             oldIntention.stopInt();
         } else if (this.currentIntention.reached && this.currentIntention.type === 'explore') {
             //if the current intention is explore and the goal has been reached, continue with the next intention
-            console.log('continue intention', maxIntention.type);
+            // console.log('continue intention', maxIntention.type);
             this.currentIntention.executeInt(client);
         }
     }
@@ -383,6 +383,7 @@ const intentions = new Intentions();
 function IntentionRevision(client) {
     client.onMap(async () => {
         //wait 0.1 second for the map to be created
+        await new Promise((resolve) => setTimeout(resolve, 100));
         await intentions.generateIntentions();
         setInterval(() => {
             intentions.updateIntentions();

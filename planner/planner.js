@@ -3,7 +3,7 @@ import {me} from "../beliefs/beliefs.js";
 import {agents} from "../beliefs/agents/agents.js";
 
 const MAX_EXPLORE_PATH_LENGTH = 20;
-const MAX_WAIT = 5;
+const MAX_WAIT = 10;
 
 /**
  * BFS to find the path to the closest objective
@@ -277,7 +277,7 @@ function exploreBFS2(pos, goal) {
         }
     }
 
-    console.log("\t", best_tile, best_last_seen, best_agent_heat, "Utility", best_utility);
+    // console.log("\t", best_tile, best_last_seen, best_agent_heat, "Utility", best_utility);
     let plan = beamPackageSearch(pos, [best_tile]);
     if (plan.length === 1) {
         // console.log("\tPlan length 1");
