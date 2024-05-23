@@ -295,6 +295,7 @@ class Agent {
 const agents = new Map();
 
 let agentsBeliefSet;
+let futureAgentsBeliefSet;
 
 /**
  * @param {[ { id:string, name:string, x:number, y:number, score:number } ]} sensedAgents
@@ -303,6 +304,7 @@ function senseAgents(sensedAgents) {
     //console.log("sensing agents")
     let inView = []
     agentsBeliefSet = new Beliefset();
+    futureAgentsBeliefSet = new Beliefset();
     for (const agent of sensedAgents) {
         inView.push(agent.id);
         if (agent.x % 1 !== 0 || agent.y % 1 !== 0) continue;
@@ -323,6 +325,10 @@ function senseAgents(sensedAgents) {
         }
         //console.log(agent);
         agentsBeliefSet.declare(`agent t-${agent.position.x}-${agent.position.y}`);
+        futureAgentsBeliefSet.declare(`agent t-${agent.position.x}-${agent.position.y} 0`);
+        for(let [index, move] of agent.believedIntetion.futureMoves.entries()){
+            futureAgentsBeliefSet.declare(`agent t-${move.x}-${move.y} ${index+1}`);
+        }
     }
 }
 
@@ -331,5 +337,6 @@ export {
     Agent,
     agents,
     senseAgents,
-    agentsBeliefSet
+    agentsBeliefSet,
+    futureAgentsBeliefSet
 }
