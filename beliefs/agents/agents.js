@@ -1,6 +1,7 @@
 import {map, MAX_FUTURE} from '../map/map.js';
 import {distance, me} from '../beliefs.js';
 import {agentsCarrying} from '../parcels/parcels.js';
+import {Beliefset} from "@unitn-asa/pddl-client";
 
 const MAX_HISTORY = 5;
 
@@ -293,13 +294,15 @@ class Agent {
 /** @type {Map<string, Agent>} */
 const agents = new Map();
 
+let agentsBeliefSet;
+
 /**
  * @param {[ { id:string, name:string, x:number, y:number, score:number } ]} sensedAgents
  */
 function senseAgents(sensedAgents) {
     //console.log("sensing agents")
     let inView = []
-    
+    agentsBeliefSet = new Beliefset();
     for (const agent of sensedAgents) {
         inView.push(agent.id);
         if (agent.x % 1 !== 0 || agent.y % 1 !== 0) continue;
@@ -319,6 +322,7 @@ function senseAgents(sensedAgents) {
             }
         }
         //console.log(agent);
+        agentsBeliefSet.declare(`agent t-${agent.position.x}-${agent.position.y}`);
     }
 }
 
@@ -326,5 +330,6 @@ function senseAgents(sensedAgents) {
 export {
     Agent,
     agents,
-    senseAgents
+    senseAgents,
+    agentsBeliefSet
 }

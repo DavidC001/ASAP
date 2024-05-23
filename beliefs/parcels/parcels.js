@@ -1,5 +1,6 @@
 import {EventEmitter} from 'events';
 import {distance, me} from "../beliefs.js";
+import {Beliefset} from "@unitn-asa/pddl-client";
 
 /**
  * Event emitter for the parcels
@@ -61,6 +62,8 @@ class Parcel {
  */
 const parcels = new Map();
 
+let parcelsBeliefSet;
+
 /**
  * In this function we sense the parcels and update all the important variables
  * @param {[ { id:string, x:number, y:number, carriedBy:string, reward:number } ]} sensedParcels
@@ -68,6 +71,7 @@ const parcels = new Map();
  */
 function senseParcels(sensedParcels, decayInterval) {
     let inView = [];
+    parcelsBeliefSet = new Beliefset();
     for (let parcel of sensedParcels) {
         inView.push(parcel.id);
         if (parcel.x % 1 !== 0 || parcel.y % 1 !== 0) continue; // We skip intermediate positions
@@ -98,7 +102,8 @@ function senseParcels(sensedParcels, decayInterval) {
         if (!inView.includes(id) && (distance(p.position, me) < me.config.PARCELS_OBSERVATION_DISTANCE)) {
             parcelEmitter.emit('deleteParcel', id);
         }
+        if(p) parcelsBeliefSet.declare(`parcel t-${p.position.x}-${p.position.y}`);
     }
 }
 
-export {parcels, Parcel, senseParcels, parcelEmitter, agentsCarrying}
+export {parcels, Parcel, senseParcels, parcelEmitter, agentsCarrying, parcelsBeliefSet}

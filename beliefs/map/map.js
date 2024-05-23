@@ -1,4 +1,4 @@
-import {parcels, Parcel, parcelEmitter, agentsCarrying} from "../parcels/parcels.js";
+import {parcels, parcelEmitter, agentsCarrying} from "../parcels/parcels.js";
 import {me, distance} from "../beliefs.js"
 import {agents, Agent} from "../agents/agents.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
@@ -6,6 +6,7 @@ import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
 import {timeTaken} from '../../helper.js';
 
 import * as fs from 'node:fs';
+import {Beliefset} from "@unitn-asa/pddl-client";
 
 /**
  * A variable that sets the maximum prediction of the map
@@ -71,6 +72,7 @@ class Maps {
     spawnableTiles = [];
     currentAgentPosition = new Map();
     currentParcelPosition = new Map();
+    beliefSet = new Beliefset();
 
     /**
      * Generates the map given the tiles received from the server
@@ -90,6 +92,7 @@ class Maps {
                 this.deliveryZones.push({x: tile.x, y: tile.y});
                 bestDistance = 0;
                 closestDelivery = {x: tile.x, y: tile.y};
+                currentTile.type = 'delivery';
             } else {
                 let route = this.cleanBFS({x: tile.x, y: tile.y}, this.deliveryZones);
                 bestDistance = route.length;
@@ -97,10 +100,6 @@ class Maps {
             }
             currentTile.heuristic = bestDistance;
             currentTile.closest_delivery = closestDelivery;
-        });
-
-        tiles.forEach(tile => {
-            let currentTile = this.map[tile.x][tile.y];
             currentTile.type = tile.parcelSpawner ? 'spawnable' : 'unspawnable';
             if (tile.parcelSpawner) {
                 this.spawnableTiles.push({x: tile.x, y: tile.y, last_seen: MAX_TIME + 1});
@@ -128,7 +127,7 @@ class Maps {
                 });
                 // console.log(region, region.length, this.spawnableTiles.length);
 
-                if (region.length === this.spawnableTiles.length){
+                if (region.length === this.spawnableTiles.length) {
                     region.forEach(tile => {
                         tile.probability = 0;
                     });
@@ -138,6 +137,23 @@ class Maps {
                     });
                 }
             });
+        }
+
+        let directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+
+        for (let [row, tiles] of this.map.entries()) {
+            for (let [column, tile] of tiles.entries()) {
+                if (tile.type !== 'obstacle') {
+                    for (let dir of directions) {
+                        let newX = row + dir[0];
+                        let newY = column + dir[1];
+                        if ((newX >= 0) && (newX < this.width) && (newY >= 0) && (newY < this.height)
+                            && this.map[newX][newY].type !== 'obstacle') {
+                            this.beliefSet.declare(`connected t-${row}-${column} t-${newX}-${newY}`);
+                        }
+                    }
+                }
+            }
         }
         //console.log(this.spawnableTiles);
     }
