@@ -325,9 +325,9 @@ function senseAgents(sensedAgents) {
         }
         //console.log(agent);
         agentsBeliefSet.declare(`agent t-${agent.position.x}-${agent.position.y}`);
-        futureAgentsBeliefSet.declare(`agent t-${agent.position.x}-${agent.position.y} 0`);
+        futureAgentsBeliefSet.declare(`agent t-${agent.position.x}-${agent.position.y} T0`);
         for(let [index, move] of agent.believedIntetion.futureMoves.entries()){
-            futureAgentsBeliefSet.declare(`agent t-${move.x}-${move.y} ${index+1}`);
+            futureAgentsBeliefSet.declare(`agent t-${move.x}-${move.y} T${index+1}`);
         }
     }
 }

@@ -13,9 +13,12 @@ const input = readline.createInterface({
     input: process.stdin,
     output: process.stdout
 });
-const MAX_RETRIES = 1;
+const MAX_RETRIES = 10;
 const MAX_WAIT_FAIL = 8;
-const REPLAN_MOVE_INTERVAL = 5;
+const REPLAN_MOVE_INTERVAL = 100;
+const USE_PDDL = true;
+const INTENTION_REVISION_INTERVAL = 10000;
+
 const stopEmitter = new EventEmitter(); //TODO: make a diffierent emitter for each intention
 
 /**
@@ -73,12 +76,12 @@ class Intention {
             'explore': exploreBFS2,
         }
 
-        this.plan = planner[this.type](me, this.goal);
+        this.plan = await planner[this.type](me, this.goal, USE_PDDL);
         //await input from console
         // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
 
 
-        // console.log('\tplan', me.x, me.y, this.plan);
+        console.log('\tplan', me.x, me.y, this.plan);
 
         let moves = {
             "up": () => client.move("up"),
@@ -118,7 +121,7 @@ class Intention {
                     //wait some moves before replanning
                     await new Promise((resolve) => setTimeout(resolve, me.config.MOVEMENT_DURATION * (Math.round(Math.random() * MAX_WAIT_FAIL) + 1)));
                     i = 0;
-                    this.plan = planner[this.type](me, this.goal);
+                    this.plan = await planner[this.type](me, this.goal, USE_PDDL);
                     // console.log('replanning', this.type, this.plan);
                     // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
                 }
@@ -128,7 +131,7 @@ class Intention {
                 retryCount = 0; // reset retry count if move was successful
                 if (i%REPLAN_MOVE_INTERVAL === 0) {
                     i = 0;
-                    this.plan = planner[this.type](me, this.goal);
+                    this.plan = await planner[this.type](me, this.goal, USE_PDDL);
                     // console.log('replanning', this.type, this.plan);
                     // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
                 }
@@ -143,6 +146,7 @@ class Intention {
             stopEmitter.emit('stoppedIntention');
         } else {
             //if the goal has been reached set the reached flag
+            console.log('reached goal', this.type, this.goal);
             this.reached = true;
         }
     }
@@ -152,7 +156,7 @@ class Intention {
      *
      * @returns {number} the utility of the intention
      */
-    utility() {
+    async utility() {
         let utility = 0;
         let numParcels = carriedParcels.length;
         let toRemove = []
@@ -181,7 +185,7 @@ class Intention {
                     //if an agent is on the same position as the parcel return -1
                     score = -1;
                 } else {
-                    let plan = beamPackageSearch(me, this.goal, 0, false); //TODO: check if 0 or 1 is better
+                    let plan = await beamPackageSearch(me, this.goal, false);
                     for (let move of plan) {
                         if (move.move !== 'none' && move.move !== 'pickup') {
                             steps++;
@@ -278,14 +282,14 @@ class Intentions {
      * Selects the intention with the highest utility and executes it
      * @param {DeliverooApi} client
      */
-    selectIntention(client) {
+    async selectIntention(client) {
         //console.log('intentions', this.intentions);
 
         //find the intention with the highest utility
         let maxUtility = -Infinity;
         let maxIntention = null;
         for (let intention of this.intentions) {
-            let utility = intention.utility();
+            let utility = await intention.utility();
             //console.log('utility', intention.type, utility);
             if (utility > maxUtility || (utility === maxUtility && distance(me, intention.goal) < distance(me, maxIntention.goal))) {
                 //console.log('utility', utility);
@@ -296,19 +300,19 @@ class Intentions {
 
         if (this.currentIntention === null) {
             //if there is no current intention start the one with the highest utility
-            // console.log("starting intention", maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone");
+            console.log("starting intention", maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone");
             this.currentIntention = maxIntention;
             this.currentIntention.executeInt(client);
         } else if ((this.currentIntention.goal !== maxIntention.goal || this.currentIntention.reached) && this.currentIntention.started) {
             //if the goal is different from the current intention switch intention
-            // console.log('switching intention', maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone", " from", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");
+            console.log('switching intention', maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone", " from", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");
 
             let oldIntention = this.currentIntention;
             this.currentIntention = maxIntention;
 
             //wait for the current intention to stop before starting the new one
             stopEmitter.once('stoppedIntention', () => {
-                // console.log("starting intention", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");
+                console.log("starting intention", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");
                 this.currentIntention.executeInt(client);
             });
             oldIntention.stopInt();
@@ -385,10 +389,12 @@ function IntentionRevision(client) {
         //wait 0.1 second for the map to be created
         await new Promise((resolve) => setTimeout(resolve, 100));
         await intentions.generateIntentions();
+        intentions.updateIntentions();
+        intentions.selectIntention(client);
         setInterval(() => {
             intentions.updateIntentions();
             intentions.selectIntention(client);
-        }, 100);
+        }, INTENTION_REVISION_INTERVAL);
     });
 }
 

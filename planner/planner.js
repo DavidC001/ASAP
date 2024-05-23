@@ -1,91 +1,11 @@
-import {map, MAX_FUTURE} from "../beliefs/map/map.js";
-import {me} from "../beliefs/beliefs.js";
-import {agents} from "../beliefs/agents/agents.js";
+import { map, MAX_FUTURE } from "../beliefs/map/map.js";
+import { me } from "../beliefs/beliefs.js";
+import { agents } from "../beliefs/agents/agents.js";
+
+import { search_path } from "./search_planners.js";
+import { PDDL_path } from "./PDDL_planners.js";
 
 const MAX_EXPLORE_PATH_LENGTH = 20;
-const MAX_WAIT = 10;
-
-/**
- * BFS to find the path to the closest objective
- *
- * @param {{x: number, y: number}} pos The starting position
- * @param {[{x: number, y: number}]} objectiveList The list of objectives to reach
- * @param {number} startTime The time to start the search from for future predictions (default 0)
- * @returns {[{x: number, y: number, move: string}]} The path to the objective
- */
-function BFStoObjective(pos, objectiveList, startTime = 0) {
-    let queue = [];
-    let visited = new Array(map.width).fill().map(() => new Array(map.height).fill().map(() => 0));
-    queue.push([pos]);
-    visited[pos.x][pos.y] = 1;
-    let current = null;
-    let node = null;
-    let directions = [[[0, 1, 'up'], [0, -1, 'down'], [1, 0, 'right'], [-1, 0, 'left'], [0, 0, 'none']],
-        [[1, 0, 'right'], [-1, 0, 'left'], [0, 1, 'up'], [0, -1, 'down'], [0, 0, 'none']]];
-    let blocked_goals = [];
-
-    for (let goal of objectiveList) {
-        if (map.predictedMap[MAX_FUTURE - 1][goal.x][goal.y].type === 'obstacle'
-            || map.predictedMap[MAX_FUTURE - 1][goal.x][goal.y].agent !== null) {
-            blocked_goals.push(goal);
-        }
-    }
-
-    while (queue.length > 0) {
-        current = queue.shift();
-        node = current.at(-1)
-
-        // Se la posizione di consegna è bloccata, la salto
-        for (let goal of objectiveList) {
-            if (!blocked_goals.includes(goal)) {
-                if ((node.x === goal.x && node.y === goal.y)) {
-                    return current.slice(1);
-                }
-            }
-        }
-        // Controllo che il nodo che sto esplorando non abbia sopra un agente, prima di esplorarlo
-        for (let dir of directions[current.length % 2]) {
-            let newX = node.x + dir[0];
-            let newY = node.y + dir[1];
-            // We don't push the node if out of bound or there is an agent on it
-            if ((newX >= 0) && (newX < map.width) && (newY >= 0) && (newY < map.height)
-                && (!visited[newX][newY] || (dir[2] === 'none' && visited[newX][newY] < MAX_WAIT))
-                && map.predictedMap[startTime][newX][newY].type !== 'obstacle'
-                && map.predictedMap[startTime][newX][newY].agent === null
-                && (startTime > 1 || map.map[newX][newY].agent === null)) {
-                let newCurrent = current.slice();
-                newCurrent.push({x: newX, y: newY, move: dir[2]});
-                queue.push(newCurrent);
-                visited[newX][newY]++;
-            }
-        }
-        // Increase startTime until we reached the MAX_FUTURE for the predictedMap
-        if (startTime < (MAX_FUTURE - 1)) startTime++;
-    }
-
-    // If we don't find a path, return an empty array
-    return [];
-}
-
-/**
- * BFS to find the path to the closest delivery zone and deliver the package
- *
- * @param {{x: number, y: number}} pos The starting position
- * @param {[{x: number, y: number}]} objectiveList The list of delivery zones
- * @returns {[{x: number, y: number, move: string}]} The path to the objective
- */
-function deliveryBFS(pos, objectiveList) {
-    let list = beamPackageSearch(pos, map.deliveryZones);
-    if (list.length === 1) {
-        // We reach the last possible position if it is blocked
-        list = map.cleanBFS(pos, objectiveList);
-    }
-    let last_move = list.at(-1);
-    // Add a move to the last position to deliver the package
-    list.push({x: last_move.x, y: last_move.y, move: "deliver"});
-
-    return list;
-}
 
 /**
  * Beam search to find the path to the closest objective
@@ -93,51 +13,41 @@ function deliveryBFS(pos, objectiveList) {
  * @param {{x: number, y: number}} pos The starting position
  * @param {[{x: number, y: number}]} objective The objective to reach
  * @param {number} deviations The number of allowed deviations from the path
+ * @param {boolean} fallback If the search should fallback to BFS if the objective is unreachable
+ * @param {boolean} PDDL If the search should use PDDL or not
  * @returns {[{x: number, y: number, move: string}]} The path to the objective
  */
-function beamPackageSearch(pos, objective, deviations = 1, fallback = true) {
+async function beamPackageSearch(pos, objective, PDDL = false, fallback = true) {
     //use BFS to create a path to the objective, then allow for slight deviations to gather other packages on the way
     if (!(objective instanceof Array)) objective = [objective];
-    let path = [{x: pos.x, y: pos.y, move: "none"}].concat(BFStoObjective(pos, objective));
-    if (path.length === 1 && fallback) {
-        //use normal BFS to find the path
-        // console.log("\t[BEAM SEARCH] No path found, using BFS");
-        path = path.concat(map.BFS(pos, objective));
-        // console.log("\t[BEAM SEARCH] BFS path", path);
-        if (path.length === 1) {
-            //fallback to clean BFS
-            // console.log("\t[BEAM SEARCH] No path found, using clean BFS");
-            path = path.concat(map.cleanBFS(pos, objective));
-            // console.log("\t[BEAM SEARCH] Clean BFS path", path);
-        }
+    let path = []
+    if (PDDL) {
+        path = await PDDL_path(pos, objective, fallback);
+    } else {
+        path = search_path(pos, objective, fallback);
     }
 
-    // console.log("\t[BEAM SEARCH] Original path", path);
+    // console.log("\t[BEAM SEARCH]\n\tObjective", objective);
+    // console.log("\t[BEAM SEARCH]\n\tOriginal path", path);
 
     let directions = [[0, 0, "pickup"],
-        [1, 0, "right"], [-1, 0, "left"],
-        [0, 1, "up"], [0, -1, "down"]];
+    [1, 0, "right"], [-1, 0, "left"],
+    [0, 1, "up"], [0, -1, "down"]];
     let move = 0;
 
     //calculate allowed deviations tiles
     let allowedDeviations = new Array(map.width).fill().map(() => new Array(map.height).fill().map(() => false));
     for (let step of path) {
-        if (deviations === 0) {
-            allowedDeviations[step.x][step.y] = true;
-        } else {
-            for (let i = 0; i < deviations; i++) {
-                for (let dir of directions) {
-                    let x = step.x + dir[0];
-                    let y = step.y + dir[1];
-                    if (x >= 0 && x < map.width && y >= 0 && y < map.height
-                        && !(map.predictedMap[move][x][y].agent)
-                        && !(map.predictedMap[move][x][y].type === "obstacle")) {
-                        allowedDeviations[x][y] = true;
-                    }
-                }
+        for (let dir of directions) {
+            let x = step.x + dir[0];
+            let y = step.y + dir[1];
+            if (x >= 0 && x < map.width && y >= 0 && y < map.height
+                && !(map.predictedMap[move][x][y].agent)
+                && !(map.predictedMap[move][x][y].type === "obstacle")) {
+                allowedDeviations[x][y] = true;
             }
-            if (move < (MAX_FUTURE - 1)) move++;
         }
+        if (move < (MAX_FUTURE - 1)) move++;
     }
     // console.log("Allowed deviations");
     // for (let i = map.width - 1; i >= 0; i--) {
@@ -163,21 +73,33 @@ function beamPackageSearch(pos, objective, deviations = 1, fallback = true) {
                     //console.log("\t\tfound a package at", x, y);
 
                     //add a deviation to the path
-                    let deviation = [{x: x, y: y, move: dir[2]}];
+                    let deviation = [{ x: x, y: y, move: dir[2] }];
                     let newPath;
                     if (dir[2] === "pickup") {
                         // console.log("\t\tcollecting package at", x, y);
                         allowedDeviations[x][y] = false;
                         // newPath = path.slice(stepNum + 1);
-                        newPath = BFStoObjective({x: x, y: y}, objective, move);
+                        newPath = path.slice(stepNum + 1)
                     } else {
-                        newPath = BFStoObjective({x: x, y: y}, objective, move);
+                        if (!PDDL) {
+                            newPath = search_path({ x: x, y: y }, objective, move);
+                        } else {
+                            //get back to the original path
+                            let goBackMove = path[stepNum];
+                            let move = "none";
+                            if (goBackMove.x < x) move = "right";
+                            if (goBackMove.x > x) move = "left";
+                            if (goBackMove.y < y) move = "up";
+                            if (goBackMove.y > y) move = "down";
+                            goBackMove.move = move;
+                            newPath = [goBackMove].concat(path.slice(stepNum + 1));
+                        }
                         if (move < (MAX_FUTURE - 1)) move++;
                     }
                     path = path.slice(0, stepNum + 1)
                         .concat(deviation)
                         .concat(newPath);
-                    // console.log("\t\t[BEAM SEARCH] deviation added to the path", path);
+                    // console.log("\t\t[BEAM SEARCH] deviation added to the path", deviation);
                     break;
                 }
             }
@@ -185,8 +107,25 @@ function beamPackageSearch(pos, objective, deviations = 1, fallback = true) {
         if (move < (MAX_FUTURE - 1)) move++;
     }
 
-    //console.log("Beam search", path);
+    // console.log("[BEAM SEARCH] Final path", path);
     return path;
+}
+
+/**
+ * BFS to find the path to the closest delivery zone and deliver the package
+ *
+ * @param {{x: number, y: number}} pos The starting position
+ * @param {[{x: number, y: number}]} objectiveList (for compatibility with other planners - not used)
+ * @param {boolean} usePDDL If the search should use PDDL or not
+ * @returns {[{x: number, y: number, move: string}]} The path to the objective
+ */
+async function deliveryBFS(pos, objectiveList, usePDDL = true) {
+    let list = await beamPackageSearch(pos, map.deliveryZones, usePDDL);
+    let last_move = list.at(-1);
+    // Add a move to the last position to deliver the package
+    list.push({ x: last_move.x, y: last_move.y, move: "deliver" });
+
+    return list;
 }
 
 /**
@@ -197,7 +136,7 @@ function beamPackageSearch(pos, objective, deviations = 1, fallback = true) {
  *
  * @returns {[{x: number, y: number, move: string}]} The explore path
  */
-function exploreBFS(pos, goal) {
+function exploreBFS(pos, goal, usePDDL = true) {
     // Select goal based on the last sensed time of the tile
     // map.map.sort((a, b) => (a.last_seen - b.last_seen));
     // let goal = map.map[0][0];
@@ -223,13 +162,13 @@ function exploreBFS(pos, goal) {
             if ((newX >= heuristic) && (newX < (map.width - heuristic)) && (newY >= heuristic) && (newY < (map.height - heuristic))
                 && map.map[newX][newY].last_seen < oldest_last_seen && (!visited.has(key))
                 && map.map[newX][newY].type !== 'obstacle' && map.map[newX][newY].agent === null) {
-                selected_move = {x: newX, y: newY, move: dir[2]};
+                selected_move = { x: newX, y: newY, move: dir[2] };
                 oldest_last_seen = map.map[newX][newY].last_seen;
             }
         }
         // console.log("Selected move", selected_move);
         if (selected_move) {
-            pos = {x: selected_move.x, y: selected_move.y};
+            pos = { x: selected_move.x, y: selected_move.y };
             key = pos.x + "_" + pos.y;
             visited.set(key, true);
             path.push(selected_move);
@@ -247,13 +186,14 @@ function exploreBFS(pos, goal) {
 /**
  * Improved BFS searching in least seen areas and based on a simple agent heat map
  * @param pos - Where to start the search
- * @param goal - Where to go
+ * @param goal - not used, just here for parameter expansion
+ * @param usePDDL - Use PDDL to find the path
  * @returns {{x: number, y: number, move: string}[]} - A list of nodes containing the path to the goal
  */
-function exploreBFS2(pos, goal) {
+async function exploreBFS2(pos, goal, usePDDL = true) {
     let best_last_seen = -1;
     let best_agent_heat = -1;
-    let best_tile = {x: -1, y: -1, probability: 1};
+    let best_tile = { x: -1, y: -1, probability: 1 };
     let best_utility = -1;
 
     for (let tile of map.spawnableTiles) {
@@ -272,13 +212,13 @@ function exploreBFS2(pos, goal) {
             best_last_seen = tile_last_seen;
             best_agent_heat = tile_agent_heat;
 
-            best_tile = {x: tile.x, y: tile.y, probability: tile.probability};
+            best_tile = { x: tile.x, y: tile.y, probability: tile.probability };
             best_utility = tile_utility
         }
     }
 
     // console.log("\t", best_tile, best_last_seen, best_agent_heat, "Utility", best_utility);
-    let plan = beamPackageSearch(pos, [best_tile]);
+    let plan = await beamPackageSearch(pos, [best_tile], usePDDL);
     if (plan.length === 1) {
         // console.log("\tPlan length 1");
         plan = map.cleanBFS(pos, [best_tile]);
@@ -288,4 +228,4 @@ function exploreBFS2(pos, goal) {
 
 }
 
-export {BFStoObjective, beamPackageSearch, deliveryBFS, exploreBFS, exploreBFS2};
+export { beamPackageSearch, deliveryBFS, exploreBFS, exploreBFS2 };

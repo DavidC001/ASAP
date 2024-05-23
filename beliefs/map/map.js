@@ -191,7 +191,7 @@ class Maps {
             for (let obj of objective) {
                 if (node.x === obj.x && node.y === obj.y) {
                     //remove the first element of the array
-                    return current.slice(1);
+                    return current;
                 }
             }
 
