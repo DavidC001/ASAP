@@ -62,7 +62,7 @@ async function beamSearch(path, objective, PDDL = false) {
                 ) {
                 allowedDeviations[x][y] = false;
                 //console.log("\texploring deviation at", x, y);
-                if (map.map[x][y].parcel){
+                if (map.map[x][y].parcel && !map.map[x][y].agent) {
                     let parcel = parcels.get(map.map[x][y].parcel.id);
                     if (parcel && !parcel.carried) {
                         //console.log("\t\tfound a package at", x, y);
