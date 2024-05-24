@@ -4,6 +4,8 @@ import {agentsBeliefSet, futureAgentsBeliefSet} from "../beliefs/agents/agents.j
 
 import { parcelsBeliefSet } from "../beliefs/parcels/parcels.js";
 
+import fs from "fs";
+
 import { onlineSolver, PddlExecutor, PddlProblem, Beliefset, PddlDomain, PddlAction } from "@unitn-asa/pddl-client";
 
 const MAX_WAIT = 10;
@@ -21,9 +23,10 @@ async function PDDL_futureBFS(pos, objective) {
     let position_belief = new Beliefset();
     position_belief.declare('at t-'+pos.x+'-'+pos.y);
     position_belief.declare('visited t-'+pos.x+'-'+pos.y);
-    position_belief.declare('time T1');
+    let time_belief = new Beliefset();
+    time_belief.declare('time T1');
     for (let i = 2; i <= MAX_FUTURE; i++) {
-        position_belief.undeclare('time T'+i);
+        time_belief.undeclare('time T'+i);
     }
     let objective_str = "or ";
 
@@ -33,8 +36,8 @@ async function PDDL_futureBFS(pos, objective) {
 
     var pddlProblem = new PddlProblem(
         'bfs-example-problem',
-        map.beliefSet.objects.join(' ') + ' ' + position_belief.objects.join(' ') + ' ' + futureAgentsBeliefSet.objects.join(' '),
-        map.beliefSet.toPddlString() + position_belief.toPddlString() + futureAgentsBeliefSet.toPddlString(),
+        map.beliefSet.objects.join(' ') + ' ' + time_belief.objects.join(' ') + ' T0',
+        map.beliefSet.toPddlString() + ' ' + position_belief.toPddlString() + ' ' + futureAgentsBeliefSet.toPddlString() + ' ' + time_belief.toPddlString(),
         objective_str
     );
 
@@ -46,8 +49,8 @@ async function PDDL_futureBFS(pos, objective) {
         moves.push(new PddlAction(
             'move'+i,
             '?from ?to',
-            'and (time T'+i+') (at ?from) (connected ?from ?to) (not (visited ?to)) (not (agent ?to T'+i+'))'+ (i !== 1 ? '' : ' (not (agent ?to T0))'),
-            'and (not (at ?from)) (at ?to) (visited ?to)'+(i!==MAX_FUTURE? ' (not (time T'+i+')) (time T'+(i+1)+')' : ''),
+            'and (time T'+i+') (at ?from) (connected ?from ?to) (not (visited ?to)) (not (agent ?to T'+i+'))'+ (i > 1 ? '' : ' (not (agent ?to T0))'),
+            'and (not (at ?from)) (at ?to) (visited ?to)'+(i<MAX_FUTURE? ' (not (time T'+i+')) (time T'+(i+1)+')' : ''),
             async ( f, t ) => {
                 //get x and y from the string
                 let from = f.split('-');
@@ -70,12 +73,12 @@ async function PDDL_futureBFS(pos, objective) {
     }
 
     for (let i = 0; i < MAX_WAIT; i++) {
-        for (let j = 0; j <= MAX_FUTURE; j++) {
+        for (let j = 1; j <= MAX_FUTURE; j++) {
             moves.push(new PddlAction(
-                'wait'+i,
+                'wait'+i+'-'+j,
                 '?tile',
                 'and (time T'+j+') (at ?tile) (not (waited'+i+' ?tile))',
-                'and (waited'+i+' ?tile)'+(j!==MAX_FUTURE? ' (not (time T'+j+')) (time T'+(j+1)+')' : ''),
+                'and (waited'+i+' ?tile)'+(j<MAX_FUTURE? ' (not (time T'+j+')) (time T'+(j+1)+')' : ''),
                 async ( f ) => {
                     //get x and y from the string
                     let from = f.split('-');
@@ -93,12 +96,16 @@ async function PDDL_futureBFS(pos, objective) {
     let problem = pddlProblem.toPddlString();
     let domain = pddlDomain.toPddlString();
     // console.log("Domain", domain);
+    //write domain to file
+    fs.writeFileSync("domain.pddl", domain);
     // console.log("Problem", problem);
+    //write problem to file
+    fs.writeFileSync("problem.pddl", problem);
 
     let pddl = await PDDL_solver( domain, problem )
 
     const pddlExecutor = new PddlExecutor( ...moves );
-    pddlExecutor.exec( pddl );
+    await pddlExecutor.exec( pddl , true);
 
     return plan;
 }
@@ -123,8 +130,8 @@ async function PDDL_frozenBFS(pos, objective) {
 
     var pddlProblem = new PddlProblem(
         'bfs-example-problem',
-        map.beliefSet.objects.join(' ') + ' ' + position_belief.objects.join(' ') + ' ' + agentsBeliefSet.objects.join(' '),
-        map.beliefSet.toPddlString() + position_belief.toPddlString() + agentsBeliefSet.toPddlString(),
+        map.beliefSet.objects.join(' ') + ' ' + agentsBeliefSet.objects.join(' '),
+        map.beliefSet.toPddlString() + ' ' + position_belief.toPddlString() + ' ' + agentsBeliefSet.toPddlString(),
         objective_str
     );
 
@@ -158,12 +165,14 @@ async function PDDL_frozenBFS(pos, objective) {
     let pddlDomain = new PddlDomain( 'CleanBFS', move );
 
     let problem = pddlProblem.toPddlString();
+    fs.writeFileSync("problem.pddl", problem);
     let domain = pddlDomain.toPddlString();
+    fs.writeFileSync("domain.pddl", domain);
 
     let pddl = await PDDL_solver( domain, problem )
 
     const pddlExecutor = new PddlExecutor( move );
-    pddlExecutor.exec( pddl );
+    await pddlExecutor.exec( pddl , true);
 
     return plan;
 }
@@ -188,8 +197,8 @@ async function PDDL_cleanBFS(pos, objective) {
 
     var pddlProblem = new PddlProblem(
         'bfs-example-problem',
-        map.beliefSet.objects.join(' ') + ' ' + position_belief.objects.join(' '),
-        map.beliefSet.toPddlString() + position_belief.toPddlString(),
+        map.beliefSet.objects.join(' '),
+        map.beliefSet.toPddlString() + ' ' + position_belief.toPddlString(),
         objective_str
     );
 
@@ -228,7 +237,7 @@ async function PDDL_cleanBFS(pos, objective) {
     let pddl = await PDDL_solver( domain, problem )
 
     const pddlExecutor = new PddlExecutor( move );
-    pddlExecutor.exec( pddl );
+    await pddlExecutor.exec( pddl , true);
 
     return plan;
 }
@@ -242,21 +251,22 @@ async function PDDL_cleanBFS(pos, objective) {
  * @returns {[{x: number, y: number, move: string}]} path to the objective
  */
 async function PDDL_path(pos, objective, fallback = true) {
-    let path = await PDDL_futureBFS(pos, objective);
+    // console.log("\t[PDDL] future BFS");
+    let path = await PDDL_frozenBFS(pos, objective);
     if (path.length === 1 && fallback) {
         //use normal BFS to find the path
-        // console.log("\t[BEAM SEARCH] No path found, using BFS");
+        // console.log("\t[PDDL] No path found, using BFS");
         path = await PDDL_frozenBFS(pos, objective);
-        // console.log("\t[BEAM SEARCH] BFS path", path);
+        // console.log("\t[PDDL] BFS path", path);
         if (path.length === 1) {
             //fallback to clean BFS
-            // console.log("\t[BEAM SEARCH] No path found, using clean BFS");
+            // console.log("\t[PDDL] No path found, using clean BFS");
             path = await PDDL_cleanBFS(pos, objective);
-            // console.log("\t[BEAM SEARCH] Clean BFS path", path);
+            // console.log("\t[PDDL] Clean BFS path", path);
         }
     }
     
-    console.log("PDDL path", path)
+    // console.log("\t[PDDL] path", path)
 
     return path;
 }

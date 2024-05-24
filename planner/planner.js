@@ -1,4 +1,5 @@
 import { map, MAX_FUTURE } from "../beliefs/map/map.js";
+import { parcels } from "../beliefs/parcels/parcels.js";
 import { me } from "../beliefs/beliefs.js";
 import { agents } from "../beliefs/agents/agents.js";
 
@@ -8,25 +9,12 @@ import { PDDL_path } from "./PDDL_planners.js";
 const MAX_EXPLORE_PATH_LENGTH = 20;
 
 /**
- * Beam search to find the path to the closest objective
- *
- * @param {{x: number, y: number}} pos The starting position
- * @param {[{x: number, y: number}]} objective The objective to reach
- * @param {number} deviations The number of allowed deviations from the path
- * @param {boolean} fallback If the search should fallback to BFS if the objective is unreachable
- * @param {boolean} PDDL If the search should use PDDL or not
- * @returns {[{x: number, y: number, move: string}]} The path to the objective
+ * Searches in a corridor for parcels to pick up
+ * @param {[{x: number, y: number, move: string}]} path The plan to soft replan
+ * @param {[{x: number, y: number}]} objective The objective to reach - ignored with PDDL
+ * @param {boolean} PDDL Use PDDL to find the path
  */
-async function beamPackageSearch(pos, objective, PDDL = false, fallback = true) {
-    //use BFS to create a path to the objective, then allow for slight deviations to gather other packages on the way
-    if (!(objective instanceof Array)) objective = [objective];
-    let path = []
-    if (PDDL) {
-        path = await PDDL_path(pos, objective, fallback);
-    } else {
-        path = search_path(pos, objective, fallback);
-    }
-
+async function beamSearch(path, objective, PDDL = false) {
     // console.log("\t[BEAM SEARCH]\n\tObjective", objective);
     // console.log("\t[BEAM SEARCH]\n\tOriginal path", path);
 
@@ -67,40 +55,45 @@ async function beamPackageSearch(pos, objective, PDDL = false, fallback = true) 
         for (let dir of directions) {
             let x = step.x + dir[0];
             let y = step.y + dir[1];
-            if (x >= 0 && x < map.width && y >= 0 && y < map.height && allowedDeviations[x][y]) {
+            if (x >= 0 && x < map.width && y >= 0 && y < map.height 
+                && (allowedDeviations[x][y] || dir[2] === "pickup") // only allow deviations if they are in the allowed deviations list
+                && (!path.some((p) => p.x === x && p.y === y) || dir[2] === "pickup") // don't go back to the same tile
+                && !path.some((p) => p.x === x && p.y === y && p.move === "pickup") // don't pick up the same package twice
+                ) {
+                allowedDeviations[x][y] = false;
                 //console.log("\texploring deviation at", x, y);
-                if (map.map[x][y].parcel && !map.map[x][y].parcel.carried) {
-                    //console.log("\t\tfound a package at", x, y);
+                if (map.map[x][y].parcel){
+                    let parcel = parcels.get(map.map[x][y].parcel.id);
+                    if (parcel && !parcel.carried) {
+                        //console.log("\t\tfound a package at", x, y);
 
-                    //add a deviation to the path
-                    let deviation = [{ x: x, y: y, move: dir[2] }];
-                    let newPath;
-                    if (dir[2] === "pickup") {
-                        // console.log("\t\tcollecting package at", x, y);
-                        allowedDeviations[x][y] = false;
-                        // newPath = path.slice(stepNum + 1);
-                        newPath = path.slice(stepNum + 1)
-                    } else {
-                        if (!PDDL) {
-                            newPath = search_path({ x: x, y: y }, objective, move);
+                        //add a deviation to the path
+                        let deviation = [{ x: x, y: y, move: dir[2] }];
+                        let newPath;
+                        if (dir[2] === "pickup") {
+                            // console.log("\t\tcollecting package at", x, y);
+                            // newPath = path.slice(stepNum + 1);
+                            newPath = path.slice(stepNum + 1)
                         } else {
-                            //get back to the original path
-                            let goBackMove = path[stepNum];
-                            let move = "none";
-                            if (goBackMove.x < x) move = "right";
-                            if (goBackMove.x > x) move = "left";
-                            if (goBackMove.y < y) move = "up";
-                            if (goBackMove.y > y) move = "down";
-                            goBackMove.move = move;
-                            newPath = [goBackMove].concat(path.slice(stepNum + 1));
+                            if (!PDDL) {
+                                newPath = search_path({ x: x, y: y }, objective, move);
+                            } else {
+                                //get back to the original path
+                                let goBackMove = { x: step.x, y: step.y , move: "none"};
+                                if (dir[2] === "right") goBackMove.move = "left";
+                                if (dir[2] === "left") goBackMove.move = "right";
+                                if (dir[2] === "up") goBackMove.move = "down";
+                                if (dir[2] === "down") goBackMove.move = "up";
+                                newPath = [goBackMove].concat(path.slice(stepNum + 1));
+                            }
+                            if (move < (MAX_FUTURE - 1)) move++;
                         }
-                        if (move < (MAX_FUTURE - 1)) move++;
+                        path = path.slice(0, stepNum + 1)
+                            .concat(deviation)
+                            .concat(newPath);
+                        // console.log("\t\t[BEAM SEARCH] deviation added to the path", deviation);
+                        break;
                     }
-                    path = path.slice(0, stepNum + 1)
-                        .concat(deviation)
-                        .concat(newPath);
-                    // console.log("\t\t[BEAM SEARCH] deviation added to the path", deviation);
-                    break;
                 }
             }
         }
@@ -108,6 +101,32 @@ async function beamPackageSearch(pos, objective, PDDL = false, fallback = true) 
     }
 
     // console.log("[BEAM SEARCH] Final path", path);
+    return path;
+}
+
+
+/**
+ * Beam search to find the path to the closest objective
+ *
+ * @param {{x: number, y: number}} pos The starting position
+ * @param {[{x: number, y: number}]} objective The objective to reach
+ * @param {number} deviations The number of allowed deviations from the path
+ * @param {boolean} fallback If the search should fallback to BFS if the objective is unreachable
+ * @param {boolean} PDDL If the search should use PDDL or not
+ * @returns {[{x: number, y: number, move: string}]} The path to the objective
+ */
+async function beamPackageSearch(pos, objective, PDDL = false, fallback = true) {
+    //use BFS to create a path to the objective, then allow for slight deviations to gather other packages on the way
+    if (!(objective instanceof Array)) objective = [objective];
+    let path = []
+    if (PDDL) {
+        path = await PDDL_path(pos, objective, fallback);
+    } else {
+        path = search_path(pos, objective, fallback);
+    }
+
+    path = await beamSearch(path, objective, PDDL);
+
     return path;
 }
 
@@ -119,7 +138,7 @@ async function beamPackageSearch(pos, objective, PDDL = false, fallback = true) 
  * @param {boolean} usePDDL If the search should use PDDL or not
  * @returns {[{x: number, y: number, move: string}]} The path to the objective
  */
-async function deliveryBFS(pos, objectiveList, usePDDL = true) {
+async function deliveryBFS(pos, objectiveList, usePDDL = false) {
     let list = await beamPackageSearch(pos, map.deliveryZones, usePDDL);
     let last_move = list.at(-1);
     // Add a move to the last position to deliver the package
@@ -136,7 +155,7 @@ async function deliveryBFS(pos, objectiveList, usePDDL = true) {
  *
  * @returns {[{x: number, y: number, move: string}]} The explore path
  */
-function exploreBFS(pos, goal, usePDDL = true) {
+function exploreBFS(pos, goal, usePDDL = false) {
     // Select goal based on the last sensed time of the tile
     // map.map.sort((a, b) => (a.last_seen - b.last_seen));
     // let goal = map.map[0][0];
@@ -190,7 +209,7 @@ function exploreBFS(pos, goal, usePDDL = true) {
  * @param usePDDL - Use PDDL to find the path
  * @returns {{x: number, y: number, move: string}[]} - A list of nodes containing the path to the goal
  */
-async function exploreBFS2(pos, goal, usePDDL = true) {
+async function exploreBFS2(pos, goal, usePDDL = false) {
     let best_last_seen = -1;
     let best_agent_heat = -1;
     let best_tile = { x: -1, y: -1, probability: 1 };
@@ -228,4 +247,4 @@ async function exploreBFS2(pos, goal, usePDDL = true) {
 
 }
 
-export { beamPackageSearch, deliveryBFS, exploreBFS, exploreBFS2 };
+export { beamSearch, beamPackageSearch, deliveryBFS, exploreBFS, exploreBFS2 };
