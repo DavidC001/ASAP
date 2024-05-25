@@ -1,7 +1,7 @@
 import {map, MAX_FUTURE} from '../map/map.js';
 import {distance, me} from '../beliefs.js';
 import {agentsCarrying} from '../parcels/parcels.js';
-import {Beliefset} from "@unitn-asa/pddl-client";
+import {Beliefset} from "../../planner/pddl-client/index.js";
 
 const MAX_HISTORY = 5;
 

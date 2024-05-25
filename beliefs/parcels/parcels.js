@@ -1,6 +1,6 @@
 import {EventEmitter} from 'events';
 import {distance, me} from "../beliefs.js";
-import {Beliefset} from "@unitn-asa/pddl-client";
+import {Beliefset} from "../../planner/pddl-client/index.js";
 
 /**
  * Event emitter for the parcels

@@ -1,12 +1,12 @@
 import {map, MAX_FUTURE} from "../beliefs/map/map.js";
 import {me} from "../beliefs/beliefs.js";
-import {agentsBeliefSet, futureAgentsBeliefSet} from "../beliefs/agents/agents.js";
 
+import {agentsBeliefSet, futureAgentsBeliefSet} from "../beliefs/agents/agents.js";
 import { parcelsBeliefSet } from "../beliefs/parcels/parcels.js";
 
 import fs from "fs";
 
-import { onlineSolver, PddlExecutor, PddlProblem, Beliefset, PddlDomain, PddlAction } from "@unitn-asa/pddl-client";
+import { onlineSolver, PddlExecutor, PddlProblem, Beliefset, PddlDomain, PddlAction } from "./pddl-client/index.js";
 
 const MAX_WAIT = 10;
 const PDDL_solver = onlineSolver;

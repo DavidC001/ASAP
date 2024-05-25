@@ -3,8 +3,6 @@ import {me} from "../beliefs/beliefs.js";
 import {agents} from "../beliefs/agents/agents.js";
 import { parcels } from "../beliefs/parcels/parcels.js";
 
-import { onlineSolver, PddlExecutor, PddlProblem, Beliefset, PddlDomain, PddlAction } from "@unitn-asa/pddl-client";
-
 const MAX_WAIT = 10;
 
 /**

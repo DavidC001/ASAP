@@ -6,7 +6,7 @@ import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
 import {timeTaken} from '../../helper.js';
 
 import * as fs from 'node:fs';
-import {Beliefset} from "@unitn-asa/pddl-client";
+import {Beliefset} from "../../planner/pddl-client/index.js";
 
 /**
  * A variable that sets the maximum prediction of the map
