@@ -12,7 +12,7 @@ import {Beliefset} from "../../planner/pddl-client/index.js";
  * A variable that sets the maximum prediction of the map
  * @type {number}
  */
-const MAX_FUTURE = 10;
+const MAX_FUTURE = 50;
 
 const MAX_SPAWNABLE_TILES_DISTANCE = 2.5;
 const MAX_AGENT_HEATMAP_DISTANCE = 3;

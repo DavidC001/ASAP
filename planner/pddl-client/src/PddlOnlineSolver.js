@@ -162,6 +162,15 @@ async function parsePlan (json) {
         lines = lines.slice(0,-1);
     }
 
+    // PARSING plan from /package/lama-first/solve
+    else if ( json.result.call.split(' ').includes('lama-first')&& json.result.stdout.includes('Solution found!') ) {
+        
+        console.log( 'Using parser for /package/optic/solve');
+
+        lines = json.result.output.sas_plan.split('\n').slice(0,-2);
+        lines = lines.map( line => line.replace('(','').replace(')','').split(' ') );
+    }
+
     // ERROR
     else {
         console.log(json);
