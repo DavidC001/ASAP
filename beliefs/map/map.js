@@ -12,7 +12,7 @@ import {Beliefset} from "../../planner/pddl-client/index.js";
  * A variable that sets the maximum prediction of the map
  * @type {number}
  */
-const MAX_FUTURE = 50;
+const MAX_FUTURE = 1;
 
 const MAX_SPAWNABLE_TILES_DISTANCE = 2.5;
 const MAX_AGENT_HEATMAP_DISTANCE = 3;
@@ -149,7 +149,7 @@ class Maps {
                         let newY = column + dir[1];
                         if ((newX >= 0) && (newX < this.width) && (newY >= 0) && (newY < this.height)
                             && this.map[newX][newY].type !== 'obstacle') {
-                            this.beliefSet.declare(`connected t-${row}-${column} t-${newX}-${newY}`);
+                            this.beliefSet.declare(`connected t_${row}_${column} t_${newX}_${newY}`);
                         }
                     }
                 }

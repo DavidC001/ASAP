@@ -21,8 +21,8 @@ const PDDL_solver = onlineSolver;
  */
 async function PDDL_futureBFS(pos, objective) {
     let position_belief = new Beliefset();
-    position_belief.declare('at t-'+pos.x+'-'+pos.y);
-    position_belief.declare('visited t-'+pos.x+'-'+pos.y);
+    position_belief.declare('at t_'+pos.x+'_'+pos.y);
+    position_belief.declare('visited t_'+pos.x+'_'+pos.y);
     let time_belief = new Beliefset();
     time_belief.declare('time T1');
     for (let i = 2; i <= MAX_FUTURE; i++) {
@@ -31,7 +31,7 @@ async function PDDL_futureBFS(pos, objective) {
     let objective_str = "or ";
 
     for (let goal of objective) {
-        objective_str += '(at t-'+goal.x+'-'+goal.y+') ';
+        objective_str += '(at t_'+goal.x+'_'+goal.y+') ';
     }
 
     var pddlProblem = new PddlProblem(
@@ -53,10 +53,10 @@ async function PDDL_futureBFS(pos, objective) {
             'and (not (at ?from)) (at ?to) (visited ?to)'+(i<MAX_FUTURE? ' (not (time T'+i+')) (time T'+(i+1)+')' : ''),
             async ( f, t ) => {
                 //get x and y from the string
-                let from = f.split('-');
+                let from = f.split('_');
                 let from_x = parseInt(from[1]);
                 let from_y = parseInt(from[2]);
-                let to = t.split('-');
+                let to = t.split('_');
                 let to_x = parseInt(to[1]);
                 let to_y = parseInt(to[2]);
         
@@ -75,7 +75,7 @@ async function PDDL_futureBFS(pos, objective) {
     for (let i = 0; i < MAX_WAIT; i++) {
         for (let j = 1; j <= MAX_FUTURE; j++) {
             moves.push(new PddlAction(
-                'wait'+i+'-'+j,
+                'wait'+i+'T'+j,
                 '?tile',
                 'and (time T'+j+') (at ?tile) (not (waited'+i+' ?tile))',
                 'and (waited'+i+' ?tile)'+(j<MAX_FUTURE? ' (not (time T'+j+')) (time T'+(j+1)+')' : ''),
@@ -120,12 +120,12 @@ async function PDDL_futureBFS(pos, objective) {
  */
 async function PDDL_frozenBFS(pos, objective) {
     let position_belief = new Beliefset();
-    position_belief.declare('at t-'+pos.x+'-'+pos.y);
-    position_belief.declare('visited t-'+pos.x+'-'+pos.y);
+    position_belief.declare('at t_'+pos.x+'_'+pos.y);
+    position_belief.declare('visited t_'+pos.x+'_'+pos.y);
     let objective_str = "or ";
 
     for (let goal of objective) {
-        objective_str += '(at t-'+goal.x+'-'+goal.y+') ';
+        objective_str += '(at t_'+goal.x+'_'+goal.y+') ';
     }
 
     var pddlProblem = new PddlProblem(
@@ -144,10 +144,10 @@ async function PDDL_frozenBFS(pos, objective) {
         'and (not (at ?from)) (at ?to) (visited ?to)',
         async ( f, t ) => {
             //get x and y from the string
-            let from = f.split('-');
+            let from = f.split('_');
             let from_x = parseInt(from[1]);
             let from_y = parseInt(from[2]);
-            let to = t.split('-');
+            let to = t.split('_');
             let to_x = parseInt(to[1]);
             let to_y = parseInt(to[2]);
 
@@ -187,12 +187,12 @@ async function PDDL_frozenBFS(pos, objective) {
  */
 async function PDDL_cleanBFS(pos, objective) {
     let position_belief = new Beliefset();
-    position_belief.declare('at t-'+pos.x+'-'+pos.y);
-    position_belief.declare('visited t-'+pos.x+'-'+pos.y);
+    position_belief.declare('at t_'+pos.x+'_'+pos.y);
+    position_belief.declare('visited t_'+pos.x+'_'+pos.y);
     let objective_str = "or ";
 
     for (let goal of objective) {
-        objective_str += '(at t-'+goal.x+'-'+goal.y+') ';
+        objective_str += '(at t_'+goal.x+'_'+goal.y+') ';
     }
 
     var pddlProblem = new PddlProblem(
@@ -211,10 +211,10 @@ async function PDDL_cleanBFS(pos, objective) {
         'and (not (at ?from)) (at ?to) (visited ?to)',
         async ( f, t ) => {
             //get x and y from the string
-            let from = f.split('-');
+            let from = f.split('_');
             let from_x = parseInt(from[1]);
             let from_y = parseInt(from[2]);
-            let to = t.split('-');
+            let to = t.split('_');
             let to_x = parseInt(to[1]);
             let to_y = parseInt(to[2]);
 
@@ -253,7 +253,8 @@ async function PDDL_cleanBFS(pos, objective) {
 async function PDDL_path(pos, objective, fallback = true) {
     // console.log("\t[PDDL] future BFS");
     let path = await PDDL_futureBFS(pos, objective);
-    if (path.length === 1 && fallback) {
+    if (path.length === 1 && fallback && !objective.some(o => pos.x === o.x && pos.y === o.y)) {
+        // throw new Error("No path found");
         //use normal BFS to find the path
         // console.log("\t[PDDL] No path found, using BFS");
         path = await PDDL_frozenBFS(pos, objective);

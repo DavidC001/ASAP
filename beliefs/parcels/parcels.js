@@ -102,7 +102,7 @@ function senseParcels(sensedParcels, decayInterval) {
         if (!inView.includes(id) && (distance(p.position, me) < me.config.PARCELS_OBSERVATION_DISTANCE)) {
             parcelEmitter.emit('deleteParcel', id);
         }
-        if(p) parcelsBeliefSet.declare(`parcel t-${p.position.x}-${p.position.y}`);
+        if(p) parcelsBeliefSet.declare(`parcel t_${p.position.x}_${p.position.y}`);
     }
 }
 

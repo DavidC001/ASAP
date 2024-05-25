@@ -203,10 +203,12 @@ class BelievedIntention {
         let next_pos;
         if (this.futureMoves) {
             next_pos = this.futureMoves[0];
-            this.futureMoves.shift();
-            this.futureMoves.push(
-                this.futureMoves[this.futureMoves.length - 1]
-            );
+            if (this.futureMoves.length > 1) {
+                this.futureMoves.shift();
+                this.futureMoves.push(
+                    this.futureMoves[this.futureMoves.length - 1]
+                );
+            }
         } else {
             next_pos = this.objective;
         }
@@ -310,8 +312,10 @@ function senseAgents(sensedAgents) {
         if (agent.x % 1 !== 0 || agent.y % 1 !== 0) continue;
         if (!agents.has(agent.id)) {
             agents.set(agent.id, new Agent({x: Math.round(agent.x), y: Math.round(agent.y)}, agent.id));
+            // console.log("new agent")
         } else {
             agents.get(agent.id).updateHistory({x: Math.round(agent.x), y: Math.round(agent.y)});
+            // console.log("updating history")
         }
     }
 
@@ -321,13 +325,15 @@ function senseAgents(sensedAgents) {
             //if old position is in view then move agent out of bounds
             if (distance(agent.position, me) < me.config.AGENTS_OBSERVATION_DISTANCE-1) {
                 agent.invalidatePrediction();
+                // console.log("invalidating prediction")
             }
         }
         //console.log(agent);
-        agentsBeliefSet.declare(`agent t-${agent.position.x}-${agent.position.y}`);
-        futureAgentsBeliefSet.declare(`agent t-${agent.position.x}-${agent.position.y} T0`);
+        agentsBeliefSet.declare(`agent t_${agent.position.x}_${agent.position.y}`);
+        futureAgentsBeliefSet.declare(`agent t_${agent.position.x}_${agent.position.y} T0`);
+        // console.log(agent.believedIntetion.futureMoves);
         for(let [index, move] of agent.believedIntetion.futureMoves.entries()){
-            futureAgentsBeliefSet.declare(`agent t-${move.x}-${move.y} T${index+1}`);
+            futureAgentsBeliefSet.declare(`agent t_${move.x}_${move.y} T${index+1}`);
         }
     }
 }
