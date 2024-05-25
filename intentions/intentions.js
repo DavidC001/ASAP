@@ -82,8 +82,17 @@ class Intention {
         //await input from console
         // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
 
-
         // console.log('\tplan', me.x, me.y, this.plan);
+
+        if (this.type === 'pickup') {
+            //if the intention is to pick up a parcel check if the parcel is still there
+            if (map.map[this.goal.x][this.goal.y].agent !== null || parcels.get(this.pickUp) === undefined) {
+                //if an agent is on the same position as the parcel return -1
+                this.stop = true;
+                this.reached = true;
+                return;
+            }
+        }
 
         let moves = {
             "up": () => client.move("up"),
@@ -312,9 +321,14 @@ class Intentions {
             console.log("starting intention", maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone");
             this.currentIntention = maxIntention;
             this.currentIntention.executeInt(client);
-        } else if ((this.currentIntention.goal !== maxIntention.goal || this.currentIntention.reached) && this.currentIntention.started) {
+        } else if ((this.currentIntention.goal !== maxIntention.goal || this.currentIntention.reached)) {
             //if the goal is different from the current intention switch intention
             console.log('switching intention', maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone", " from", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");
+
+            if(!this.currentIntention.started) {
+                //remove listeners if the current intention has not started
+                stopEmitter.removeAllListeners('stoppedIntention');
+            }
 
             let oldIntention = this.currentIntention;
             this.currentIntention = maxIntention;
@@ -324,7 +338,8 @@ class Intentions {
                 console.log("starting intention", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");
                 this.currentIntention.executeInt(client);
             });
-            oldIntention.stopInt();
+
+            if(oldIntention.started) oldIntention.stopInt();
         } else if (this.currentIntention.reached && this.currentIntention.type === 'explore') {
             //if the current intention is explore and the goal has been reached, continue with the next intention
             // console.log('continue intention', maxIntention.type);
