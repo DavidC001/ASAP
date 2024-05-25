@@ -50,8 +50,8 @@ export default class PddlExecutor {
             }
 
             let action = this.getAction(step.action)
-            if ( !action || !action.executor && !step.action.includes("REACH-GOAL")) {
-                console.error( new Error("No executor for pddlAction" + step.action + ". Skip and continue with next plan step.") )
+            if ( !action || !action.executor) {
+                if(!step.action.includes("GOAL")) console.error( new Error("No executor for pddlAction" + step.action + ". Skip and continue with next plan step.") )
                 continue;
             }
 
