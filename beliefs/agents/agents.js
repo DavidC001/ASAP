@@ -329,11 +329,15 @@ function senseAgents(sensedAgents) {
             }
         }
         //console.log(agent);
-        agentsBeliefSet.declare(`agent t_${agent.position.x}_${agent.position.y}`);
-        futureAgentsBeliefSet.declare(`agent t_${agent.position.x}_${agent.position.y} T0`);
+        if(agent.position.x>0 && agent.position.y>0 && agent.position.x<map.width && agent.position.y<map.height && map.map[agent.position.x][agent.position.y].type!=="obstacle"){
+            agentsBeliefSet.declare(`agent t_${agent.position.x}_${agent.position.y}`);
+            futureAgentsBeliefSet.declare(`agent t_${agent.position.x}_${agent.position.y} T0`);
+        }
         // console.log(agent.believedIntetion.futureMoves);
         for(let [index, move] of agent.believedIntetion.futureMoves.entries()){
-            futureAgentsBeliefSet.declare(`agent t_${move.x}_${move.y} T${index+1}`);
+            if(move.x>0 && move.y>0 && move.x<map.width && move.y<map.height && map.map[move.x][move.y].type!=="obstacle"){
+                futureAgentsBeliefSet.declare(`agent t_${move.x}_${move.y} T${index+1}`);
+            }
         }
     }
 }
