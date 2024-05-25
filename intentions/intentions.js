@@ -88,8 +88,12 @@ class Intention {
             //if the intention is to pick up a parcel check if the parcel is still there
             if (map.map[this.goal.x][this.goal.y].agent !== null || parcels.get(this.pickUp) === undefined) {
                 //if an agent is on the same position as the parcel return -1
-                this.stop = true;
-                this.reached = true;
+                console.log('reached goal', this.type, this.goal);
+                if (this.stop){
+                    this.stop = false;
+                    stopEmitter.emit('stoppedIntention');
+                }
+                this.started = false;
                 return;
             }
         }
@@ -147,7 +151,7 @@ class Intention {
                     // console.log('replanning', this.type, this.plan);
                     // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
                 } else if(i%SOFT_REPLAN_INTERVAL === 0 && i !== 0 && this.plan[i].move !== 'pickup' && this.plan[i].move !== 'deliver') {
-                    let time = new Date().getTime();
+                    // let time = new Date().getTime();
                     // console.log('\tSoft replanning', this.type, 'from', this.plan[i]);
                     this.plan = await beamSearch(this.plan.splice(i+1, this.plan.length), [this.plan[this.plan.length-1]], USE_PDDL);
                     // console.log('\tSoft replanning', this.type, 'to', this.plan);

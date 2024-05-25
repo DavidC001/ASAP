@@ -8,7 +8,7 @@ import fs from "fs";
 
 import { onlineSolver, PddlExecutor, PddlProblem, Beliefset, PddlDomain, PddlAction } from "./pddl-client/index.js";
 
-const MAX_WAIT = 10;
+const MAX_WAIT = 1;
 const PDDL_solver = onlineSolver;
 
 /**
