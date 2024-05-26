@@ -101,6 +101,7 @@ class Maps {
             currentTile.heuristic = bestDistance;
             currentTile.closest_delivery = closestDelivery;
             currentTile.type = tile.parcelSpawner ? 'spawnable' : 'unspawnable';
+            if (tile.delivery) currentTile.type = 'delivery';
             if (tile.parcelSpawner) {
                 this.spawnableTiles.push({x: tile.x, y: tile.y, last_seen: MAX_TIME + 1});
             }
@@ -405,7 +406,7 @@ class Maps {
         }
         actionBuffer.clear();
         this.map = JSON.parse(JSON.stringify(new_map));
-        // drawMap('./map.txt', this.map);
+        //drawMap('./map.txt', this.map);
         this.updatePrediction();
     }
 
@@ -493,28 +494,22 @@ function drawMap(filename, tilemap) {
     for (let x = 0; x < map.width; x++) {
         for (let y = 0; y < map.height; y++) {
             let tile = tilemap[x][y];
-            let color = '#';
-            if (tile.type === 'delivery') {
-                color = '°';
-            } else if (tile.type === 'spawnable') {
-                color = '*';
-            }
+            let color = tile.type;
 
             if (me.x === x && me.y === y) {
-                if (color === '*') color += '';
-                color = 'M';
+                color = 'me';
             }
 
             if (tile.agent) {
-                if (color === '*') color = '';
-                color += 'A';
+                color = 'agent';
             }
             if (tile.parcel) {
-                if (color === '*') color = '';
-                color += 'P';
+                color = 'parcel';
             }
             // Reverse coordinate to match deliveroo visualization system
-            text_map[Math.abs(map.height - y) - 1][Math.abs(map.width - x) - 1] = color + map.map[x][y].agent_heat;
+            text_map[Math.abs(map.height - y) - 1][Math.abs(map.width - x) - 1] = {
+                type: color, score: tile.parcel ? tile.parcel.score : null
+            };
         }
     }
     text_map = text_map.map(row => row.slice().reverse());

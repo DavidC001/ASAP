@@ -2,6 +2,7 @@ import {map, MAX_FUTURE} from "../beliefs/map/map.js";
 import {me} from "../beliefs/beliefs.js";
 
 import {agentsBeliefSet, futureAgentsBeliefSet} from "../beliefs/agents/agents.js";
+
 import { parcelsBeliefSet } from "../beliefs/parcels/parcels.js";
 
 import fs from "fs";
@@ -13,10 +14,10 @@ const PDDL_solver = onlineSolver;
 
 /**
  * Use PDDL to find the path to the objective with predictions
- * 
+ *
  * @param {{x: number, y: number}} pos position to start from
  * @param {[{x: number, y: number}]} objective objectives to reach
- * 
+ *
  * @returns {[{x: number, y: number, move: string}] path to the objective
  */
 async function PDDL_futureBFS(pos, objective) {
@@ -26,7 +27,7 @@ async function PDDL_futureBFS(pos, objective) {
     let time_belief = new Beliefset();
     time_belief.declare('time T1');
     for (let i = 2; i <= MAX_FUTURE; i++) {
-        time_belief.undeclare('time T'+i);
+        time_belief.undeclare('time T' + i);
     }
     let objective_str = "or ";
 
@@ -47,11 +48,11 @@ async function PDDL_futureBFS(pos, objective) {
 
     for (let i = 1; i <= MAX_FUTURE; i++) {
         moves.push(new PddlAction(
-            'move'+i,
+            'move' + i,
             '?from ?to',
-            'and (time T'+i+') (at ?from) (connected ?from ?to) (not (visited ?to)) (not (agent ?to T'+i+'))'+ (i > 1 ? '' : ' (not (agent ?to T0))'),
-            'and (not (at ?from)) (at ?to) (visited ?to)'+(i<MAX_FUTURE? ' (not (time T'+i+')) (time T'+(i+1)+')' : ''),
-            async ( f, t ) => {
+            'and (time T' + i + ') (at ?from) (connected ?from ?to) (not (visited ?to)) (not (agent ?to T' + i + '))' + (i > 1 ? '' : ' (not (agent ?to T0))'),
+            'and (not (at ?from)) (at ?to) (visited ?to)' + (i < MAX_FUTURE ? ' (not (time T' + i + ')) (time T' + (i + 1) + ')' : ''),
+            async (f, t) => {
                 //get x and y from the string
                 let from = f.split('_');
                 let from_x = parseInt(from[1]);
@@ -59,14 +60,14 @@ async function PDDL_futureBFS(pos, objective) {
                 let to = t.split('_');
                 let to_x = parseInt(to[1]);
                 let to_y = parseInt(to[2]);
-        
+
                 let move = "none";
-        
+
                 if (from_x < to_x) move = "right";
                 if (from_x > to_x) move = "left";
                 if (from_y < to_y) move = "up";
                 if (from_y > to_y) move = "down";
-                
+
                 plan.push({x: to_x, y: to_y, move: move});
             }
         ));
@@ -77,21 +78,21 @@ async function PDDL_futureBFS(pos, objective) {
             moves.push(new PddlAction(
                 'wait'+i+'T'+j,
                 '?tile',
-                'and (time T'+j+') (at ?tile) (not (waited'+i+' ?tile))',
-                'and (waited'+i+' ?tile)'+(j<MAX_FUTURE? ' (not (time T'+j+')) (time T'+(j+1)+')' : ''),
-                async ( f ) => {
+                'and (time T' + j + ') (at ?tile) (not (waited' + i + ' ?tile))',
+                'and (waited' + i + ' ?tile)' + (j < MAX_FUTURE ? ' (not (time T' + j + ')) (time T' + (j + 1) + ')' : ''),
+                async (f) => {
                     //get x and y from the string
                     let from = f.split('-');
                     let from_x = parseInt(from[1]);
                     let from_y = parseInt(from[2]);
-                    
+
                     plan.push({x: from_x, y: from_y, move: "none"});
                 }
             ));
         }
     }
 
-    let pddlDomain = new PddlDomain( 'CleanBFS', ...moves );
+    let pddlDomain = new PddlDomain('CleanBFS', ...moves);
 
     let problem = pddlProblem.toPddlString();
     let domain = pddlDomain.toPddlString();
@@ -102,20 +103,20 @@ async function PDDL_futureBFS(pos, objective) {
     //write problem to file
     fs.writeFileSync("problem.pddl", problem);
 
-    let pddl = await PDDL_solver( domain, problem )
+    let pddl = await PDDL_solver(domain, problem)
 
-    const pddlExecutor = new PddlExecutor( ...moves );
-    await pddlExecutor.exec( pddl , true);
+    const pddlExecutor = new PddlExecutor(...moves);
+    await pddlExecutor.exec(pddl, true);
 
     return plan;
 }
 
 /**
  * Use PDDL to find the path to the objective with frozen agents
- * 
- * @param {{x: number, y: number}} pos position to start from 
+ *
+ * @param {{x: number, y: number}} pos position to start from
  * @param {[{x: number, y: number}]} objective objectives to reach
- * 
+ *
  * @returns {[{x: number, y: number, move: string}] path to the objective
  */
 async function PDDL_frozenBFS(pos, objective) {
@@ -142,7 +143,7 @@ async function PDDL_frozenBFS(pos, objective) {
         '?from ?to',
         'and (at ?from) (connected ?from ?to) (not (visited ?to)) (not (agent ?to))',
         'and (not (at ?from)) (at ?to) (visited ?to)',
-        async ( f, t ) => {
+        async (f, t) => {
             //get x and y from the string
             let from = f.split('_');
             let from_x = parseInt(from[1]);
@@ -157,32 +158,32 @@ async function PDDL_frozenBFS(pos, objective) {
             if (from_x > to_x) move = "left";
             if (from_y < to_y) move = "up";
             if (from_y > to_y) move = "down";
-            
+
             plan.push({x: to_x, y: to_y, move: move});
         }
     );
 
-    let pddlDomain = new PddlDomain( 'CleanBFS', move );
+    let pddlDomain = new PddlDomain('CleanBFS', move);
 
     let problem = pddlProblem.toPddlString();
     fs.writeFileSync("problem.pddl", problem);
     let domain = pddlDomain.toPddlString();
     fs.writeFileSync("domain.pddl", domain);
 
-    let pddl = await PDDL_solver( domain, problem )
+    let pddl = await PDDL_solver(domain, problem)
 
-    const pddlExecutor = new PddlExecutor( move );
-    await pddlExecutor.exec( pddl , true);
+    const pddlExecutor = new PddlExecutor(move);
+    await pddlExecutor.exec(pddl, true);
 
     return plan;
 }
 
 /**
  * Use PDDL to find the path to the objective ignoring other agents
- * 
- * @param {{x: number, y: number}} pos position to start from 
+ *
+ * @param {{x: number, y: number}} pos position to start from
  * @param {*} objective objectives to reach
- * 
+ *
  * @returns {[{x: number, y: number, move: string}]} path to the objective
  */
 async function PDDL_cleanBFS(pos, objective) {
@@ -209,7 +210,7 @@ async function PDDL_cleanBFS(pos, objective) {
         '?from ?to',
         'and (at ?from) (connected ?from ?to) (not (visited ?to))',
         'and (not (at ?from)) (at ?to) (visited ?to)',
-        async ( f, t ) => {
+        async (f, t) => {
             //get x and y from the string
             let from = f.split('_');
             let from_x = parseInt(from[1]);
@@ -224,27 +225,27 @@ async function PDDL_cleanBFS(pos, objective) {
             if (from_x > to_x) move = "left";
             if (from_y < to_y) move = "up";
             if (from_y > to_y) move = "down";
-            
+
             plan.push({x: to_x, y: to_y, move: move});
         }
     );
 
-    let pddlDomain = new PddlDomain( 'CleanBFS', move );
+    let pddlDomain = new PddlDomain('CleanBFS', move);
 
     let problem = pddlProblem.toPddlString();
     let domain = pddlDomain.toPddlString();
 
-    let pddl = await PDDL_solver( domain, problem )
+    let pddl = await PDDL_solver(domain, problem)
 
-    const pddlExecutor = new PddlExecutor( move );
-    await pddlExecutor.exec( pddl , true);
+    const pddlExecutor = new PddlExecutor(move);
+    await pddlExecutor.exec(pddl, true);
 
     return plan;
 }
 
 /**
  * Use PDDL to find the path to the objective
- * 
+ *
  * @param {{x: number, y: number}} pos position to start from
  * @param {[{x: number, y: number}]} objective objectives to reach
  * @param {boolean} fallback if the search should fallback to simple BFS if no path is found
@@ -266,10 +267,10 @@ async function PDDL_path(pos, objective, fallback = true) {
             // console.log("\t[PDDL] Clean BFS path", path);
         }
     }
-    
+
     // console.log("\t[PDDL] path", path)
 
     return path;
 }
 
-export { PDDL_path };
+export {PDDL_path};

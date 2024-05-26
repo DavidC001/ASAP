@@ -95,7 +95,7 @@ class BelievedIntention {
                 this.goTo(position, this.objective);
             }
             //console.log("intention: deliver")
-        }else{
+        } else {
             //else keep moving in the same direction
             this.intention = intentions.MOVE;
             this.objective = {x: -1, y: -1};
@@ -186,7 +186,7 @@ class BelievedIntention {
 
     /**
      * Method to reset the intention to still
-     * 
+     *
      */
     invalidate() {
         this.intention = intentions.STILL;
@@ -301,8 +301,9 @@ let futureAgentsBeliefSet;
 
 /**
  * @param {[ { id:string, name:string, x:number, y:number, score:number } ]} sensedAgents
+ * @param client
  */
-function senseAgents(sensedAgents) {
+function senseAgents(sensedAgents, client) {
     //console.log("sensing agents")
     let inView = []
     agentsBeliefSet = new Beliefset();
@@ -317,13 +318,19 @@ function senseAgents(sensedAgents) {
             agents.get(agent.id).updateHistory({x: Math.round(agent.x), y: Math.round(agent.y)});
             // console.log("updating history")
         }
+        client.say('32942398', {
+            header: 'beliefs', subheader: 'agents', payload: {
+                id: agent.id,
+                position: {x:agent.x, y:agent.y},
+            }
+        }).then(() => {});
     }
 
     for (const [id, agent] of agents) {
         if (!inView.includes(id)) {
             agent.updatePredicted();
             //if old position is in view then move agent out of bounds
-            if (distance(agent.position, me) < me.config.AGENTS_OBSERVATION_DISTANCE-1) {
+            if (distance(agent.position, me) < me.config.AGENTS_OBSERVATION_DISTANCE - 1) {
                 agent.invalidatePrediction();
                 // console.log("invalidating prediction")
             }
@@ -343,10 +350,4 @@ function senseAgents(sensedAgents) {
 }
 
 
-export {
-    Agent,
-    agents,
-    senseAgents,
-    agentsBeliefSet,
-    futureAgentsBeliefSet
-}
+export {Agent, agents, senseAgents, agentsBeliefSet, futureAgentsBeliefSet}

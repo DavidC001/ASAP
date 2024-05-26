@@ -68,8 +68,9 @@ let parcelsBeliefSet;
  * In this function we sense the parcels and update all the important variables
  * @param {[ { id:string, x:number, y:number, carriedBy:string, reward:number } ]} sensedParcels
  * @param {number} decayInterval
+ * @param client
  */
-function senseParcels(sensedParcels, decayInterval) {
+function senseParcels(sensedParcels, decayInterval, client) {
     let inView = [];
     parcelsBeliefSet = new Beliefset();
     for (let parcel of sensedParcels) {
@@ -94,6 +95,12 @@ function senseParcels(sensedParcels, decayInterval) {
             }
         } else {
             parcels.set(id, new Parcel(id, position, score, carried, decayInterval));
+            client.say('8798789789',{
+                header: 'beliefs', subheader: 'parcels', payload: {
+                    id: id,
+                    position: position,
+                }
+            }).then(() => {});
         }
     }
 
