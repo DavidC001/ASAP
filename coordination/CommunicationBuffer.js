@@ -1,26 +1,35 @@
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
 
-const MAX_BELIEFS = 100;
+const MAX_MSG = 200;
 
 class CommunicationBuffer {
-    beliefs = new Array(MAX_BELIEFS);
-    beliefIndex = 0;
+    messages = new Array(MAX_MSG);
+    writeIndex = 0;
+    readIndex = 0;
+    
 
     /**
      * Reads the array with the beliefs in it
      * @returns {Array<string>}
      */
-    readBeliefs() {
-        return this.beliefs;
+    readBuffer() {
+        let readInd = this.readIndex;
+        this.readIndex = this.writeIndex;
+
+        if (readInd < this.readIndex) {
+            return this.messages.slice(readInd, this.readIndex);
+        } else {
+            return this.messages.slice(readInd, MAX_MSG).concat(this.messages.slice(0, this.readIndex));
+        }
     }
 
     /**
      * Adds a belief to the queue
      * @param {object} belief
      */
-    addBelief(belief) {
-        this.beliefs[this.beliefIndex] = belief;
-        this.beliefIndex = (this.beliefIndex + 1) % MAX_BELIEFS;
+    push(belief) {
+        this.beliefs[this.writeIndex] = belief;
+        this.writeIndex = (this.writeIndex + 1) % MAX_MSG;
     }
 }
 

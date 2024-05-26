@@ -16,13 +16,17 @@ const agentBuffer = new CommunicationBuffer();
  */
 const parcelBuffer = new CommunicationBuffer();
 
+/**
+ * A dictionary with the buffers
+ * @type {{agent: CommunicationBuffer, parcel: CommunicationBuffer}}
+ */
 const buffers = {
     "agent": agentBuffer,
     "parcel": parcelBuffer
 }
 
 function beliefSharing(msg) {
-    buffers[msg.header].add(msg.content);
+    buffers[msg.header].push(msg.content);
 }
 
 /**
