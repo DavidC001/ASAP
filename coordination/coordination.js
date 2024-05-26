@@ -27,9 +27,10 @@ function beliefSharing(msg) {
 
 /**
  * Handshake function
- * 
+ *
+ * @param id
  * @param {string} name The name of the agent
- * @param {function} reply The function to reply to the agent
+ * @param msg
  */
 function handshake(id, name, msg) {
     if (name.includes("FerrariMasterPlan")) {
@@ -41,7 +42,7 @@ function handshake(id, name, msg) {
 
 /**
  * Handle the message
- * 
+ *
  * @param {string} id The id of the agent
  * @param {string} name The name of the agent
  * @param {object} msg The message
@@ -54,8 +55,8 @@ function handleMsg(id, name, msg, reply) {
 }
 
 /**
- * 
- * @param {DeliverooApi} clientDeliverooApi 
+ *
+ * @param {DeliverooApi} clientDeliverooApi
  */
 function coordination(clientDeliverooApi) {
     client = clientDeliverooApi;
@@ -71,4 +72,4 @@ function coordination(clientDeliverooApi) {
 }
 
 
-export {coordination, agentBuffer, parcelBuffer};
+export {coordination, agentBuffer, parcelBuffer, otherAgentID};

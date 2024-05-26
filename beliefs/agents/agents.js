@@ -3,6 +3,7 @@ import {distance, me} from '../beliefs.js';
 import {agentsCarrying} from '../parcels/parcels.js';
 import {Beliefset} from "../../planner/pddl-client/index.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
+import {otherAgentID} from "../../coordination/coordination.js";
 
 const MAX_HISTORY = 5;
 
@@ -319,7 +320,7 @@ function senseAgents(sensedAgents, client) {
             agents.get(agent.id).updateHistory({x: Math.round(agent.x), y: Math.round(agent.y)});
             // console.log("updating history")
         }
-        client.say('32942398', {
+        client.say(otherAgentID, {
             header: 'beliefs', subheader: 'agents', payload: {
                 id: agent.id,
                 position: {x:agent.x, y:agent.y},

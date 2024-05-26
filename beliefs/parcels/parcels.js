@@ -1,6 +1,7 @@
 import {EventEmitter} from 'events';
 import {distance, me} from "../beliefs.js";
 import {Beliefset} from "../../planner/pddl-client/index.js";
+import {otherAgentID} from "../../coordination/coordination.js";
 
 /**
  * Event emitter for the parcels
@@ -95,7 +96,7 @@ function senseParcels(sensedParcels, decayInterval, client) {
             }
         } else {
             parcels.set(id, new Parcel(id, position, score, carried, decayInterval));
-            client.say('8798789789',{
+            client.say(otherAgentID,{
                 header: 'beliefs', subheader: 'parcels', payload: {
                     id: id,
                     position: position,
