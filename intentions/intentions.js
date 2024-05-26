@@ -17,7 +17,7 @@ const MAX_RETRIES = 10;
 const MAX_WAIT_FAIL = 8;
 const REPLAN_MOVE_INTERVAL = Math.Infinity;
 const SOFT_REPLAN_INTERVAL = 2;
-const USE_PDDL = true;
+const USE_PDDL = false;
 const INTENTION_REVISION_INTERVAL = 100;
 
 
@@ -143,14 +143,14 @@ class Intention {
                 retryCount++;
             } else {
                 retryCount = 0; // reset retry count if move was successful
-                if (i%REPLAN_MOVE_INTERVAL === 0 && i !== 0) {
+                if (i%REPLAN_MOVE_INTERVAL === 0 && i > 0) {
                     if (this.stop) break;
                     i = -1;
                     // console.log('\tReplanning', this.type);
                     this.plan = await planner[this.type](me, this.goal, USE_PDDL);
                     // console.log('replanning', this.type, this.plan);
                     // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
-                } else if(i%SOFT_REPLAN_INTERVAL === 0 && i !== 0 && this.plan[i].move !== 'pickup' && this.plan[i].move !== 'deliver') {
+                } else if(i%SOFT_REPLAN_INTERVAL === 0 && i > 0 && this.plan[i].move !== 'pickup' && this.plan[i].move !== 'deliver') {
                     // let time = new Date().getTime();
                     // console.log('\tSoft replanning', this.type, 'from', this.plan[i]);
                     this.plan = await beamSearch(this.plan.splice(i+1, this.plan.length), [this.plan[this.plan.length-1]], USE_PDDL);

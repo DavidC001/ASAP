@@ -1,5 +1,4 @@
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
-import {Beliefset} from "@unitn-asa/pddl-client";
 
 const MAX_BELIEFS = 100;
 

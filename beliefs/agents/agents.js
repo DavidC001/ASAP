@@ -2,6 +2,7 @@ import {map, MAX_FUTURE} from '../map/map.js';
 import {distance, me} from '../beliefs.js';
 import {agentsCarrying} from '../parcels/parcels.js';
 import {Beliefset} from "../../planner/pddl-client/index.js";
+import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
 
 const MAX_HISTORY = 5;
 
@@ -301,7 +302,7 @@ let futureAgentsBeliefSet;
 
 /**
  * @param {[ { id:string, name:string, x:number, y:number, score:number } ]} sensedAgents
- * @param client
+ * @param {DeliverooApi} client
  */
 function senseAgents(sensedAgents, client) {
     //console.log("sensing agents")
