@@ -2,7 +2,6 @@ import {senseParcels} from "./parcels/parcels.js";
 import {senseAgents} from "./agents/agents.js";
 import {createMap} from "./map/map.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
-import {coordination} from "../coordination/coordination.js";
 
 /**
  * Variables with all the information about myself
@@ -102,12 +101,6 @@ function RegisterBeliefsRevisions(client) {
     client.onAgentsSensing(async (agents) => {
         senseAgents(agents, client);
     })
-
-    client.onMsg((id, name, msg, reply) => {
-        console.log("new msg received from", name+':', msg);
-        coordination(id, name, msg, reply);
-
-    });
 }
 
 export {RegisterBeliefsRevisions, me, distance}
