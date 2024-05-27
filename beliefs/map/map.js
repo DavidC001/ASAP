@@ -9,6 +9,7 @@ import {timeTaken} from '../../helper.js';
 import * as fs from 'node:fs';
 import {Beliefset} from "../../planner/pddl-client/index.js";
 import myserver from "../../server.js";
+import { otherAgentID } from "../../coordination/coordination.js";
 
 /**
  * A variable that sets the maximum prediction of the map
@@ -504,6 +505,7 @@ function drawMap(filename, tilemap) {
 
             if (tile.agent) {
                 color = 'agent';
+                if (tile.agent === otherAgentID)  color = 'collaborator';
             }
             if (tile.parcel) {
                 color = 'parcel';
@@ -515,12 +517,12 @@ function drawMap(filename, tilemap) {
         }
     }
     text_map = text_map.map(row => row.slice().reverse());
-    const data = text_map.map(row => row.join(',')).join('\n');
-    fs.writeFile(filename, data, (err) => {
-        if (err) {
-            console.error('Error writing file:', err);
-        }
-    });
+    // const data = text_map.map(row => row.join(',')).join('\n');
+    // fs.writeFile(filename, data, (err) => {
+    //     if (err) {
+    //         console.error('Error writing file:', err);
+    //     }
+    // });
     myserver.emitMessage('map', text_map);
 }
 
