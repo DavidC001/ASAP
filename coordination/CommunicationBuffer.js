@@ -28,7 +28,7 @@ class CommunicationBuffer {
      * @param {object} belief
      */
     push(belief) {
-        this.beliefs[this.writeIndex] = belief;
+        this.messages[this.writeIndex] = belief;
         this.writeIndex = (this.writeIndex + 1) % MAX_MSG;
     }
 }
