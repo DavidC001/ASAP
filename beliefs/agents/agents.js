@@ -307,11 +307,11 @@ let futureAgentsBeliefSet;
  */
 function senseAgents(sensedAgents) {
     //console.log("sensing agents")
-    let inView = []
+    let inView = new Set();
     agentsBeliefSet = new Beliefset();
     futureAgentsBeliefSet = new Beliefset();
     for (const agent of sensedAgents) {
-        inView.push(agent.id);
+        inView.add(agent.id);
         if (agent.x % 1 !== 0 || agent.y % 1 !== 0) continue;
         if (!agents.has(agent.id)) {
             agents.set(agent.id, new Agent({x: Math.round(agent.x), y: Math.round(agent.y)}, agent.id));
@@ -321,7 +321,7 @@ function senseAgents(sensedAgents) {
             // console.log("updating history")
         }
         sendMsg({
-            header: 'beliefs', content: {
+            header: 'belief', content: {
                 header: 'agent', content: {
                     id: agent.id,
                     position: {x: Math.round(agent.x), y: Math.round(agent.y)},
@@ -330,12 +330,20 @@ function senseAgents(sensedAgents) {
         }).then(() => {});
     }
 
-    for (let a of agentBuffer.readBuffer()) {
-        if(a && a.id!==otherAgentID) agents.set(a.id, new Agent(a.position, a.id));
+    let receivedAgents = agentBuffer.readBuffer();
+    // console.log("received agents", receivedAgents);
+    for (let a of receivedAgents) {
+        if(!a || a.id===me.id) continue;
+
+        if (!agents.has(a.id)) agents.set(a.id, new Agent(a.position, a.id));
+        else if (!inView.has(a.id)) agents.get(a.id).updateHistory(a.position);
+        
+        // console.log("agent", a.id, "added to the beliefset");
+        inView.add(a.id);
     }
 
     for (const [id, agent] of agents) {
-        if (!inView.includes(id)) {
+        if (!inView.has(id)) {
             agent.updatePredicted();
             //if old position is in view then move agent out of bounds
             if (distance(agent.position, me) < me.config.AGENTS_OBSERVATION_DISTANCE - 1) {

@@ -26,7 +26,6 @@ const buffers = {
 }
 
 function beliefSharing(msg) {
-    if (msg.header==="agent" && msg.content.id===otherAgentID) return;
     buffers[msg.header].push(msg.content);
 }
 
@@ -54,7 +53,7 @@ function handshake(id, name, msg) {
  * @param {function} reply The function to reply to the agent
  */
 function handleMsg(id, name, msg, reply) {
-    console.log("new msg received from", name + ':', msg);
+    // console.log("new msg received from", name + ':', msg);
     if (msg.header === "handshake") handshake(id, name, msg.content);
     if (msg.header === "belief") beliefSharing(msg.content);
 }

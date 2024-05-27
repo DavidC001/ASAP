@@ -168,7 +168,7 @@ class Intention {
             stopEmitter.emit('stoppedIntention');
         } else {
             //if the goal has been reached set the reached flag
-            console.log('reached goal', this.type, this.goal);
+            // console.log('reached goal', this.type, this.goal);
             this.reached = true;
         }
     }
@@ -327,7 +327,7 @@ class Intentions {
             this.currentIntention.executeInt(client);
         } else if ((this.currentIntention.goal !== maxIntention.goal || this.currentIntention.reached)) {
             //if the goal is different from the current intention switch intention
-            console.log('switching intention', maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone", " from", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");
+            // console.log('switching intention', maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone", " from", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");
 
             if(!this.currentIntention.started) {
                 //remove listeners if the current intention has not started

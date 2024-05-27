@@ -97,25 +97,33 @@ function senseParcels(sensedParcels, decayInterval) {
         } else {
             parcels.set(id, new Parcel(id, position, score, carried, decayInterval));
             sendMsg({
-                header: 'beliefs', content: {
+                header: 'belief', content: {
                     header: 'parcel', content: {
                         id: id,
                         position: position,
                         score: score,
-                        carried: carried
+                        carried: carried,
+                        timestamp: Date.now()
                     }
                 }
             }).then(() => {});
         }
     }
 
-    for(let p of parcelBuffer.readBuffer()){
+    let receivedParcels = parcelBuffer.readBuffer();
+    // console.log("received parcels", receivedParcels);
+    for(let p of receivedParcels){
         if (!p) continue;
+        // console.log("parcel", p.id, "received");
         let id = p.id;
         let position = p.position;
-        let carried = p.carried;
-        let score = p.score;
-        parcels.set(id, new Parcel(id, position, score, carried, decayInterval));
+        if (distance(position, me) > me.config.PARCELS_OBSERVATION_DISTANCE) {
+            let carried = p.carried;
+            let timestamp = p.timestamp;
+            let score = p.score - Math.floor((Date.now() - timestamp) / decayInterval);
+            parcels.set(id, new Parcel(id, position, score, carried, decayInterval));
+            // console.log("parcel", id, "added");
+        }
     }
 
     // We remove parcels that are no more inView because they are moved by someone else

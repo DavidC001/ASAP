@@ -15,8 +15,9 @@ class CommunicationBuffer {
     readBuffer() {
         let readInd = this.readIndex;
         this.readIndex = this.writeIndex;
+        // console.log("readBuffer", readInd, this.writeIndex);
 
-        if (readInd < this.readIndex) {
+        if (readInd <= this.readIndex) {
             return this.messages.slice(readInd, this.readIndex);
         } else {
             return this.messages.slice(readInd, MAX_MSG).concat(this.messages.slice(0, this.readIndex));
