@@ -93,7 +93,7 @@ async function getResult (responseCheckUrl) {
     // console.log(json.plans[0].result);
     // console.log(json.plans[0].result.plan);
 
-    if ( json.status != 'ok' ) {
+    if ( json.status != 'ok' && json.status != 'SUCCESS') {
         console.log(json);
         throw new Error( `Invalid 'status' in response body from ${responseCheckUrl}` );
     }
