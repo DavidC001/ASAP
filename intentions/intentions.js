@@ -137,26 +137,31 @@ class Intention {
                     console.log('\tMax retries exceeded', this.type, "on move", this.plan[i]);
                     //wait some moves before replanning
                     await new Promise((resolve) => setTimeout(resolve, me.config.MOVEMENT_DURATION * (Math.round(Math.random() * MAX_WAIT_FAIL) + 1)));
-                    i = -1;
+                    i = 0;
                     this.plan = await planner[this.type](me, this.goal, USE_PDDL);
+                    myServer.emitMessage('plan', this.plan);
                     // console.log('replanning', this.type, this.plan);
                     // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
                 }
+                i--;
                 retryCount++;
             } else {
+                console.log('\tmove ',i, this.plan[i]);
                 retryCount = 0; // reset retry count if move was successful
                 if (i % REPLAN_MOVE_INTERVAL === 0 && i > 0) {
                     if (this.stop) break;
                     i = -1;
                     // console.log('\tReplanning', this.type);
                     this.plan = await planner[this.type](me, this.goal, USE_PDDL);
+                    myServer.emitMessage('plan', this.plan);
                     // console.log('replanning', this.type, this.plan);
                     // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
                 } else if (i % SOFT_REPLAN_INTERVAL === 0 && i > 0 && this.plan[i].move !== 'pickup' && this.plan[i].move !== 'deliver') {
                     // let time = new Date().getTime();
                     // console.log('\tSoft replanning', this.type, 'from', this.plan[i]);
                     this.plan = await beamSearch(this.plan.splice(i + 1, this.plan.length), [this.plan[this.plan.length - 1]], USE_PDDL);
-                    // console.log('\tSoft replanning', this.type, 'to', this.plan);
+                    myServer.emitMessage('plan', this.plan);
+                    console.log('\tSoft replanning', this.type, 'to', this.plan);
                     i = -1;
                 }
             }
