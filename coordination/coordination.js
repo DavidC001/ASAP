@@ -26,6 +26,7 @@ const buffers = {
 }
 
 function beliefSharing(msg) {
+    if (msg.header==="agent" && msg.content.id===otherAgentID) return;
     buffers[msg.header].push(msg.content);
 }
 
@@ -75,5 +76,18 @@ function coordination(clientDeliverooApi) {
     }, 1000);
 }
 
+/**
+ * Send a message to the other agent
+ * @param {object}msg The message to send
+ * @returns {Promise<void>}
+ */
+async function sendMsg(msg){
+    client.say(otherAgentID, msg);
+}
 
-export {coordination, agentBuffer, parcelBuffer, otherAgentID};
+async function sendRequest(msg){
+    // client.
+}
+
+
+export {coordination, agentBuffer, parcelBuffer, otherAgentID, sendMsg};

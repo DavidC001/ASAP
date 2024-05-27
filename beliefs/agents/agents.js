@@ -3,7 +3,7 @@ import {distance, me} from '../beliefs.js';
 import {agentsCarrying} from '../parcels/parcels.js';
 import {Beliefset} from "../../planner/pddl-client/index.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
-import {otherAgentID} from "../../coordination/coordination.js";
+import {agentBuffer, otherAgentID, sendMsg} from "../../coordination/coordination.js";
 
 const MAX_HISTORY = 5;
 
@@ -305,7 +305,7 @@ let futureAgentsBeliefSet;
  * @param {[ { id:string, name:string, x:number, y:number, score:number } ]} sensedAgents
  * @param {DeliverooApi} client
  */
-function senseAgents(sensedAgents, client) {
+function senseAgents(sensedAgents) {
     //console.log("sensing agents")
     let inView = []
     agentsBeliefSet = new Beliefset();
@@ -320,12 +320,18 @@ function senseAgents(sensedAgents, client) {
             agents.get(agent.id).updateHistory({x: Math.round(agent.x), y: Math.round(agent.y)});
             // console.log("updating history")
         }
-        client.say(otherAgentID, {
-            header: 'beliefs', subheader: 'agents', payload: {
-                id: agent.id,
-                position: {x:agent.x, y:agent.y},
+        sendMsg({
+            header: 'beliefs', content: {
+                header: 'agent', content: {
+                    id: agent.id,
+                    position: {x: Math.round(agent.x), y: Math.round(agent.y)},
+                }
             }
         }).then(() => {});
+    }
+
+    for (let a of agentBuffer.readBuffer()) {
+        if(a && a.id!==otherAgentID) agents.set(a.id, new Agent(a.position, a.id));
     }
 
     for (const [id, agent] of agents) {
@@ -338,14 +344,14 @@ function senseAgents(sensedAgents, client) {
             }
         }
         //console.log(agent);
-        if(agent.position.x>0 && agent.position.y>0 && agent.position.x<map.width && agent.position.y<map.height && map.map[agent.position.x][agent.position.y].type!=="obstacle"){
+        if (agent.position.x > 0 && agent.position.y > 0 && agent.position.x < map.width && agent.position.y < map.height && map.map[agent.position.x][agent.position.y].type !== "obstacle") {
             agentsBeliefSet.declare(`agent t_${agent.position.x}_${agent.position.y}`);
             futureAgentsBeliefSet.declare(`agent t_${agent.position.x}_${agent.position.y} T0`);
         }
         // console.log(agent.believedIntetion.futureMoves);
-        for(let [index, move] of agent.believedIntetion.futureMoves.entries()){
-            if(move.x>0 && move.y>0 && move.x<map.width && move.y<map.height && map.map[move.x][move.y].type!=="obstacle"){
-                futureAgentsBeliefSet.declare(`agent t_${move.x}_${move.y} T${index+1}`);
+        for (let [index, move] of agent.believedIntetion.futureMoves.entries()) {
+            if (move.x > 0 && move.y > 0 && move.x < map.width && move.y < map.height && map.map[move.x][move.y].type !== "obstacle") {
+                futureAgentsBeliefSet.declare(`agent t_${move.x}_${move.y} T${index + 1}`);
             }
         }
     }

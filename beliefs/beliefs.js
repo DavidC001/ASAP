@@ -91,7 +91,7 @@ function RegisterBeliefsRevisions(client) {
     //console.log('moves per parcel decay', me.moves_per_parcel_decay);
 
     client.onParcelsSensing(async (perceived_parcels) => {
-        senseParcels(perceived_parcels, interval_num, client);
+        senseParcels(perceived_parcels, interval_num);
     })
 
     client.onMap(async (width, height, tiles) => {
@@ -99,7 +99,7 @@ function RegisterBeliefsRevisions(client) {
     })
 
     client.onAgentsSensing(async (agents) => {
-        senseAgents(agents, client);
+        senseAgents(agents);
     })
 }
 
