@@ -146,7 +146,7 @@ class Intention {
                 i--;
                 retryCount++;
             } else {
-                console.log('\tmove ',i, this.plan[i]);
+                // console.log('\tmove ',i, this.plan[i]);
                 retryCount = 0; // reset retry count if move was successful
                 if (i % REPLAN_MOVE_INTERVAL === 0 && i > 0) {
                     if (this.stop) break;
@@ -161,7 +161,7 @@ class Intention {
                     // console.log('\tSoft replanning', this.type, 'from', this.plan[i]);
                     this.plan = await beamSearch(this.plan.splice(i + 1, this.plan.length), [this.plan[this.plan.length - 1]], USE_PDDL);
                     myServer.emitMessage('plan', this.plan);
-                    console.log('\tSoft replanning', this.type, 'to', this.plan);
+                    // console.log('\tSoft replanning', this.type, 'to', this.plan);
                     i = -1;
                 }
             }
