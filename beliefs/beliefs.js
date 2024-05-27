@@ -2,6 +2,7 @@ import {senseParcels} from "./parcels/parcels.js";
 import {senseAgents} from "./agents/agents.js";
 import {createMap} from "./map/map.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
+import { sendMsg } from "../coordination/coordination.js";
 
 /**
  * Variables with all the information about myself
@@ -27,7 +28,8 @@ import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
  *      RANDOM_AGENT_SPEED:string,
  *      CLOCK:number
  * },
- * moves_per_parcel_decay:number}} */
+ * moves_per_parcel_decay:number}} 
+ */
 const me = {};
 
 /**
@@ -40,6 +42,15 @@ function updateMe({id, name, x, y, score}) {
     me.x = Math.round(x);
     me.y = Math.round(y);
     me.score = score;
+
+    sendMsg({
+        header: 'belief', content: {
+            header: 'agent', content: {
+                id: me.id,
+                position: {x: me.x, y: me.y},
+            }
+        }
+    }).then(() => {});
 }
 
 /**
