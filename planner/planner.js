@@ -141,6 +141,7 @@ async function beamPackageSearch(pos, objective, PDDL = false, fallback = true) 
 async function deliveryBFS(pos, objectiveList, usePDDL = false) {
     let list = await beamPackageSearch(pos, map.deliveryZones, usePDDL);
     let last_move = list.at(-1);
+    if (!last_move) last_move = pos;
     // Add a move to the last position to deliver the package
     list.push({ x: last_move.x, y: last_move.y, move: "deliver" });
 
