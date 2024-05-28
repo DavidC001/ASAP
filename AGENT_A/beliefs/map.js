@@ -431,6 +431,21 @@ class Maps {
             }
         }
 
+        if (agents.has(otherAgentID)) {
+            let other_agent = agents.get(otherAgentID);
+            maxX = Math.min(other_agent.position.x + parcelObsDist, this.width - 1);
+            maxY = Math.min(other_agent.position.y + parcelObsDist, this.height - 1);
+            minX = Math.max(other_agent.position.x - parcelObsDist, 0);
+            minY = Math.max(other_agent.position.y - parcelObsDist, 0);
+            for (let i = minX; i <= maxX; i++) {
+                for (let j = minY; j <= maxY; j++) {
+                    if (distance({x: i, y: j}, agents.get(otherAgentID).position) <= parcelObsDist) {
+                        this.map[i][j].last_seen = timestamp - startingTime;
+                    }
+                }
+            }
+        }
+
         if (timestamp - startingTime > MAX_TIME) {
             for (let i = 0; i < this.width; i++) {
                 for (let j = 0; j < this.height; j++) {
