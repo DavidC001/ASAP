@@ -9,6 +9,7 @@ import myServer from '../server.js';
 
 //wait console input
 import readline from 'readline';
+import { clear } from 'console';
 
 const input = readline.createInterface({
     input: process.stdin,
@@ -21,8 +22,8 @@ const SOFT_REPLAN_INTERVAL = 2;
 const USE_PDDL = false;
 const INTENTION_REVISION_INTERVAL = 100;
 
-
-const stopEmitter = new EventEmitter(); //TODO: make a diffierent emitter for each intention
+/** @type {EventEmitter} */
+const stopEmitter = new EventEmitter();
 
 /**
  * @class Intention
@@ -34,6 +35,7 @@ const stopEmitter = new EventEmitter(); //TODO: make a diffierent emitter for ea
  * @property {Array<{move:string}>} plan - The plan to reach the goal
  * @property {boolean} stop - True if the intention has to stop
  * @property {boolean} reached - True if the goal has been reached
+ * @property {boolean} started - True if the intention has started
  */
 class Intention {
     goal;
@@ -73,6 +75,16 @@ class Intention {
         this.started = true;
         this.reached = false;
 
+        let stopWhilePlanning = setInterval(() => {
+            if (this.stop) {
+                clearInterval(stopWhilePlanning);
+                this.started = false;
+                this.stop = false;
+                console.log('stopped intention', this.type, "to", (this.type !== "deliver") ? this.goal : "delivery zone");
+                stopEmitter.emit('stoppedIntention'+this.type+' '+this.goal);
+            }
+        }, 100);
+
         let planner = {
             'pickup': beamPackageSearch,
             'deliver': deliveryBFS,
@@ -84,18 +96,20 @@ class Intention {
         //await input from console
         // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
 
+        clearInterval(stopWhilePlanning);
+
         // console.log('\tplan', me.x, me.y, this.plan);
 
         if (this.type === 'pickup') {
             //if the intention is to pick up a parcel check if the parcel is still there
             if (map.map[this.goal.x][this.goal.y].agent !== null || parcels.get(this.pickUp) === undefined) {
-                //if an agent is on the same position as the parcel return -1
-                console.log('reached goal', this.type, this.goal);
+                console.log('\tunreachable goal', this.type, this.goal);
+                this.started = false;
+                this.reached = true;
                 if (this.stop) {
                     this.stop = false;
-                    stopEmitter.emit('stoppedIntention');
+                    stopEmitter.emit('stoppedIntention'+this.type+' '+this.goal);
                 }
-                this.started = false;
                 return;
             }
         }
@@ -127,11 +141,11 @@ class Intention {
 
         let retryCount = 0;
         for (let i = 0; i < this.plan.length; i++) {
-            // console.log(this.type,'move', this.plan[i]);
+            // console.log(this.type,'move', i, this.plan[i]);
             let res = await moves[this.plan[i].move]();
 
             if (!res) {
-                //console.log('Move failed, retrying...');
+                // console.log('\tMove failed, retrying...');
                 if (retryCount >= MAX_RETRIES) {
                     if (this.stop) break;
                     console.log('\tMax retries exceeded', this.type, "on move", this.plan[i]);
@@ -146,7 +160,7 @@ class Intention {
                 i--;
                 retryCount++;
             } else {
-                // console.log('\tmove ',i, this.plan[i]);
+                // console.log('\tmove ',i, this.plan[i],this.type);
                 retryCount = 0; // reset retry count if move was successful
                 if (i % REPLAN_MOVE_INTERVAL === 0 && i > 0) {
                     if (this.stop) break;
@@ -169,13 +183,13 @@ class Intention {
 
         if (this.stop) {
             //if the intention has to stop send a signal
-            //console.log('stopped intention', this.type);
+            console.log('stopped intention', this.type, "to", (this.type !== "deliver") ? this.goal : "delivery zone");
             this.stop = false;
             this.started = false;
-            stopEmitter.emit('stoppedIntention');
+            stopEmitter.emit('stoppedIntention'+this.type+' '+this.goal);
         } else {
             //if the goal has been reached set the reached flag
-            // console.log('reached goal', this.type, this.goal);
+            console.log('reached goal', this.type, this.goal);
             this.reached = true;
         }
     }
@@ -276,8 +290,9 @@ class Intention {
         if (this.reached) {
             this.stop = false;
             this.started = false;
-            //console.log('stopped intention', this.type);
-            stopEmitter.emit('stoppedIntention');
+            this.reached = false;
+            console.log('stopped intention', this.type, "to", (this.type !== "deliver") ? this.goal : "delivery zone");
+            stopEmitter.emit('stoppedIntention'+this.type+' '+this.goal);
         }
     }
 }
@@ -291,6 +306,7 @@ class Intention {
 class Intentions {
     intentions;
     currentIntention = null;
+    waiting = [];
 
     /**
      * Creates an instance of Intentions.
@@ -332,30 +348,19 @@ class Intentions {
             console.log("starting intention", maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone");
             this.currentIntention = maxIntention;
             this.currentIntention.executeInt(client);
-        } else if ((this.currentIntention.goal !== maxIntention.goal || this.currentIntention.reached)) {
+        } else if ((this.currentIntention.goal !== maxIntention.goal && this.currentIntention.started) || this.currentIntention.reached) {
             //if the goal is different from the current intention switch intention
-            // console.log('switching intention', maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone", " from", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");
-
-            if (!this.currentIntention.started) {
-                //remove listeners if the current intention has not started
-                stopEmitter.removeAllListeners('stoppedIntention');
-            }
-
-            let oldIntention = this.currentIntention;
-            this.currentIntention = maxIntention;
-
+            // console.log('switching intention', maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone", " from", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");;
+            
             //wait for the current intention to stop before starting the new one
-            stopEmitter.once('stoppedIntention', () => {
-                console.log("starting intention", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");
-                this.currentIntention.executeInt(client);
+            stopEmitter.once('stoppedIntention'+this.currentIntention.type+' '+this.currentIntention.goal, () => {
+                console.log("starting intention", maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone");
+                maxIntention.executeInt(client);
             });
-
-            if (oldIntention.started) oldIntention.stopInt();
-        } else if (this.currentIntention.reached && this.currentIntention.type === 'explore') {
-            //if the current intention is explore and the goal has been reached, continue with the next intention
-            // console.log('continue intention', maxIntention.type);
-            this.currentIntention.executeInt(client);
-        }
+            
+            this.currentIntention.stopInt();
+            this.currentIntention = maxIntention;
+        } 
     }
 
     /**
