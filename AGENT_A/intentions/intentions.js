@@ -1,11 +1,11 @@
-import {map} from '../beliefs/map.js';
-import {distance, me} from '../beliefs/beliefs.js';
-import {parcels} from '../beliefs/parcels.js';
-import {agents} from '../beliefs/agents.js';
+import {map} from '../../beliefs/map.js';
+import {distance, me} from '../../beliefs/beliefs.js';
+import {parcels} from '../../beliefs/parcels.js';
+import {agents} from '../../beliefs/agents.js';
 import {EventEmitter} from 'events';
-import {beamSearch, deliveryBFS, beamPackageSearch, exploreBFS, exploreBFS2} from '../planner/planner.js';
+import {beamSearch, deliveryBFS, beamPackageSearch, exploreBFS, exploreBFS2} from '../../planner/planner.js';
 import {DeliverooApi} from '@unitn-asa/deliveroo-js-client';
-import myServer from '../server.js';
+import myServer from '../../server.js';
 
 //wait console input
 import readline from 'readline';
