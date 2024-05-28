@@ -9,6 +9,9 @@
             height: 40px;
             border: 2px solid #efefef;
             padding: 2px;
+            color: black;
+            position: relative; /* Make the cell position relative */
+            text-align: center;
         }
 
         .delivery {
@@ -17,8 +20,9 @@
         }
 
         .spawnable {
-            background-color: green;
+            background-color: lightgreen;
             z-index: 8;
+            color: rgb(78, 74, 74);
         }
 
         .unspawnable {
@@ -35,6 +39,8 @@
             text-align: center;
             background-color: orange;
             z-index: 9;
+            text-size-adjust: 100%;
+            color: white;
         }
 
         .agent {
@@ -48,8 +54,18 @@
         }
 
         .plan {
-            background-color: #7aff7a;
+            background-color: #7af6ff;
             z-index: 10;
+        }
+
+        .heat {
+            background-color: black;
+            z-index: 10;
+            height: 98%;
+            width: 98%; 
+            position: absolute;
+            display: flex;
+            top: 0;
         }
 
         #map_table {
@@ -87,18 +103,23 @@
             for (let j = 0; j < map[i].length; j++) {
                 let cell = map[i][j].type
                 let score = map[i][j].score ? map[i][j].score : '';
+                let last_seen = map[i][j].last_seen ? map[i][j].last_seen : '';
+                let heat = map[i][j].heat ? map[i][j].heat : ''; //make the color darker if the heat is higher
                 // console.log(cell);
                 let cell_id = `cell_${i}_${j}`
                 let cell_element = $(`#${cell_id}`)
                 let row_element = $(`#row_${i}`)
                 if (row_element.length === 0) $('#map_table').append(`<tr id="row_${i}"><td id="${cell_id}" class="${cell}">${score}</td></tr>`)
                 if (cell_element.length === 0) {
-                    row_element.append(`<td id="${cell_id}" class="${cell}">${score}</td>`)
-                } else {
+                    let element = `<td id="${cell_id}" class="${cell}"> ${score} </td>`;
+                    row_element.append(element);
+                } else if (!cell_element.hasClass('obstacle')){
                     let other_class = '';
                     if (cell_element.hasClass('plan') && !cell_element.hasClass('me')) other_class = ' plan';
                     cell_element.attr('class', cell + other_class);
-                    cell_element.text(score);
+                    let element = `${score?score:(last_seen?Math.floor(last_seen):'')}
+                    <div class="heat" style="opacity: ${(heat-1)/10}"> </div>`;
+                    cell_element.html(element);
                 }
             }
         }

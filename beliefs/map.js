@@ -106,7 +106,7 @@ class Maps {
             if (tile.delivery) currentTile.type = 'delivery';
             if (tile.parcelSpawner) {
                 this.spawnableTiles.push({x: tile.x, y: tile.y, last_seen: MAX_TIME + 1});
-            }
+            } 
         });
 
         if ((this.spawnableTiles.length + this.deliveryZones.length) === tiles.length) {
@@ -526,7 +526,8 @@ function drawMap(filename, tilemap) {
             }
             // Reverse coordinate to match deliveroo visualization system
             text_map[Math.abs(map.height - y) - 1][Math.abs(map.width - x) - 1] = {
-                type: color, score: tile.parcel ? tile.parcel.score : null
+                type: color, score: tile.parcel ? tile.parcel.score : null,
+                heat: tile.agent_heat, last_seen: tile.last_seen
             };
         }
     }
