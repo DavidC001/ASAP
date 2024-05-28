@@ -1,7 +1,7 @@
 import {EventEmitter} from 'events';
-import {distance, me} from "../beliefs.js";
-import {Beliefset} from "../../planner/pddl-client/index.js";
-import {sendMsg, parcelBuffer} from "../../coordination/coordination.js";
+import {distance, me} from "./beliefs.js";
+import {Beliefset} from "../planner/pddl-client/index.js";
+import {sendMsg, parcelBuffer} from "../coordination/coordination.js";
 
 /**
  * Event emitter for the parcels

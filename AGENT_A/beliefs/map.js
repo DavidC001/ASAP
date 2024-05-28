@@ -1,15 +1,14 @@
-import {parcels, parcelEmitter, agentsCarrying} from "../parcels/parcels.js";
-import {me, distance} from "../beliefs.js"
-import {agents, Agent} from "../agents/agents.js";
+import {parcels, parcelEmitter, agentsCarrying} from "./parcels.js";
+import {me, distance} from "./beliefs.js"
+import {agents, Agent} from "./agents.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
-import myServer from "../../server.js";
 
-import {timeTaken} from '../../helper.js';
+import {timeTaken} from '../helper.js';
 
 import * as fs from 'node:fs';
-import {Beliefset} from "../../planner/pddl-client/index.js";
-import myserver from "../../server.js";
-import { otherAgentID } from "../../coordination/coordination.js";
+import {Beliefset} from "../planner/pddl-client/index.js";
+import myserver from "../server.js";
+import { otherAgentID } from "../coordination/coordination.js";
 
 /**
  * A variable that sets the maximum prediction of the map

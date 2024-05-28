@@ -1,9 +1,7 @@
-import {map, MAX_FUTURE} from "../beliefs/map/map.js";
-import {me} from "../beliefs/beliefs.js";
+import {map, MAX_FUTURE} from "../beliefs/map.js";
 
-import {agentsBeliefSet, futureAgentsBeliefSet} from "../beliefs/agents/agents.js";
-
-import { parcelsBeliefSet } from "../beliefs/parcels/parcels.js";
+import {agentsBeliefSet, futureAgentsBeliefSet} from "../beliefs/agents.js";
+import { parcelsBeliefSet } from "../beliefs/parcels.js";
 
 import fs from "fs";
 

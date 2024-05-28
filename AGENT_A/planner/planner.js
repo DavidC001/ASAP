@@ -1,7 +1,7 @@
-import { map, MAX_FUTURE } from "../beliefs/map/map.js";
-import { parcels } from "../beliefs/parcels/parcels.js";
+import { map, MAX_FUTURE } from "../beliefs/map.js";
+import { parcels } from "../beliefs/parcels.js";
 import { me } from "../beliefs/beliefs.js";
-import { agents } from "../beliefs/agents/agents.js";
+import { agents } from "../beliefs/agents.js";
 
 import { search_path } from "./search_planners.js";
 import { PDDL_path } from "./PDDL_planners.js";

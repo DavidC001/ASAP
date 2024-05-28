@@ -1,7 +1,7 @@
-import {map} from '../beliefs/map/map.js';
+import {map} from '../beliefs/map.js';
 import {distance, me} from '../beliefs/beliefs.js';
-import {parcels} from '../beliefs/parcels/parcels.js';
-import {agents} from '../beliefs/agents/agents.js';
+import {parcels} from '../beliefs/parcels.js';
+import {agents} from '../beliefs/agents.js';
 import {EventEmitter} from 'events';
 import {beamSearch, deliveryBFS, beamPackageSearch, exploreBFS, exploreBFS2} from '../planner/planner.js';
 import {DeliverooApi} from '@unitn-asa/deliveroo-js-client';

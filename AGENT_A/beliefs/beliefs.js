@@ -1,6 +1,6 @@
-import {senseParcels} from "./parcels/parcels.js";
-import {senseAgents} from "./agents/agents.js";
-import {createMap} from "./map/map.js";
+import {senseParcels} from "./parcels.js";
+import {senseAgents} from "./agents.js";
+import {createMap} from "./map.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
 import { sendMsg } from "../coordination/coordination.js";
 

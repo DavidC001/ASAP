@@ -1,7 +1,4 @@
-import {map, MAX_FUTURE} from "../beliefs/map/map.js";
-import {me} from "../beliefs/beliefs.js";
-import {agents} from "../beliefs/agents/agents.js";
-import { parcels } from "../beliefs/parcels/parcels.js";
+import {map, MAX_FUTURE} from "../beliefs/map.js";
 
 const MAX_WAIT = 10;
 
