@@ -228,7 +228,6 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
                 (best_tile.x === -1 && best_tile.y === -1) ||
                 best_utility > tile_utility
             )
-            && (tile.x !== me.x && tile.y !== me.y)
             && map.cleanBFS(pos, [tile]).length > 1) {
             best_last_seen = tile_last_seen;
             best_agent_heat = tile_agent_heat;
