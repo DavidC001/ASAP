@@ -18,6 +18,7 @@ export default async function onlineSolver (pddlDomain, pddlProblem) {
     var responseCheckUrl = await postRequest(pddlDomain, pddlProblem);
 
     var json = await getResult(responseCheckUrl);
+    if (json == "") return [];
 
     var plan = parsePlan(json);
     
@@ -65,7 +66,7 @@ async function getResult (responseCheckUrl) {
 
     while (true) {
 
-        console.log('PENDING planning result from', responseCheckUrl);
+        // console.log('PENDING planning result from', responseCheckUrl);
 
         let res = await fetch(responseCheckUrl, {
             method: "GET",
@@ -93,8 +94,12 @@ async function getResult (responseCheckUrl) {
     // console.log(json.plans[0].result);
     // console.log(json.plans[0].result.plan);
 
-    if ( json.status != 'ok' && json.status != 'SUCCESS') {
+    if ( json.status != 'ok') {
         console.log(json);
+        if ( json.status == 'SUCCESS' ) {
+            console.log( 'Plan not found!' );
+            return "";
+        }
         throw new Error( `Invalid 'status' in response body from ${responseCheckUrl}` );
     }
     
@@ -123,7 +128,7 @@ async function parsePlan (json) {
     // PARSING plan from /package/dual-bfws-ffparser/solve
     if ( json.result.stdout.split('\n').includes(' --- OK.') ) {
 
-        console.log( 'Using parser for /package/dual-bfws-ffparser/solve');
+        console.log( '\tUsing parser for /package/dual-bfws-ffparser/solve');
 
         lines = lines.map( line => line.replace('(','').replace(')','').split(' ') );
         lines = lines.slice(0,-1);
@@ -132,7 +137,7 @@ async function parsePlan (json) {
     // PARSING plan from /package/delfi/solve
     else if ( json.result.call.split(' ').includes('delfi') && json.result.stdout.split('\n').includes('Solution found.') ) {
         
-        console.log( 'Using parser for /package/delfi/solve');
+        console.log( '\tUsing parser for /package/delfi/solve');
 
         lines = lines.map( line => line.replace('(','').replace(')','').split(' ') );
         lines = lines.slice(0,-1);
@@ -141,7 +146,7 @@ async function parsePlan (json) {
     // PARSING plan from /package/enhsp-2020/solve
     else if ( lines.includes('Problem Solved') ) {
 
-        console.log( 'Using parser for /package/enhsp-2020/solve');
+        console.log( '\tUsing parser for /package/enhsp-2020/solve');
 
         let startIndex = lines.indexOf('Problem Solved') + 1;
         let endIndex = lines.findIndex( (line) => line.includes('Plan-Length') );
@@ -153,7 +158,7 @@ async function parsePlan (json) {
     // PARSING plan from /package/optic/solve
     else if ( json.result.call.split(' ').includes('optic') && lines.includes(';;;; Solution Found') ) {
         
-        console.log( 'Using parser for /package/optic/solve');
+        console.log( '\tUsing parser for /package/optic/solve');
         
         let startIndex = lines.indexOf(';;;; Solution Found') + 1;
         lines = lines.slice( startIndex + 3 );
@@ -165,7 +170,7 @@ async function parsePlan (json) {
     // PARSING plan from /package/lama-first/solve
     else if ( json.result.call.split(' ').includes('lama-first')&& json.result.stdout.includes('Solution found!') ) {
         
-        console.log( 'Using parser for /package/lama-first/solve');
+        console.log( '\tUsing parser for /package/lama-first/solve');
 
         lines = json.result.output.sas_plan.split('\n').slice(0,-2);
         lines = lines.map( line => line.replace('(','').replace(')','').split(' ') );
@@ -180,11 +185,11 @@ async function parsePlan (json) {
 
     var plan = []
 
-    console.log( 'Plan found:' )
+    console.log( '\tPlan found!' )
 
     for ( let /**@type {string}*/ line of lines ) {
 
-        console.log('- ' + line);
+        // console.log('- ' + line);
 
         // var number = line.shift()
         var action = line.shift()
