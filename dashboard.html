@@ -54,6 +54,11 @@
         }
 
         .plan {
+            background-color: #0230ff;
+            z-index: 10;
+        }
+
+        .otherAgentPlan {
             background-color: #7af6ff;
             z-index: 10;
         }
@@ -115,6 +120,7 @@
                     row_element.append(element);
                 } else if (!cell_element.hasClass('obstacle')){
                     let other_class = '';
+                    if (cell_element.hasClass('otherAgentPlan') && !cell_element.hasClass('me')) other_class = ' otherAgentPlan';
                     if (cell_element.hasClass('plan') && !cell_element.hasClass('me')) other_class = ' plan';
                     cell_element.attr('class', cell + other_class);
                     let element = `${score?score:(last_seen?Math.floor(last_seen):'')}
@@ -133,6 +139,18 @@
                 cell_element.addClass('plan');
                 // invert an index to match the map
 
+            }
+        }
+        console.log(plan);
+    });
+    socket.on('otherAgentPlan', (plan) =>{
+        if ($('#map_table').length > 0) {
+            $('#map_table td').removeClass('otherAgentPlan');
+            for (let i = 0; i < plan.length; i++) {
+                let cell_id = `cell_${(map_width-1)-plan[i].y}_${(plan[i].x)}`;
+                let cell_element = $(`#${cell_id}`);
+                cell_element.addClass('otherAgentPlan');
+                // invert an index to match the map
             }
         }
         console.log(plan);

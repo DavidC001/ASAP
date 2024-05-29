@@ -1,13 +1,16 @@
 import { map, MAX_FUTURE } from "../beliefs/map.js";
 import { parcels } from "../beliefs/parcels.js";
-import { me } from "../beliefs/beliefs.js";
+import { distance, me } from "../beliefs/beliefs.js";
 import { agents } from "../beliefs/agents.js";
 
 import { search_path } from "./search_planners.js";
 import { PDDL_path } from "./PDDL_planners.js";
 
+import { otherAgent } from "../coordination/coordination.js";
+
 const MAX_EXPLORE_PATH_LENGTH = 20;
 
+//TODO: if the parcel is not there anymore remove deviation from the path
 /**
  * Searches in a corridor for parcels to pick up
  * @param {[{x: number, y: number, move: string}]} path The plan to soft replan
@@ -55,11 +58,11 @@ async function beamSearch(path, objective, PDDL = false) {
         for (let dir of directions) {
             let x = step.x + dir[0];
             let y = step.y + dir[1];
-            if (x >= 0 && x < map.width && y >= 0 && y < map.height 
+            if (x >= 0 && x < map.width && y >= 0 && y < map.height
                 && (allowedDeviations[x][y] || dir[2] === "pickup") // only allow deviations if they are in the allowed deviations list
                 && (!path.some((p) => p.x === x && p.y === y) || dir[2] === "pickup") // don't go back to the same tile
                 && !path.some((p) => p.x === x && p.y === y && p.move === "pickup") // don't pick up the same package twice
-                ) {
+            ) {
                 allowedDeviations[x][y] = false;
                 //console.log("\texploring deviation at", x, y);
                 if (map.map[x][y].parcel && !map.map[x][y].agent) {
@@ -79,7 +82,7 @@ async function beamSearch(path, objective, PDDL = false) {
                                 newPath = search_path({ x: x, y: y }, objective, move);
                             } else {
                                 //get back to the original path
-                                let goBackMove = { x: step.x, y: step.y , move: "none"};
+                                let goBackMove = { x: step.x, y: step.y, move: "none" };
                                 if (dir[2] === "right") goBackMove.move = "left";
                                 if (dir[2] === "left") goBackMove.move = "right";
                                 if (dir[2] === "up") goBackMove.move = "down";
@@ -211,8 +214,7 @@ function exploreBFS(pos, goal, usePDDL = false) {
  * @returns {{x: number, y: number, move: string}[]} - A list of nodes containing the path to the goal
  */
 async function exploreBFS2(pos, goal, usePDDL = false) {
-    let best_last_seen = -1;
-    let best_agent_heat = -1;
+
     let best_tile = { x: -1, y: -1, probability: 1 };
     let best_utility = -1;
 
@@ -221,17 +223,23 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
         let tileY = tile.y;
         let tile_last_seen = map.map[tileX][tileY].last_seen;
         let tile_agent_heat = map.map[tileX][tileY].agent_heat / Math.max(1, agents.size);
-        let tile_utility = Math.round(tile_last_seen * (1 - tile.probability) * (tile_agent_heat));
+        let tile_utility = Math.round(
+            tile_last_seen *
+            (1 - tile.probability) *
+            (tile_agent_heat) *
+            (otherAgent.intention.type === "" ?
+                1 :
+                1 + distance(tile, otherAgent.intention.goal) / (map.width + map.height) / 0.5
+            )
+        );
 
         if (
             (
                 (best_tile.x === -1 && best_tile.y === -1) ||
                 best_utility > tile_utility
             )
-            && map.cleanBFS(pos, [tile]).length > 1) {
-            best_last_seen = tile_last_seen;
-            best_agent_heat = tile_agent_heat;
-
+            && map.cleanBFS(pos, [tile]).length > 1
+        ) {
             best_tile = { x: tile.x, y: tile.y, probability: tile.probability };
             best_utility = tile_utility
         }

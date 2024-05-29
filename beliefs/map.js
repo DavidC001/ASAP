@@ -8,7 +8,7 @@ import {timeTaken} from '../helper.js';
 import * as fs from 'node:fs';
 import {Beliefset} from "../planner/pddl-client/index.js";
 import myserver from "../server.js";
-import { otherAgentID } from "../coordination/coordination.js";
+import { otherAgent } from "../coordination/coordination.js";
 
 /**
  * A variable that sets the maximum prediction of the map
@@ -431,15 +431,15 @@ class Maps {
             }
         }
 
-        if (agents.has(otherAgentID)) {
-            let other_agent = agents.get(otherAgentID);
+        if (agents.has(otherAgent.id)) {
+            let other_agent = agents.get(otherAgent.id);
             maxX = Math.min(other_agent.position.x + parcelObsDist, this.width - 1);
             maxY = Math.min(other_agent.position.y + parcelObsDist, this.height - 1);
             minX = Math.max(other_agent.position.x - parcelObsDist, 0);
             minY = Math.max(other_agent.position.y - parcelObsDist, 0);
             for (let i = minX; i <= maxX; i++) {
                 for (let j = minY; j <= maxY; j++) {
-                    if (distance({x: i, y: j}, agents.get(otherAgentID).position) <= parcelObsDist) {
+                    if (distance({x: i, y: j}, agents.get(otherAgent.id).position) <= parcelObsDist) {
                         this.map[i][j].last_seen = timestamp - startingTime;
                     }
                 }
@@ -519,7 +519,7 @@ function drawMap(filename, tilemap) {
 
             if (tile.agent) {
                 color = 'agent';
-                if (tile.agent === otherAgentID)  color = 'collaborator';
+                if (tile.agent === otherAgent.id)  color = 'collaborator';
             }
             if (tile.parcel) {
                 color = 'parcel';

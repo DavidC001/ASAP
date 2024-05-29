@@ -2,6 +2,7 @@ import {map, MAX_FUTURE} from "../beliefs/map.js";
 
 import {agentsBeliefSet, futureAgentsBeliefSet} from "../beliefs/agents.js";
 import { parcelsBeliefSet } from "../beliefs/parcels.js";
+import { otherAgent } from "../coordination/coordination.js";
 
 import fs from "fs";
 
@@ -36,7 +37,9 @@ async function PDDL_futureBFS(pos, objective) {
     var pddlProblem = new PddlProblem(
         'bfs-example-problem',
         map.beliefSet.objects.join(' ') + ' ' + time_belief.objects.join(' ') + ' T0',
-        map.beliefSet.toPddlString() + ' ' + position_belief.toPddlString() + ' ' + futureAgentsBeliefSet.toPddlString() + ' ' + time_belief.toPddlString(),
+        map.beliefSet.toPddlString() + ' ' + position_belief.toPddlString() + ' ' 
+        + futureAgentsBeliefSet.toPddlString() + ' ' + time_belief.toPddlString() + ' ' 
+        + otherAgent.planBeliefset.toPddlString(),
         objective_str
     );
 
@@ -48,7 +51,7 @@ async function PDDL_futureBFS(pos, objective) {
         moves.push(new PddlAction(
             'move' + i,
             '?from ?to',
-            'and (time T' + i + ') (at ?from) (connected ?from ?to) (not (visited ?to)) (not (agent ?to T' + i + '))' + (i > 1 ? '' : ' (not (agent ?to T0))'),
+            'and (not (collaborator ?to)) (time T' + i + ') (at ?from) (connected ?from ?to) (not (visited ?to)) (not (agent ?to T' + i + '))' + (i > 1 ? '' : ' (not (agent ?to T0))'),
             'and (not (at ?from)) (at ?to) (visited ?to)' + (i < MAX_FUTURE ? ' (not (time T' + i + ')) (time T' + (i + 1) + ')' : ''),
             async (f, t) => {
                 //get x and y from the string

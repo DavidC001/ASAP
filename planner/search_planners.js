@@ -1,4 +1,5 @@
 import {map, MAX_FUTURE} from "../beliefs/map.js";
+import { otherAgent } from "../coordination/coordination.js";
 
 const MAX_WAIT = 10;
 
@@ -49,7 +50,9 @@ function BFStoObjective(pos, objectiveList, startTime = 0) {
                 && (!visited[newX][newY] || (dir[2] === 'none' && visited[newX][newY] < MAX_WAIT))
                 && map.predictedMap[startTime][newX][newY].type !== 'obstacle'
                 && map.predictedMap[startTime][newX][newY].agent === null
-                && (startTime > 1 || map.map[newX][newY].agent === null)) {
+                && (startTime > 1 || map.map[newX][newY].agent === null)
+                && !otherAgent.plan.some(move => move.x === newX && move.y === newY)
+            ) {
                 let newCurrent = current.slice();
                 newCurrent.push({x: newX, y: newY, move: dir[2]});
                 queue.push(newCurrent);

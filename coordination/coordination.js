@@ -1,7 +1,9 @@
 import {CommunicationBuffer} from "./CommunicationBuffer.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
+import { Beliefset } from "../planner/pddl-client/index.js";
 
-let otherAgentID = "";
+import myServer from '../server.js';
+
 let client = null;
 
 /**
@@ -17,12 +19,33 @@ const agentBuffer = new CommunicationBuffer();
 const parcelBuffer = new CommunicationBuffer();
 
 /**
- * The intention of the other agent
- * @type {{type: string, goal: {x:number, y:number}}}
+ * The informations of the other agent
+ * @type {{intention: {type: string, goal: {x: number, y: number}}, plan: [{x: number, y: number, move: string}], planBeliefset: Beliefset}} otherAgent
  */
-let otherAgentIntention = {
-    type: "",
-    goal: {x: -1, y: -1}
+let otherAgent = {
+    id: "",
+    intention: {
+        type: "",
+        goal: {x: -1, y: -1}
+    },
+    plan: [],
+    planBeliefset: new Beliefset()
+}
+
+/**
+ * Handle the message with the intention of the other agent
+ * @param {{header: string, content: {object}}} msg
+ */
+function otherAgentIntention(msg) {
+    otherAgent[msg.header] = msg.content;
+    if (msg.header === "plan") {
+        otherAgent.planBeliefset = new Beliefset();
+        for (let move of otherAgent.plan) {
+            otherAgent.planBeliefset.declare("collaborator t_"+move.x+"_"+move.y);
+        }
+        // console.log("other agent plan", otherAgent.plan);
+        myServer.emitMessage("otherAgentPlan", otherAgent.plan);
+    }
 }
 
 /**
@@ -49,7 +72,7 @@ function handshake(id, name, msg) {
     if (name.includes("FerrariMasterPlan")) {
         console.log("handshake with", name, id);
         if (msg === "hello") client.shout({header: "handshake", content: "ACK"});
-        otherAgentID = id;
+        otherAgent.id = id;
     }
 }
 
@@ -64,10 +87,10 @@ function handshake(id, name, msg) {
 function handleMsg(id, name, msg, reply) {
     // console.log("new msg received from", name + ':', msg);
     if (msg.header === "handshake") handshake(id, name, msg.content);
-    if (id !== otherAgentID) return;
+    if (id !== otherAgent.id) return;
 
     if (msg.header === "belief") beliefSharing(msg.content);
-    if (msg.header === "intention") otherAgentIntention = msg.content;
+    if (msg.header === "intent") otherAgentIntention(msg.content);
 }
 
 /**
@@ -79,7 +102,7 @@ function coordination(clientDeliverooApi) {
     client.onMsg(handleMsg);
     //wait random time before sending the handshake
     let handshake = setInterval(async () => {
-        if (otherAgentID !== "") {
+        if (otherAgent.id !== "") {
             clearInterval(handshake);
         } else {
             client.shout({header: "handshake", content: "hello"});
@@ -93,7 +116,7 @@ function coordination(clientDeliverooApi) {
  * @returns {Promise<void>}
  */
 async function sendMsg(msg){
-    client.say(otherAgentID, msg);
+    client.say(otherAgent.id, msg);
 }
 
 async function sendRequest(msg){
@@ -101,4 +124,4 @@ async function sendRequest(msg){
 }
 
 
-export {coordination, agentBuffer, parcelBuffer, otherAgentIntention, otherAgentID, sendMsg};
+export {coordination, agentBuffer, parcelBuffer, otherAgent, sendMsg};

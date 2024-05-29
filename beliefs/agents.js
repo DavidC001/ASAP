@@ -3,7 +3,7 @@ import {distance, me} from './beliefs.js';
 import {agentsCarrying} from './parcels.js';
 import {Beliefset} from "../planner/pddl-client/index.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
-import {agentBuffer, otherAgentID, sendMsg} from "../coordination/coordination.js";
+import {agentBuffer, otherAgent, sendMsg} from "../coordination/coordination.js";
 
 const MAX_HISTORY = 5;
 

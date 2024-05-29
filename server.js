@@ -33,5 +33,9 @@ class MyServer {
         this.io.emit(event, data);
     }
 }
+/**
+ * The server
+ * @type {MyServer}
+ */
 let myserver = new MyServer();
 export default myserver;
