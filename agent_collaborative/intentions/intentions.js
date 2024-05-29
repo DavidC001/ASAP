@@ -94,7 +94,7 @@ class Intention {
         let plan = await planner[this.type](me, this.goal, USE_PDDL);
         clearInterval(stopWhilePlanning);
         if (earlyStop) return;
-        if (this.type === "explore") this.goal = { x: plan[plan.length - 1].x, y: plan[plan.length - 1].y }
+        if (this.type === "explore" && plan.length>0) this.goal = { x: plan[plan.length - 1].x, y: plan[plan.length - 1].y }
         sendMsg({
             header: "intent",
             content: {
@@ -298,6 +298,9 @@ class Intention {
                                 let distanceScore = (steps - distance_agent) / (map.width + map.height) * 0.3;
                                 score = 0.2 + parcelScore + distanceScore;
                                 steps = 0;
+                                if(agent.id === otherAgent.id){
+                                    score = 0;
+                                }
                                 //console.log('\t\tcloser agent', agent.id, 'distance', distance_agent, 'score', score);
                             }
                         }
