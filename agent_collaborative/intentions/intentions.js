@@ -10,6 +10,7 @@ import myServer from '../../server.js';
 //wait console input
 import readline from 'readline';
 import { clear } from 'console';
+import { sendMsg, otherAgentIntention } from '../../coordination/coordination.js';
 
 const input = readline.createInterface({
     input: process.stdin,
@@ -19,7 +20,7 @@ const MAX_RETRIES = 10;
 const MAX_WAIT_FAIL = 8;
 const REPLAN_MOVE_INTERVAL = Math.Infinity;
 const SOFT_REPLAN_INTERVAL = 2;
-const USE_PDDL = false;
+const USE_PDDL = true;
 const INTENTION_REVISION_INTERVAL = 100;
 
 /** @type {EventEmitter} */
@@ -32,7 +33,6 @@ const stopEmitter = new EventEmitter();
  * @property {string|boolean} pickUp - The id of the parcel to pick up, false if the intention is not to pick up a parcel
  * @property {boolean} deliver - True if the intention is to deliver a parcel
  * @property {string} type - The type of the intention
- * @property {Array<{move:string}>} plan - The plan to reach the goal
  * @property {boolean} stop - True if the intention has to stop
  * @property {boolean} reached - True if the goal has been reached
  * @property {boolean} started - True if the intention has started
@@ -42,7 +42,6 @@ class Intention {
     type;
     pickUp;
     deliver;
-    plan;
     stop;
     reached;
     started;
@@ -60,7 +59,6 @@ class Intention {
         this.pickUp = pickUp;
         this.deliver = deliver;
         this.type = type;
-        this.plan = [];
         this.stop = false;
         this.reached = false;
         this.started = false;
@@ -72,11 +70,13 @@ class Intention {
      * @param {DeliverooApi} client
      */
     async executeInt(client) {
+        let earlyStop = false;
         this.started = true;
         this.reached = false;
 
         let stopWhilePlanning = setInterval(() => {
             if (this.stop) {
+                earlyStop = true;
                 clearInterval(stopWhilePlanning);
                 this.started = false;
                 this.stop = false;
@@ -91,14 +91,23 @@ class Intention {
             'explore': exploreBFS2
         }
 
-        this.plan = await planner[this.type](me, this.goal, USE_PDDL);
-        myServer.emitMessage('plan', this.plan);
+        let plan = await planner[this.type](me, this.goal, USE_PDDL);
+        clearInterval(stopWhilePlanning);
+        if (earlyStop) return;
+        sendMsg({
+            header: "intention",
+            content: {
+                type: this.type,
+                goal: this.goal
+            }
+        })
+
+        myServer.emitMessage('plan', plan);
         //await input from console
         // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
+        
 
-        clearInterval(stopWhilePlanning);
-
-        // console.log('\tplan', me.x, me.y, this.plan);
+        // console.log('\tplan', me.x, me.y, plan);
 
         if (this.type === 'pickup') {
             //if the intention is to pick up a parcel check if the parcel is still there
@@ -140,42 +149,42 @@ class Intention {
         }
 
         let retryCount = 0;
-        for (let i = 0; i < this.plan.length; i++) {
-            // console.log(this.type,'move', i, this.plan[i]);
-            let res = await moves[this.plan[i].move]();
+        for (let i = 0; i < plan.length; i++) {
+            // console.log(this.type,'move', i, plan[i]);
+            let res = await moves[plan[i].move]();
 
             if (!res) {
                 // console.log('\tMove failed, retrying...');
                 if (retryCount >= MAX_RETRIES) {
                     if (this.stop) break;
-                    console.log('\tMax retries exceeded', this.type, "on move", this.plan[i]);
+                    console.log('\tMax retries exceeded', this.type, "on move", plan[i]);
                     //wait some moves before replanning
                     await new Promise((resolve) => setTimeout(resolve, me.config.MOVEMENT_DURATION * (Math.round(Math.random() * MAX_WAIT_FAIL) + 1)));
                     i = 0;
-                    this.plan = await planner[this.type](me, this.goal, USE_PDDL);
-                    myServer.emitMessage('plan', this.plan);
-                    // console.log('replanning', this.type, this.plan);
+                    plan = await planner[this.type](me, this.goal, USE_PDDL);
+                    myServer.emitMessage('plan', plan);
+                    // console.log('replanning', this.type, plan);
                     // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
                 }
                 i--;
                 retryCount++;
             } else {
-                // console.log('\tmove ',i, this.plan[i],this.type);
+                // console.log('\tmove ',i, plan[i],this.type);
                 retryCount = 0; // reset retry count if move was successful
                 if (i % REPLAN_MOVE_INTERVAL === 0 && i > 0) {
                     if (this.stop) break;
                     i = -1;
                     // console.log('\tReplanning', this.type);
-                    this.plan = await planner[this.type](me, this.goal, USE_PDDL);
-                    myServer.emitMessage('plan', this.plan);
-                    // console.log('replanning', this.type, this.plan);
+                    plan = await planner[this.type](me, this.goal, USE_PDDL);
+                    myServer.emitMessage('plan', plan);
+                    // console.log('replanning', this.type, plan);
                     // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
-                } else if (i % SOFT_REPLAN_INTERVAL === 0 && i > 0 && this.plan[i].move !== 'pickup' && this.plan[i].move !== 'deliver') {
+                } else if (i % SOFT_REPLAN_INTERVAL === 0 && i > 0 && plan[i].move !== 'pickup' && plan[i].move !== 'deliver') {
                     // let time = new Date().getTime();
-                    // console.log('\tSoft replanning', this.type, 'from', this.plan[i]);
-                    this.plan = await beamSearch(this.plan.splice(i + 1, this.plan.length), [this.plan[this.plan.length - 1]], USE_PDDL);
-                    myServer.emitMessage('plan', this.plan);
-                    // console.log('\tSoft replanning', this.type, 'to', this.plan);
+                    // console.log('\tSoft replanning', this.type, 'from', plan[i]);
+                    plan = await beamSearch(plan.splice(i + 1, plan.length), [plan[plan.length - 1]], USE_PDDL);
+                    myServer.emitMessage('plan', plan);
+                    // console.log('\tSoft replanning', this.type, 'to', plan);
                     i = -1;
                 }
             }
@@ -329,6 +338,7 @@ class Intentions {
      */
     async selectIntention(client) {
         //console.log('intentions', this.intentions);
+        // console.log('other agent intention', otherAgentIntention.type, otherAgentIntention.goal)
 
         //find the intention with the highest utility
         let maxUtility = -Infinity;
@@ -336,7 +346,20 @@ class Intentions {
         for (let intention of this.intentions) {
             let utility = await intention.utility();
             //console.log('utility', intention.type, utility);
-            if (utility > maxUtility || (utility === maxUtility && distance(me, intention.goal) < distance(me, maxIntention.goal))) {
+            if ((
+                    utility > maxUtility || 
+                    (
+                        utility === maxUtility 
+                        && distance(me, intention.goal) < distance(me, maxIntention.goal)
+                    )
+                )
+                && 
+                (
+                    intention.type === 'explore'
+                    || intention.type !== otherAgentIntention.type 
+                    || JSON.stringify(intention.goal) !== JSON.stringify(otherAgentIntention.goal) 
+                )
+            ) {
                 //console.log('utility', utility);
                 maxUtility = utility;
                 maxIntention = intention;
