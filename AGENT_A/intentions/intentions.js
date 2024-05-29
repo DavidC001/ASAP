@@ -1,16 +1,16 @@
-import {map} from '../../beliefs/map.js';
-import {distance, me} from '../../beliefs/beliefs.js';
-import {parcels} from '../../beliefs/parcels.js';
-import {agents} from '../../beliefs/agents.js';
-import {EventEmitter} from 'events';
-import {beamSearch, deliveryBFS, beamPackageSearch, exploreBFS, exploreBFS2} from '../../planner/planner.js';
-import {DeliverooApi} from '@unitn-asa/deliveroo-js-client';
+import { map } from '../../beliefs/map.js';
+import { distance, me } from '../../beliefs/beliefs.js';
+import { parcels } from '../../beliefs/parcels.js';
+import { agents } from '../../beliefs/agents.js';
+import { EventEmitter } from 'events';
+import { beamSearch, deliveryBFS, beamPackageSearch, exploreBFS, exploreBFS2 } from '../../planner/planner.js';
+import { DeliverooApi } from '@unitn-asa/deliveroo-js-client';
 import myServer from '../../server.js';
 
 //wait console input
 import readline from 'readline';
 import { clear } from 'console';
-import { sendMsg, otherAgentIntention } from '../../coordination/coordination.js';
+import { sendMsg, otherAgent } from '../../coordination/coordination.js';
 
 const input = readline.createInterface({
     input: process.stdin,
@@ -20,7 +20,7 @@ const MAX_RETRIES = 10;
 const MAX_WAIT_FAIL = 8;
 const REPLAN_MOVE_INTERVAL = Math.Infinity;
 const SOFT_REPLAN_INTERVAL = 2;
-const USE_PDDL = true;
+const USE_PDDL = false;
 const INTENTION_REVISION_INTERVAL = 100;
 
 /** @type {EventEmitter} */
@@ -81,7 +81,7 @@ class Intention {
                 this.started = false;
                 this.stop = false;
                 console.log('stopped intention', this.type, "to", (this.type !== "deliver") ? this.goal : "delivery zone");
-                stopEmitter.emit('stoppedIntention'+this.type+' '+this.goal);
+                stopEmitter.emit('stoppedIntention' + this.type + ' ' + this.goal);
             }
         }, 100);
 
@@ -94,18 +94,30 @@ class Intention {
         let plan = await planner[this.type](me, this.goal, USE_PDDL);
         clearInterval(stopWhilePlanning);
         if (earlyStop) return;
+        if (this.type === "explore" && plan.length>0) this.goal = { x: plan[plan.length - 1].x, y: plan[plan.length - 1].y }
         sendMsg({
-            header: "intention",
+            header: "intent",
             content: {
-                type: this.type,
-                goal: this.goal
+                header: "intention",
+                content: {
+                    type: this.type,
+                    goal: this.goal
+                }
+            }
+        })
+        sendMsg({
+            header: "intent",
+            content: {
+                header: "plan",
+                content: plan
             }
         })
 
         myServer.emitMessage('plan', plan);
+
         //await input from console
         // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
-        
+
 
         // console.log('\tplan', me.x, me.y, plan);
 
@@ -117,7 +129,7 @@ class Intention {
                 this.reached = true;
                 if (this.stop) {
                     this.stop = false;
-                    stopEmitter.emit('stoppedIntention'+this.type+' '+this.goal);
+                    stopEmitter.emit('stoppedIntention' + this.type + ' ' + this.goal);
                 }
                 return;
             }
@@ -163,6 +175,13 @@ class Intention {
                     i = 0;
                     plan = await planner[this.type](me, this.goal, USE_PDDL);
                     myServer.emitMessage('plan', plan);
+                    sendMsg({
+                        header: "intent",
+                        content: {
+                            header: "plan",
+                            content: plan
+                        }
+                    })
                     // console.log('replanning', this.type, plan);
                     // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
                 }
@@ -177,6 +196,13 @@ class Intention {
                     // console.log('\tReplanning', this.type);
                     plan = await planner[this.type](me, this.goal, USE_PDDL);
                     myServer.emitMessage('plan', plan);
+                    sendMsg({
+                        header: "intent",
+                        content: {
+                            header: "plan",
+                            content: plan
+                        }
+                    })
                     // console.log('replanning', this.type, plan);
                     // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
                 } else if (i % SOFT_REPLAN_INTERVAL === 0 && i > 0 && plan[i].move !== 'pickup' && plan[i].move !== 'deliver') {
@@ -184,6 +210,13 @@ class Intention {
                     // console.log('\tSoft replanning', this.type, 'from', plan[i]);
                     plan = await beamSearch(plan.splice(i + 1, plan.length), [plan[plan.length - 1]], USE_PDDL);
                     myServer.emitMessage('plan', plan);
+                    sendMsg({
+                        header: "intent",
+                        content: {
+                            header: "plan",
+                            content: plan
+                        }
+                    })
                     // console.log('\tSoft replanning', this.type, 'to', plan);
                     i = -1;
                 }
@@ -195,7 +228,7 @@ class Intention {
             console.log('stopped intention', this.type, "to", (this.type !== "deliver") ? this.goal : "delivery zone");
             this.stop = false;
             this.started = false;
-            stopEmitter.emit('stoppedIntention'+this.type+' '+this.goal);
+            stopEmitter.emit('stoppedIntention' + this.type + ' ' + this.goal);
         } else {
             //if the goal has been reached set the reached flag
             console.log('reached goal', this.type, this.goal);
@@ -265,6 +298,9 @@ class Intention {
                                 let distanceScore = (steps - distance_agent) / (map.width + map.height) * 0.3;
                                 score = 0.2 + parcelScore + distanceScore;
                                 steps = 0;
+                                if(agent.id === otherAgent.id){
+                                    score = 0;
+                                }
                                 //console.log('\t\tcloser agent', agent.id, 'distance', distance_agent, 'score', score);
                             }
                         }
@@ -301,7 +337,7 @@ class Intention {
             this.started = false;
             this.reached = false;
             console.log('stopped intention', this.type, "to", (this.type !== "deliver") ? this.goal : "delivery zone");
-            stopEmitter.emit('stoppedIntention'+this.type+' '+this.goal);
+            stopEmitter.emit('stoppedIntention' + this.type + ' ' + this.goal);
         }
     }
 }
@@ -338,7 +374,7 @@ class Intentions {
      */
     async selectIntention(client) {
         //console.log('intentions', this.intentions);
-        // console.log('other agent intention', otherAgentIntention.type, otherAgentIntention.goal)
+        // console.log('other agent intention', otherAgent.intention.type, otherAgent.intention.goal)
 
         //find the intention with the highest utility
         let maxUtility = -Infinity;
@@ -347,17 +383,17 @@ class Intentions {
             let utility = await intention.utility();
             //console.log('utility', intention.type, utility);
             if ((
-                    utility > maxUtility || 
-                    (
-                        utility === maxUtility 
-                        && distance(me, intention.goal) < distance(me, maxIntention.goal)
-                    )
+                utility > maxUtility ||
+                (
+                    utility === maxUtility
+                    && distance(me, intention.goal) < distance(me, maxIntention.goal)
                 )
-                && 
+            )
+                &&
                 (
                     intention.type === 'explore'
-                    || intention.type !== otherAgentIntention.type 
-                    || JSON.stringify(intention.goal) !== JSON.stringify(otherAgentIntention.goal) 
+                    || intention.type !== otherAgent.intention.type
+                    || JSON.stringify(intention.goal) !== JSON.stringify(otherAgent.intention.goal)
                 )
             ) {
                 //console.log('utility', utility);
@@ -374,16 +410,16 @@ class Intentions {
         } else if ((this.currentIntention.goal !== maxIntention.goal && this.currentIntention.started) || this.currentIntention.reached) {
             //if the goal is different from the current intention switch intention
             // console.log('switching intention', maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone", " from", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");;
-            
+
             //wait for the current intention to stop before starting the new one
-            stopEmitter.once('stoppedIntention'+this.currentIntention.type+' '+this.currentIntention.goal, () => {
+            stopEmitter.once('stoppedIntention' + this.currentIntention.type + ' ' + this.currentIntention.goal, () => {
                 console.log("starting intention", maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone");
                 maxIntention.executeInt(client);
             });
-            
+
             this.currentIntention.stopInt();
             this.currentIntention = maxIntention;
-        } 
+        }
     }
 
     /**
@@ -396,7 +432,7 @@ class Intentions {
         let deliver = true;
         this.addIntention(new Intention(goal, pickUp, deliver, 'deliver'));
         //explore intention
-        goal = {x: 0, y: 0};
+        goal = { x: 0, y: 0 };
         pickUp = false;
         deliver = false;
         this.addIntention(new Intention(goal, pickUp, deliver, 'explore'));
@@ -461,4 +497,4 @@ function IntentionRevision(client) {
     });
 }
 
-export {IntentionRevision};
+export { IntentionRevision };
