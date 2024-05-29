@@ -17,6 +17,15 @@ const agentBuffer = new CommunicationBuffer();
 const parcelBuffer = new CommunicationBuffer();
 
 /**
+ * The intention of the other agent
+ * @type {{type: string, goal: {x:number, y:number}}}
+ */
+let otherAgentIntention = {
+    type: "",
+    goal: {x: -1, y: -1}
+}
+
+/**
  * A dictionary with the buffers
  * @type {{agent: CommunicationBuffer, parcel: CommunicationBuffer}}
  */
@@ -55,7 +64,10 @@ function handshake(id, name, msg) {
 function handleMsg(id, name, msg, reply) {
     // console.log("new msg received from", name + ':', msg);
     if (msg.header === "handshake") handshake(id, name, msg.content);
+    if (id !== otherAgentID) return;
+
     if (msg.header === "belief") beliefSharing(msg.content);
+    if (msg.header === "intention") otherAgentIntention = msg.content;
 }
 
 /**
@@ -89,4 +101,4 @@ async function sendRequest(msg){
 }
 
 
-export {coordination, agentBuffer, parcelBuffer, otherAgentID, sendMsg};
+export {coordination, agentBuffer, parcelBuffer, otherAgentIntention, otherAgentID, sendMsg};
