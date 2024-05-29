@@ -229,7 +229,7 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
             (tile_agent_heat) *
             (otherAgent.intention.type === "" ?
                 1 :
-                1 + distance(tile, otherAgent.intention.goal) / (map.width + map.height) / 0.5
+                1 - (distance(tile, otherAgent.intention.goal) / (map.width + map.height)) * (1-(tile_last_seen)/700)
             )
         );
 
