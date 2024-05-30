@@ -5,6 +5,7 @@ import { Beliefset } from "../planner/pddl-client/index.js";
 import myServer from '../server.js';
 
 let client = null;
+let AgentRole = 1;
 
 const agentName = process.env.NAME;
 
@@ -76,7 +77,10 @@ function beliefSharing(msg) {
 function handshake(id, name, msg) {
     if (name.includes(agentName)) {
         console.log("handshake with", name, id);
-        if (msg === "hello") client.shout({header: "handshake", content: "ACK"});
+        if (msg === "hello") {
+            AgentRole = 0;
+            client.shout({header: "handshake", content: "ACK"});
+        }
         otherAgent.id = id;
     }
 }
@@ -129,4 +133,4 @@ async function sendRequest(msg){
 }
 
 
-export {coordination, agentBuffer, parcelBuffer, otherAgent, sendMsg};
+export {coordination, AgentRole, agentBuffer, parcelBuffer, otherAgent, sendMsg};
