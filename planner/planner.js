@@ -6,7 +6,7 @@ import {agents} from "../beliefs/agents.js";
 import {search_path} from "./search_planners.js";
 import {PDDL_path} from "./PDDL_planners.js";
 
-import {otherAgent} from "../coordination/coordination.js";
+import {otherAgent, AgentRole} from "../coordination/coordination.js";
 
 const MAX_EXPLORE_PATH_LENGTH = 20;
 
@@ -256,15 +256,22 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
 
 }
 
-async function recoverPlan(index, plan) {
+async function recoverPlan(index, plan, goals, usePDDL = false) {
     let x = plan[index].x;
     let y = plan[index].y;
     if (!map.map[x][y].agent) {
+        // if the by waiting the agent is gone then try to keep going with the original plan
         plan = plan.slice(index, plan.length);
     } else if (map.map[x][y].agent.id !== otherAgent.id) {
+        // try to go around the agent if possible
         plan = goAround(index, plan);
+        if (plan.length === 0) {
+            // if no soft re-plan is possible, hard replan
+            plan = await beamPackageSearch(me,goals, usePDDL);
+        }
     } else {
         // TODO: We know it's our friend agent we need to negotiate the swap of packages or who stays still
+        
     }
     return plan;
 }

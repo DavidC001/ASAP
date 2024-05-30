@@ -121,7 +121,6 @@ class Intention {
                 content: plan
             }
         })
-
         myServer.emitMessage('plan', plan);
 
         //await input from console
@@ -182,7 +181,7 @@ class Intention {
                     //wait some moves before replanning
                     await new Promise((resolve) => setTimeout(resolve, BASE_FAIL_WAIT+me.config.MOVEMENT_DURATION * (Math.round(Math.random() * MAX_WAIT_FAIL))));
                     if(USE_PDDL){
-                        plan = await recoverPlan(i,plan);
+                        plan = await recoverPlan(i, plan, this.goal, USE_PDDL);
                     }else{
                         plan = await planner[this.type](me, this.goal, USE_PDDL);
                     }
