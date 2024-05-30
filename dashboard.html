@@ -84,6 +84,18 @@
         <div class="col ">
             <h1>Dashboard</h1>
             <p>Welcome to the dashboard</p>
+            <div class="row">
+                <!-- Current intention -->
+                <div class="col">
+                    <h2>Current intention</h2>
+                    <p id="current_intention">No intention</p>
+                </div>
+                <!-- Other agent intention -->
+                <div class="col">
+                    <h2>Other agent intention</h2>
+                    <p id="other_agent_intention">No intention</p>
+                </div>
+            </div>
             <table id="map_table">
                 <!-- Dynamic table representing the map in the matrix using nodejs -->
 
@@ -100,6 +112,12 @@
     const socket = io()
     let map_width = 0;
     let map_height = 0;
+    socket.on('intention', (intention) => {
+        $('#current_intention').text(intention.type+' goal: '+JSON.stringify(intention.goal))
+    });
+    socket.on('otherAgentIntention', (intention) => {
+        $('#other_agent_intention').text(intention.type+' goal: '+JSON.stringify(intention.goal))
+    });
     socket.on('map', (map) => {
         map_width = map.length;
         map_height = map[0].length;

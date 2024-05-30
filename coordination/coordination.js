@@ -48,6 +48,9 @@ function otherAgentIntention(msg) {
         // console.log("other agent plan", otherAgent.plan);
         myServer.emitMessage("otherAgentPlan", otherAgent.plan);
     }
+    if (msg.header === "intention") {
+        myServer.emitMessage("otherAgentIntention", otherAgent.intention);
+    }
 }
 
 /**

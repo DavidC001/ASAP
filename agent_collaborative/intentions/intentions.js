@@ -113,6 +113,7 @@ class Intention {
                 }
             }
         })
+        myServer.emitMessage('intention', { type: this.type, goal: this.goal });
         sendMsg({
             header: "intent",
             content: {
