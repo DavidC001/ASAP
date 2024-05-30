@@ -305,7 +305,7 @@ class Intention {
                             let distance_agent = map.BFS(agent.position, this.goal).length;
                             //console.log('\tagent', agent.id, 'position', agent.position, 'distance', distance_agent);
                             //let distance_agent = distance(agent, this.goal);
-                            if (distance_agent < steps) {
+                            if (distance_agent < steps && distance_agent > 1) {
                                 closer = true;
                                 let parcelScore = parcels.get(this.pickUp).score / (me.config.PARCEL_REWARD_AVG + me.config.PARCEL_REWARD_VARIANCE) / 2;
                                 let distanceScore = (steps - distance_agent) / (map.width + map.height) * 0.3;
