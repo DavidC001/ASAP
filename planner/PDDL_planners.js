@@ -132,7 +132,7 @@ async function PDDL_frozenBFS(pos, objective) {
 
     var pddlProblem = new PddlProblem(
         'bfs-example-problem',
-        map.beliefSet.objects.join(' ') + ' ' + agentsBeliefSet.objects.join(' '),
+        map.beliefSet.objects.join(' '),
         map.beliefSet.toPddlString() + ' ' + position_belief.toPddlString() + ' ' + agentsBeliefSet.toPddlString(),
         objective_str
     );
