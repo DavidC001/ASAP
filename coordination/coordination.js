@@ -6,6 +6,8 @@ import myServer from '../server.js';
 
 let client = null;
 
+const agentName = process.env.NAME;
+
 /**
  * A buffer where you share which agents you have seen
  * @type {CommunicationBuffer}
@@ -69,7 +71,7 @@ function beliefSharing(msg) {
  * @param msg
  */
 function handshake(id, name, msg) {
-    if (name.includes("LMAO")) {
+    if (name.includes(agentName)) {
         console.log("handshake with", name, id);
         if (msg === "hello") client.shout({header: "handshake", content: "ACK"});
         otherAgent.id = id;
