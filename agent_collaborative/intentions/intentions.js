@@ -3,7 +3,14 @@ import { distance, me } from '../../beliefs/beliefs.js';
 import { parcels } from '../../beliefs/parcels.js';
 import { agents } from '../../beliefs/agents.js';
 import { EventEmitter } from 'events';
-import { beamSearch, deliveryBFS, beamPackageSearch, exploreBFS, exploreBFS2 } from '../../planner/planner.js';
+import {
+    beamSearch,
+    deliveryBFS,
+    beamPackageSearch,
+    exploreBFS,
+    exploreBFS2,
+    recoverPlan
+} from '../../planner/planner.js';
 import { DeliverooApi } from '@unitn-asa/deliveroo-js-client';
 import myServer from '../../server.js';
 
@@ -16,12 +23,13 @@ const input = readline.createInterface({
     input: process.stdin,
     output: process.stdout
 });
-const MAX_RETRIES = 10;
+const MAX_RETRIES = 5;
 const MAX_WAIT_FAIL = 8;
 const REPLAN_MOVE_INTERVAL = Math.Infinity;
 const SOFT_REPLAN_INTERVAL = 2;
-const USE_PDDL = false;
+const USE_PDDL = true;
 const INTENTION_REVISION_INTERVAL = 100;
+const BASE_FAIL_WAIT = 3000;
 
 /** @type {EventEmitter} */
 const stopEmitter = new EventEmitter();
@@ -171,9 +179,13 @@ class Intention {
                     if (this.stop) break;
                     console.log('\tMax retries exceeded', this.type, "on move", plan[i]);
                     //wait some moves before replanning
-                    await new Promise((resolve) => setTimeout(resolve, me.config.MOVEMENT_DURATION * (Math.round(Math.random() * MAX_WAIT_FAIL) + 1)));
+                    await new Promise((resolve) => setTimeout(resolve, BASE_FAIL_WAIT+me.config.MOVEMENT_DURATION * (Math.round(Math.random() * MAX_WAIT_FAIL))));
+                    if(USE_PDDL){
+                        plan = await recoverPlan(i,plan);
+                    }else{
+                        plan = await planner[this.type](me, this.goal, USE_PDDL);
+                    }
                     i = 0;
-                    plan = await planner[this.type](me, this.goal, USE_PDDL);
                     myServer.emitMessage('plan', plan);
                     sendMsg({
                         header: "intent",

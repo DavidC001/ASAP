@@ -254,7 +254,7 @@ async function PDDL_cleanBFS(pos, objective) {
  */
 async function PDDL_path(pos, objective, fallback = true) {
     // console.log("\t[PDDL] future BFS");
-    let path = await PDDL_futureBFS(pos, objective);
+    let path = await PDDL_frozenBFS(pos, objective);;
     if (path.length === 1 && fallback && !objective.some(o => pos.x === o.x && pos.y === o.y)) {
         // throw new Error("No path found");
         //use normal BFS to find the path

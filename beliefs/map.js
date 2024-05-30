@@ -214,7 +214,7 @@ class Maps {
         }
 
         // If we don't find a path, return an empty array
-        return [];
+        return [pos];
     }
 
     /**
@@ -269,7 +269,7 @@ class Maps {
         }
 
         // If we don't find a path, return an empty array
-        return [];
+        return [pos];
     }
 
     /**

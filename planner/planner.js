@@ -1,12 +1,12 @@
-import { map, MAX_FUTURE } from "../beliefs/map.js";
-import { parcels } from "../beliefs/parcels.js";
-import { distance, me } from "../beliefs/beliefs.js";
-import { agents } from "../beliefs/agents.js";
+import {map, MAX_FUTURE} from "../beliefs/map.js";
+import {parcels} from "../beliefs/parcels.js";
+import {distance, me} from "../beliefs/beliefs.js";
+import {agents} from "../beliefs/agents.js";
 
-import { search_path } from "./search_planners.js";
-import { PDDL_path } from "./PDDL_planners.js";
+import {search_path} from "./search_planners.js";
+import {PDDL_path} from "./PDDL_planners.js";
 
-import { otherAgent } from "../coordination/coordination.js";
+import {otherAgent} from "../coordination/coordination.js";
 
 const MAX_EXPLORE_PATH_LENGTH = 20;
 
@@ -22,8 +22,8 @@ async function beamSearch(path, objective, PDDL = false) {
     // console.log("\t[BEAM SEARCH]\n\tOriginal path", path);
 
     let directions = [[0, 0, "pickup"],
-    [1, 0, "right"], [-1, 0, "left"],
-    [0, 1, "up"], [0, -1, "down"]];
+        [1, 0, "right"], [-1, 0, "left"],
+        [0, 1, "up"], [0, -1, "down"]];
     let move = 0;
 
     //calculate allowed deviations tiles
@@ -71,7 +71,7 @@ async function beamSearch(path, objective, PDDL = false) {
                         //console.log("\t\tfound a package at", x, y);
 
                         //add a deviation to the path
-                        let deviation = [{ x: x, y: y, move: dir[2] }];
+                        let deviation = [{x: x, y: y, move: dir[2]}];
                         let newPath;
                         if (dir[2] === "pickup") {
                             // console.log("\t\tcollecting package at", x, y);
@@ -79,10 +79,10 @@ async function beamSearch(path, objective, PDDL = false) {
                             newPath = path.slice(stepNum + 1)
                         } else {
                             if (!PDDL) {
-                                newPath = search_path({ x: x, y: y }, objective, move);
+                                newPath = search_path({x: x, y: y}, objective, move);
                             } else {
                                 //get back to the original path
-                                let goBackMove = { x: step.x, y: step.y, move: "none" };
+                                let goBackMove = {x: step.x, y: step.y, move: "none"};
                                 if (dir[2] === "right") goBackMove.move = "left";
                                 if (dir[2] === "left") goBackMove.move = "right";
                                 if (dir[2] === "up") goBackMove.move = "down";
@@ -146,7 +146,7 @@ async function deliveryBFS(pos, objectiveList, usePDDL = false) {
     let last_move = list.at(-1);
     if (!last_move) last_move = pos;
     // Add a move to the last position to deliver the package
-    list.push({ x: last_move.x, y: last_move.y, move: "deliver" });
+    list.push({x: last_move.x, y: last_move.y, move: "deliver"});
 
     return list;
 }
@@ -185,13 +185,13 @@ function exploreBFS(pos, goal, usePDDL = false) {
             if ((newX >= heuristic) && (newX < (map.width - heuristic)) && (newY >= heuristic) && (newY < (map.height - heuristic))
                 && map.map[newX][newY].last_seen < oldest_last_seen && (!visited.has(key))
                 && map.map[newX][newY].type !== 'obstacle' && map.map[newX][newY].agent === null) {
-                selected_move = { x: newX, y: newY, move: dir[2] };
+                selected_move = {x: newX, y: newY, move: dir[2]};
                 oldest_last_seen = map.map[newX][newY].last_seen;
             }
         }
         // console.log("Selected move", selected_move);
         if (selected_move) {
-            pos = { x: selected_move.x, y: selected_move.y };
+            pos = {x: selected_move.x, y: selected_move.y};
             key = pos.x + "_" + pos.y;
             visited.set(key, true);
             path.push(selected_move);
@@ -215,7 +215,7 @@ function exploreBFS(pos, goal, usePDDL = false) {
  */
 async function exploreBFS2(pos, goal, usePDDL = false) {
 
-    let best_tile = { x: -1, y: -1, probability: 1 };
+    let best_tile = {x: -1, y: -1, probability: 1};
     let best_utility = -1;
 
     for (let tile of map.spawnableTiles) {
@@ -228,8 +228,8 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
             (1 - tile.probability) *
             (tile_agent_heat) *
             (otherAgent.intention.type === "" ?
-                1 :
-                1 - (distance(tile, otherAgent.intention.goal) / (map.width + map.height)) * (1-(tile_last_seen)/700)
+                    1 :
+                    1 - (distance(tile, otherAgent.intention.goal) / (map.width + map.height)) * (1 - (tile_last_seen) / 700)
             )
         );
 
@@ -240,7 +240,7 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
             )
             && map.cleanBFS(pos, [tile]).length > 1
         ) {
-            best_tile = { x: tile.x, y: tile.y, probability: tile.probability };
+            best_tile = {x: tile.x, y: tile.y, probability: tile.probability};
             best_utility = tile_utility
         }
     }
@@ -256,4 +256,33 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
 
 }
 
-export { beamSearch, beamPackageSearch, deliveryBFS, exploreBFS, exploreBFS2 };
+async function recoverPlan(index, plan) {
+    let x = plan[index].x;
+    let y = plan[index].y;
+    if (!map.map[x][y].agent) {
+        plan = plan.slice(index, plan.length);
+    } else if (map.map[x][y].agent.id !== otherAgent.id) {
+        plan = goAround(index, plan);
+    } else {
+        // TODO: We know it's our friend agent we need to negotiate the swap of packages or who stays still
+    }
+    return plan;
+}
+
+async function goAround(index, plan) {
+    //let currMovX = plan[index].x, currMovY = plan[index].y;
+    let currMovX = me.x, currMovY = me.y;
+    let newPlan = [];
+    if (plan[index + 1]) {
+        let objective = [{x: plan[index + 1].x, y: plan[index + 1].y}];
+        newPlan = await map.BFS({x: currMovX, y: currMovY, move: 'none'}, objective);
+        if (newPlan.length > 6 || newPlan.length === 1) {
+            newPlan = []
+        } else {
+            newPlan = newPlan.concat(plan.slice(index + 2));
+        }
+    }
+    return newPlan;
+}
+
+export {beamSearch, beamPackageSearch, deliveryBFS, exploreBFS, exploreBFS2, recoverPlan};

@@ -69,7 +69,7 @@ function beliefSharing(msg) {
  * @param msg
  */
 function handshake(id, name, msg) {
-    if (name.includes("FerrariMasterPlan")) {
+    if (name.includes("LMAO")) {
         console.log("handshake with", name, id);
         if (msg === "hello") client.shout({header: "handshake", content: "ACK"});
         otherAgent.id = id;
@@ -120,7 +120,7 @@ async function sendMsg(msg){
 }
 
 async function sendRequest(msg){
-    // client.
+    client.reply(otherAgent.id, msg);
 }
 
 
