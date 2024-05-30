@@ -142,7 +142,7 @@ async function PDDL_frozenBFS(pos, objective) {
     let move = new PddlAction(
         'move',
         '?from ?to',
-        'and (at ?from) (connected ?from ?to) (not (visited ?to)) (not (agent ?to))',
+        'and (at ?from) (connected ?from ?to) (not (visited ?to)) (not (agent ?to)) (not (collaborator ?to))',
         'and (not (at ?from)) (at ?to) (visited ?to)',
         async (f, t) => {
             //get x and y from the string
@@ -254,19 +254,11 @@ async function PDDL_cleanBFS(pos, objective) {
  */
 async function PDDL_path(pos, objective, fallback = true) {
     // console.log("\t[PDDL] future BFS");
-    let path = await PDDL_frozenBFS(pos, objective);;
+    // let path = await PDDL_futureBFS(pos, objective);
+    let path = await PDDL_frozenBFS(pos, objective);
     if (path.length === 1 && fallback && !objective.some(o => pos.x === o.x && pos.y === o.y)) {
-        // throw new Error("No path found");
-        //use normal BFS to find the path
-        // console.log("\t[PDDL] No path found, using BFS");
-        path = await PDDL_frozenBFS(pos, objective);
-        // console.log("\t[PDDL] BFS path", path);
-        if (path.length === 1) {
-            //fallback to clean BFS
-            // console.log("\t[PDDL] No path found, using clean BFS");
-            path = await PDDL_cleanBFS(pos, objective);
-            // console.log("\t[PDDL] Clean BFS path", path);
-        }
+        console.log("\t[PDDL] No path found, using clean BFS");
+        path = await PDDL_cleanBFS(pos, objective);
     }
 
     // console.log("\t[PDDL] path", path)
