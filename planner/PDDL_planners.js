@@ -87,7 +87,7 @@ async function PDDL_futureBFS(pos, objective) {
                     let from_x = parseInt(from[1]);
                     let from_y = parseInt(from[2]);
 
-                    plan.push({x: from_x, y: from_y, move: "none"});
+                    plan.push({x: from_x, y: from_y, move: "wait"});
                 }
             ));
         }
