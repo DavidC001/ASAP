@@ -334,6 +334,8 @@ async function handleNegotiation(index, plan) {
  * @returns {[{x: number, y: number, move: string}]} The new plan, [] if the plan is not recoverable
  */
 async function agent0Negotiation(index, plan) {
+    let x= me.x, y = me.y;
+    
     //first only try to negotiate the move aside
     let response = await sendRequest("moveOut");
     console.log(response);
