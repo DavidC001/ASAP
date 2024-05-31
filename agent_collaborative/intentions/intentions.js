@@ -403,7 +403,7 @@ class Intentions {
             )
                 &&
                 (
-                    intention.type === 'explore'
+                    intention.type === 'explore' || intention.type === 'deliver'
                     || intention.type !== otherAgent.intention.type
                     || JSON.stringify(intention.goal) !== JSON.stringify(otherAgent.intention.goal)
                 )
