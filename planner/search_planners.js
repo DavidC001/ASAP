@@ -18,8 +18,8 @@ function BFStoObjective(pos, objectiveList, startTime = 0) {
     visited[pos.x][pos.y] = 1;
     let current = null;
     let node = null;
-    let directions = [[[0, 1, 'up'], [0, -1, 'down'], [1, 0, 'right'], [-1, 0, 'left'], [0, 0, 'none']],
-        [[1, 0, 'right'], [-1, 0, 'left'], [0, 1, 'up'], [0, -1, 'down'], [0, 0, 'none']]];
+    let directions = [[[0, 1, 'up'], [0, -1, 'down'], [1, 0, 'right'], [-1, 0, 'left'], [0, 0, 'wait']],
+        [[1, 0, 'right'], [-1, 0, 'left'], [0, 1, 'up'], [0, -1, 'down'], [0, 0, 'wait']]];
     let blocked_goals = [];
 
     for (let goal of objectiveList) {
