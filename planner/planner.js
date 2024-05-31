@@ -268,19 +268,20 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
  * @returns {[{x: number, y: number, move: string}]} The new plan, [] if the plan is not recoverable
  */
 async function recoverPlan(index, plan) {
-    console.log("[RECOVER PLAN]");
     let x = plan[index].x;
     let y = plan[index].y;
+    console.log("[RECOVER PLAN] ");
     if (!map.map[x][y].agent) {
         console.log("\tAgent is gone");
         // if by waiting the agent is gone then try to keep going with the original plan
         plan = plan.slice(index, plan.length);
-    } else if (map.map[x][y].agent.id !== otherAgent.id) {
+    } else if (map.map[x][y].agent !== otherAgent.id) {
         console.log("\tAgent is not the other agent");
         // try to go around the agent if possible
         plan = goAround(index, plan);
     } else {
         // TODO: We know it's our friend agent we need to negotiate the swap of packages or who stays still
+        console.log('\tAgent is the other agent');
         handleNegotiation(index, plan);
     }
     return plan;
@@ -319,10 +320,13 @@ async function goAround(index, plan) {
  */
 async function handleNegotiation(index, plan) {
     console.log("\t[NEGOTIATION]");
+    let x= plan[index].x, y = plan[index].y;
+    let newPlan = [];
     if (AgentRole === 1) {
         //first only try to move aside
-        newPlan = MoveAside(index, plan);
+        newPlan = await MoveAside(index, plan);
         let incomingRequest = await awaitRequest();
+        console.log(incomingRequest);
         if (incomingRequest.content.type !== "moveOut") {
             incomingRequest.reply("RE-SYNC");
             plan = [];

@@ -1,6 +1,6 @@
 import {CommunicationBuffer} from "./CommunicationBuffer.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
-import { Beliefset } from "../planner/pddl-client/index.js";
+import {Beliefset} from "../planner/pddl-client/index.js";
 
 import myServer from '../server.js';
 
@@ -54,7 +54,7 @@ function otherAgentIntention(msg) {
     if (msg.header === "plan") {
         otherAgent.planBeliefset = new Beliefset();
         for (let move of otherAgent.plan) {
-            otherAgent.planBeliefset.declare("collaborator t_"+move.x+"_"+move.y);
+            otherAgent.planBeliefset.declare("collaborator t_" + move.x + "_" + move.y);
         }
         // console.log("other agent plan", otherAgent.plan);
         myServer.emitMessage("otherAgentPlan", otherAgent.plan);
@@ -136,11 +136,11 @@ function coordination(clientDeliverooApi) {
  * @param {object}msg The message to send
  * @returns {Promise<void>}
  */
-async function sendMsg(msg){
+async function sendMsg(msg) {
     client.say(otherAgent.id, msg);
 }
 
-async function sendRequest(msg){
+async function sendRequest(msg) {
     let message = {header: "request", content: msg};
     let response = await new Promise((resolve) => {
         client.ask(otherAgent.id, message).then((res) => {
@@ -150,12 +150,12 @@ async function sendRequest(msg){
             resolve("timeout");
         }, 500);
     });
-    if (response === "timeout") response.content="FAILED";
-    
+    if (response === "timeout") response = {content: "FAILED"};
+
     return response.content;
 }
 
-async function awaitRequest(msg){
+async function awaitRequest(msg) {
     let request = [];
     // see if there are requests in the buffer, otherwise wait for maximum 1 second
     for (let i = 0; i < 10; i++) {
@@ -167,11 +167,11 @@ async function awaitRequest(msg){
         }
     }
     for (let i = 0; i < request.length; i++) {
-        if (i<request.length-1) {
+        if (i < request.length - 1) {
             request[i].reply({header: "requestResponse", content: "FAILED"});
         }
     }
-    request = request[request.length-1];
+    request = request[request.length - 1];
 
     return request;
 }
