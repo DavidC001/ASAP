@@ -270,7 +270,7 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
 async function recoverPlan(index, plan) {
     let x = plan[index].x;
     let y = plan[index].y;
-    console.log("[RECOVER PLAN] ");
+    console.log("[RECOVER PLAN]");
     if (!map.map[x][y].agent) {
         console.log("\tAgent is gone");
         // if by waiting the agent is gone then try to keep going with the original plan
@@ -302,7 +302,7 @@ async function goAround(index, plan) {
     if (plan[index + 1]) {
         let objective = [{x: plan[index + 1].x, y: plan[index + 1].y}];
         newPlan = await map.BFS({x: currMovX, y: currMovY, move: 'none'}, objective);
-        if (newPlan.length > 6 || newPlan.length === 1) {
+        if (newPlan.length > 6 || newPlan.length < 2) {
             newPlan = []
         } else {
             newPlan = newPlan.concat(plan.slice(index + 2));
@@ -320,70 +320,82 @@ async function goAround(index, plan) {
  */
 async function handleNegotiation(index, plan) {
     console.log("\t[NEGOTIATION]");
-    let x= plan[index].x, y = plan[index].y;
-    let newPlan = [];
-    if (AgentRole === 1) {
-        //first only try to move aside
-        newPlan = await MoveAside(index, plan);
-        let incomingRequest = await awaitRequest();
-        console.log(incomingRequest);
-        if (incomingRequest.content.type !== "moveOut") {
-            if (incomingRequest.content !== "FAILED") incomingRequest.reply({type: "moveOut", content: "RE-SYNC"});
-            plan = [];
-        } else if (newPlan.length > 0){
-            incomingRequest.reply({type: "moveOut", content: "SUCCESS"});
-            plan = newPlan;
-            console.log("\t\tMove aside successful");
-        } else{
-            //if this is not possible then try to go around the other agent
-            newPlan = goAround(index, plan);
-            incomingRequest = await awaitRequest();
-            if (incomingRequest.content.type !== "planAround"){
-                if (incomingRequest.content !== "FAILED") incomingRequest.reply({type: "planAround", content: "RE-SYNC"});
-                plan = [];
-            } else if (newPlan.length > 0){
-                incomingRequest.reply({type: "planAround", content: "SUCCESS"});
-                plan = newPlan;
-                console.log("\t\tPlan around successful");
-            } else {
-                //TODO: negotiate the swap of packages
-                //if this is still not possible then try to negotiate the swap of packages
-                plan = [];
-                console.log("\t\tHARD REPLAN");
-                //otherwise the plan is not recoverable so return an empty plan
-            }
-        }
+    if (AgentRole === 1) plan = agent1Negotiation(index, plan);
+    else plan = agent0Negotiation(index, plan);
+
+    return plan;
+}
+
+/**
+ * Negotiates the move aside or the go around with the other agent
+ * @param {number} index The index of the failed move in the plan
+ * @param {[{x: number, y: number, move: string}]} plan The plan to recover
+ * 
+ * @returns {[{x: number, y: number, move: string}]} The new plan, [] if the plan is not recoverable
+ */
+async function agent0Negotiation(index, plan) {
+    //first only try to negotiate the move aside
+    let response = await sendRequest("moveOut");
+    console.log(response);
+    if (response === "RE-SYNC") {
+        plan = [];
+    } else if (response === "SUCCESS") {
+        plan = [{x: x, y: y, move: "wait"}].concat(plan.slice(index));
+        console.log("\t\tMove aside successful");
     } else {
-        //first only try to negotiate the move aside
-        let response = await sendRequest({header: "request", content: { type: "moveOut", position: {x: x, y: y}}});
+        // negotiate the go around
+        response = await sendRequest("planAround");
         console.log(response);
         if (response === "RE-SYNC") {
             plan = [];
-        } else if (response === "SUCCESS") {
-            plan = [{x: x, y: y, move: "wait"}].concat(plan.slice(index));
-            console.log("\t\tMove aside successful");
-        } else {
-            // negotiate the go around
-            response = await sendRequest({header: "request", content: { type: "planAround", position: {x: x, y: y}}});
-            console.log(response);
+        } else if (response !== "FAILED") {
+            plan = new Array(6).fill({x: x, y: y, move: "wait"}).concat(plan.slice(index));
+            console.log("\t\tPlan around successful");
             if (response === "RE-SYNC") {
                 plan = [];
-            } else if (response !== "FAILED") {
-                plan = new Array(6).fill({x: x, y: y, move: "wait"}).concat(plan.slice(index));
-                console.log("\t\tPlan around successful");
-                if (response === "RE-SYNC") {
-                    plan = [];
-                }
-            } else {
-                //TODO: negotiate the swap of packages
-                // negotiate the swap of packages
-                plan = [];
-                console.log("\t\tHARD REPLAN");
             }
+        } else {
+            //TODO: negotiate the swap of packages
+            // negotiate the swap of packages
+            plan = [];
+            console.log("\t\tHARD REPLAN");
         }
     }
+}
 
-    return plan;
+/**
+ * Negotiates the move aside or the go around with the other agent
+ * @param {number} index The index of the failed move in the plan
+ * @param {[{x: number, y: number, move: string}]} plan The plan to recover
+ * 
+ * @returns {[{x: number, y: number, move: string}]} The new plan, [] if the plan is not recoverable
+ */
+async function agent1Negotiation(index, plan) {
+    let planners = {
+        "moveOut": MoveAside,
+        "planAround": goAround,
+        "swap": () => []
+    }
+    let newPlan = [];
+    //first only try to move aside
+    let incomingRequest = await awaitRequest();
+    console.log(incomingRequest);
+    if (incomingRequest.content === "FAILED") {
+        //if the request timed-out then the plan is not recoverable
+        plan = [];
+        console.log("\t\tMove aside failed");
+    }else {
+        //try to comply with the request
+        newPlan = planners[incomingRequest.content](index, plan);
+        if (newPlan.length > 0){
+            incomingRequest.reply("SUCCESS");
+            plan = newPlan;
+            console.log("\t\tMove successful");
+        } else {
+            incomingRequest.reply("FAILED");
+            return agent1Negotiation(index, plan);
+        }
+    }
 }
 
 async function MoveAside(index, plan) {

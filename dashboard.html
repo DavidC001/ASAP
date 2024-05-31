@@ -73,6 +73,16 @@
             top: 0;
         }
 
+        .incomingRequest {
+            background-color: #ff0000;
+            z-index: 10;
+        }
+
+        .respondRequest {
+            background-color: #00ff00;
+            z-index: 10;
+        }
+
         #map_table {
             width: auto;
         }
@@ -101,6 +111,23 @@
 
             </table>
         </div>
+        <!-- Div for requests -->
+        <div class="col">
+            <h2>Requests</h2>
+            <div class="row">
+                <div class="col">
+                    <h3>Incoming requests</h3>
+                    <ul id="incoming_requests">
+                        <!-- List of incoming requests -->
+                    </ul>
+                </div>
+                <div class="col">
+                    <h3>Responded requests</h3>
+                    <ul id="responded_requests">
+                        <!-- List of responded requests -->
+                    </ul>
+                </div>
+            </div>
     </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
@@ -159,7 +186,7 @@
 
             }
         }
-        console.log(plan);
+        //console.log(plan);
     });
     socket.on('otherAgentPlan', (plan) =>{
         if ($('#map_table').length > 0) {
@@ -171,7 +198,17 @@
                 // invert an index to match the map
             }
         }
-        console.log(plan);
+        //console.log(plan);
+    });
+    socket.on('incomingRequest', (request) => {
+        //append the requests to the list to the top
+        console.log(request);
+        $('#incoming_requests').prepend(`<li class="incomingRequest">${JSON.stringify(request)}</li>`)
+    });
+    socket.on('respondRequest', (request) => {
+        //append the requests to the list
+        console.log(request);
+        $('#responded_requests').prepend(`<li class="respondRequest">${JSON.stringify(request)}</li>`)
     });
 </script>
 </body>

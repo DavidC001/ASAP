@@ -4,8 +4,8 @@ import {Beliefset} from "../planner/pddl-client/index.js";
 
 import myServer from '../server.js';
 
-const MAX_REQUEST_TIME = 1000;
-const MAX_AWAIT_RETRY = 20;
+const MAX_REQUEST_TIME = 5000;
+const MAX_AWAIT_RETRY = 50;
 
 /**
  * The client to communicate with the other agent
@@ -101,16 +101,23 @@ function handshake(id, name, msg) {
 /**
  * Register the request in the buffer
  * @param {object} msg The message
- * @param {function} reply The function to reply to the agent
+ * @param {function} replyReq The function to reply to the agent
  */
-function registerRequest(msg, reply) {
-    let request = {content: msg, reply: reply, timeout: null, expired: false};
+function registerRequest(msg, replyReq) {
+    let replyFun = (msg) => {
+        myServer.emitMessage("respondRequest", msg);
+        return replyReq({header: "requestResponse", content: msg});
+    }
+    let request = {content: msg, reply: replyFun, timeout: null, expired: false};
+    console.log("new request", msg);
     let timeout = setTimeout(() => {
         request.expired = true;
-        reply({header: "requestResponse", content: "FAILED"});
-    }, 1000);
+        replyFun("RE-SYNC");
+    }, MAX_REQUEST_TIME);
     request.timeout = timeout;
     requestBuffer.push(request);
+
+    myServer.emitMessage("incomingRequest", msg);
 }
 
 /**
@@ -165,7 +172,7 @@ async function sendRequest(msg) {
             resolve(res);
         });
         setTimeout(() => {
-            resolve({content: "FAILED"});
+            resolve({content: "RE-SYNC"});
         }, MAX_REQUEST_TIME);
     });
     return response.content;
@@ -185,12 +192,11 @@ async function awaitRequest(){
     for (let i = 0; i < request.length; i++) {
         clearTimeout(request[i].timeout);
         if (i < request.length - 1 && !request[i].expired) {
-            request[i].reply({content: "FAILED"});
+            request[i].reply("RE-SYNC");
         }
     }
     request = request[request.length - 1];
-    if(!request) request = {content: "FAILED"};
-
+    if(!request || request.expired) request = {content: "FAILED"};
     return request;
 }
 
