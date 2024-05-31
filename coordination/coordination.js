@@ -155,7 +155,7 @@ async function sendRequest(msg) {
     return response.content;
 }
 
-async function awaitRequest(msg) {
+async function awaitRequest(){
     let request = [];
     // see if there are requests in the buffer, otherwise wait for maximum 1 second
     for (let i = 0; i < 10; i++) {

@@ -27,7 +27,7 @@ const MAX_RETRIES = 5;
 const MAX_WAIT_FAIL = 8;
 const REPLAN_MOVE_INTERVAL = Math.Infinity;
 const SOFT_REPLAN_INTERVAL = 2;
-const USE_PDDL = true;
+const USE_PDDL = process.env.USE_PDDL;
 const INTENTION_REVISION_INTERVAL = 100;
 const BASE_FAIL_WAIT = 3000;
 

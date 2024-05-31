@@ -167,9 +167,9 @@ async function PDDL_frozenBFS(pos, objective) {
     let pddlDomain = new PddlDomain('CleanBFS', move);
 
     let problem = pddlProblem.toPddlString();
-    fs.writeFileSync("problem.pddl", problem);
+    // fs.writeFileSync("problem.pddl", problem);
     let domain = pddlDomain.toPddlString();
-    fs.writeFileSync("domain.pddl", domain);
+    // fs.writeFileSync("domain.pddl", domain);
 
     let pddl = await PDDL_solver(domain, problem)
 
@@ -184,10 +184,23 @@ async function PDDL_frozenBFS(pos, objective) {
  *
  * @param {{x: number, y: number}} pos position to start from
  * @param {*} objective objectives to reach
+ * @param {boolean} lookUp if the plan should be saved in the lookUp
  *
  * @returns {[{x: number, y: number, move: string}]} path to the objective
  */
-async function PDDL_cleanBFS(pos, objective) {
+async function PDDL_cleanBFS(pos, objective, lookUp = true) {
+    let key = {"pos": {x: pos.x, y: pos.y}, "objective": objective};
+    key = JSON.stringify(key);
+    
+    // check if the plan is already in the lookUp
+    if (map.planLookUp.has(key) && lookUp) {
+        let lookUpPlan = map.planLookUp.get(key);
+        // console.log("\t[PDDL] plan found in lookUp for", key);
+        // console.log("\t[PDDL] plaan", lookUpPlan);
+        return lookUpPlan;
+    }
+
+    // otherwise calculate the plan
     let position_belief = new Beliefset();
     position_belief.declare('at t_'+pos.x+'_'+pos.y);
     position_belief.declare('visited t_'+pos.x+'_'+pos.y);
@@ -237,10 +250,15 @@ async function PDDL_cleanBFS(pos, objective) {
     let domain = pddlDomain.toPddlString();
 
     let pddl = await PDDL_solver(domain, problem)
-
+    
     const pddlExecutor = new PddlExecutor(move);
     await pddlExecutor.exec(pddl, true);
-
+    
+    // save the plan in the lookUp
+    // console.log("\t[PDDL] adding plan", plan);
+    if (lookUp) map.planLookUp.set(key, plan);
+    // console.log("\t[PDDL] adding plan to lookUp", key, map.planLookUp.get(key));
+    
     return plan;
 }
 
@@ -255,7 +273,7 @@ async function PDDL_cleanBFS(pos, objective) {
 async function PDDL_path(pos, objective, fallback = true) {
     // console.log("\t[PDDL] future BFS");
     // let path = await PDDL_futureBFS(pos, objective);
-    let path = await PDDL_frozenBFS(pos, objective);
+    let path = await PDDL_frozenBFS(pos, objective); //TODO: fix other agent in goal makes it "goal can be simplified to false"
     if (path.length === 1 && fallback && !objective.some(o => pos.x === o.x && pos.y === o.y)) {
         console.log("\t[PDDL] No path found, using clean BFS");
         path = await PDDL_cleanBFS(pos, objective);
@@ -266,4 +284,4 @@ async function PDDL_path(pos, objective, fallback = true) {
     return path;
 }
 
-export {PDDL_path};
+export {PDDL_path, PDDL_cleanBFS, PDDL_frozenBFS, PDDL_futureBFS};

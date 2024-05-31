@@ -10,6 +10,8 @@ import {Beliefset} from "../planner/pddl-client/index.js";
 import myserver from "../server.js";
 import { otherAgent } from "../coordination/coordination.js";
 
+import { PDDL_cleanBFS } from "../planner/PDDL_planners.js";
+
 /**
  * A variable that sets the maximum prediction of the map
  * @type {number}
@@ -64,6 +66,8 @@ class Tile {
  * @property {[{x:number,y:number}]} deliveryZones - The positions of the delivery zones
  * @property {Map<string, {x:number,y:number}>} currentAgentPosition - The current position of the agents
  * @property {Map<string, {x:number,y:number}>} currentParcelPosition - The current position of the parcels
+ * @property {Beliefset} beliefSet - The beliefset of the map to use in the PDDL planner
+ * @property {Map<string, [{x:number,y:number,move:string}]>} planLookUp - The lookup of the plans
  */
 class Maps {
     width;
@@ -75,6 +79,7 @@ class Maps {
     currentAgentPosition = new Map();
     currentParcelPosition = new Map();
     beliefSet = new Beliefset();
+    planLookUp = new Map();
 
     /**
      * Generates the map given the tiles received from the server
@@ -222,9 +227,20 @@ class Maps {
      * agents blocking the path
      * @param pos - The starting position
      * @param objectiveList - The objective list of the BFS
+     * @param lookUp - A boolean that tells if the plan should be stored in the lookUp
      * @returns {*|*[]} - A path to the objective if possible to reach
      */
-    cleanBFS(pos, objectiveList) {
+    cleanBFS(pos, objectiveList, lookUp = false) {
+        let key = {"pos": {x: pos.x, y: pos.y}, "objective": objectiveList};
+        
+        //if the plan is already calculated, return it
+        if (this.planLookUp.has(JSON.stringify(key)) && lookUp) {
+            let lookUpPlan = this.planLookUp.get(JSON.stringify(key));
+            // console.log("\t[CleanBFS] plan found in lookUp");
+            return lookUpPlan;
+        }
+
+        //otherwise calculate the plan and store it in the lookUp
         let queue = [];
         let visited = new Array(this.width).fill().map(() => new Array(this.height).fill().map(() => false));
 
@@ -250,6 +266,7 @@ class Maps {
             // If the current objective is blocked, I will skip the blocked objective
             for (let goal of objectiveList) {
                 if ((node.x === goal.x && node.y === goal.y)) {
+                    if (lookUp) this.planLookUp.set(JSON.stringify(key), current);
                     return current;
                 }
             }
@@ -267,6 +284,8 @@ class Maps {
                 }
             }
         }
+
+        if (lookUp) this.planLookUp.set(JSON.stringify(key), [pos]);
 
         // If we don't find a path, return an empty array
         return [pos];
@@ -455,6 +474,37 @@ class Maps {
             startingTime = timestamp;
         }
     }
+
+    async precalculateCleanBFSPlans(use_PDDL) {
+        if (use_PDDL) use_PDDL = "PDDL"; 
+        else use_PDDL = "BFS";
+        
+        let planner = {
+            "PDDL": PDDL_cleanBFS, // if use_PDDL is "true" use the PDDL planner
+            "BFS": this.cleanBFS // if use_PDDL is "false" use the normal BFS planner
+        }
+        
+        //for each spawnable tile, calculate the path to the closest delivery zone and the other spawnable tiles and store them in the planLookUp
+        for (let spawnableTile of this.spawnableTiles) {
+            // console.log("Calculating BFS for spawnable tile", spawnableTile);
+            await planner[use_PDDL](spawnableTile, this.deliveryZones, true);
+            for (let otherSpawnableTile of this.spawnableTiles) {
+                // console.log("Calculating BFS for spawnable tile", spawnableTile, "to", otherSpawnableTile);
+                if (otherSpawnableTile.x === spawnableTile.x && otherSpawnableTile.y === spawnableTile.y) continue;
+                let goal = [{x: spawnableTile.x, y: otherSpawnableTile.y}]
+                await planner[use_PDDL](spawnableTile, goal, true);
+            }
+        }
+
+        //for each delivery tile, calculate the path to the spawnable tiles and store them in the planLookUp
+        for (let deliveryTile of this.deliveryZones) {
+            // console.log("Calculating BFS for delivery tile", deliveryTile);
+            for (let spawnableTile of this.spawnableTiles) {
+                let goal = [{x: spawnableTile.x, y: spawnableTile.y}]
+                await planner[use_PDDL](deliveryTile, goal, true);
+            }
+        }
+    }
 }
 
 /**
@@ -482,11 +532,11 @@ let map = null;
 /**
  * Create the map from scratch with some initial data and heuristics
  * @param { { width:number, height:number, tiles:[{x:number,y:number,delivery:boolean,parcelSpawner:boolean}] } } mapData
- * @param {DeliverooApi} client
  */
-function createMap(mapData, client) {
+function createMap(mapData) {
     map = new Maps(mapData);
     console.log('Map created');
+    map.precalculateCleanBFSPlans(process.env.USE_PDDL);
     setInterval(() => {
         // timeTaken(updateMap);
         updateMap();
