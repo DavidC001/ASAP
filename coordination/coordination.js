@@ -104,11 +104,12 @@ function handshake(id, name, msg) {
  * @param {function} reply The function to reply to the agent
  */
 function registerRequest(msg, reply) {
-    let request = {content: msg, reply: reply, timeout: timeout, expired: false};
+    let request = {content: msg, reply: reply, timeout: null, expired: false};
     let timeout = setTimeout(() => {
         request.expired = true;
         reply({header: "requestResponse", content: "FAILED"});
     }, 1000);
+    request.timeout = timeout;
     requestBuffer.push(request);
 }
 
@@ -188,7 +189,7 @@ async function awaitRequest(){
         }
     }
     request = request[request.length - 1];
-    if(!request) return request = {content: "FAILED"};
+    if(!request) request = {content: "FAILED"};
 
     return request;
 }
