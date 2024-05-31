@@ -9,6 +9,7 @@ import {PDDL_path} from "./PDDL_planners.js";
 import {otherAgent, AgentRole} from "../coordination/coordination.js";
 
 const MAX_EXPLORE_PATH_LENGTH = 20;
+const PROBABILITY_KEEP_BEST_TILE = 0.75;
 
 //TODO: if the parcel is not there anymore remove deviation from the path
 /**
@@ -240,6 +241,10 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
             )
             && map.cleanBFS(pos, [tile]).length > 1
         ) {
+            best_tile = {x: tile.x, y: tile.y, probability: tile.probability};
+            best_utility = tile_utility
+        }
+        if (best_utility === tile_utility && Math.random() > PROBABILITY_KEEP_BEST_TILE) {
             best_tile = {x: tile.x, y: tile.y, probability: tile.probability};
             best_utility = tile_utility
         }
