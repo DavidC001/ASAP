@@ -23,13 +23,13 @@ const input = readline.createInterface({
     input: process.stdin,
     output: process.stdout
 });
-const MAX_RETRIES = 5;
-const MAX_WAIT_FAIL = 8;
+const MAX_RETRIES = 2;
+const MAX_WAIT_FAIL = 5;
 const REPLAN_MOVE_INTERVAL = Math.Infinity;
 const SOFT_REPLAN_INTERVAL = 2;
-const USE_PDDL = process.env.USE_PDDL;
+const USE_PDDL = process.env.USE_PDDL || false;
 const INTENTION_REVISION_INTERVAL = 100;
-const BASE_FAIL_WAIT = 3000;
+const BASE_FAIL_WAIT = 1000;
 
 /** @type {EventEmitter} */
 const stopEmitter = new EventEmitter();
@@ -183,6 +183,7 @@ class Intention {
                     await new Promise((resolve) => setTimeout(resolve, BASE_FAIL_WAIT+me.config.MOVEMENT_DURATION * (Math.round(Math.random() * MAX_WAIT_FAIL))));
                     plan = await recoverPlan(i, plan);
                     if (plan.length === 0) {
+                        console.log('\tReplanning unsuccessful', this.type);
                         plan = await planner[this.type](me, this.goal, USE_PDDL);
                     }
                     i = 0;
