@@ -4,6 +4,10 @@ import { Beliefset } from "../planner/pddl-client/index.js";
 
 import myServer from '../server.js';
 
+/**
+ * The client to communicate with the other agent
+ * @type {DeliverooApi}
+ */
 let client = null;
 let AgentRole = 1;
 
@@ -20,6 +24,12 @@ const agentBuffer = new CommunicationBuffer();
  * @type {CommunicationBuffer}
  */
 const parcelBuffer = new CommunicationBuffer();
+
+/**
+ * A buffer containing the requests of the other agent
+ * @type {CommunicationBuffer}
+ */
+const requestBuffer = new CommunicationBuffer();
 
 /**
  * The informations of the other agent
@@ -100,6 +110,8 @@ function handleMsg(id, name, msg, reply) {
 
     if (msg.header === "belief") beliefSharing(msg.content);
     if (msg.header === "intent") otherAgentIntention(msg.content);
+
+    if (msg.header === "request") requestBuffer.push({content: msg.content, reply: reply});
 }
 
 /**
@@ -129,8 +141,39 @@ async function sendMsg(msg){
 }
 
 async function sendRequest(msg){
-    client.reply(otherAgent.id, msg);
+    let message = {header: "request", content: msg};
+    let response = await new Promise((resolve) => {
+        client.ask(otherAgent.id, message).then((res) => {
+            resolve(res);
+        });
+        setTimeout(() => {
+            resolve("timeout");
+        }, 500);
+    });
+    if (response === "timeout") response.content="FAILED";
+    
+    return response.content;
 }
 
+async function awaitRequest(msg){
+    let request = [];
+    // see if there are requests in the buffer, otherwise wait for maximum 1 second
+    for (let i = 0; i < 10; i++) {
+        request = requestBuffer.readBuffer();
+        if (request.length > 0) {
+            break;
+        } else {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+    }
+    for (let i = 0; i < request.length; i++) {
+        if (i<request.length-1) {
+            request[i].reply({header: "requestResponse", content: "FAILED"});
+        }
+    }
+    request = request[request.length-1];
 
-export {coordination, AgentRole, agentBuffer, parcelBuffer, otherAgent, sendMsg};
+    return request;
+}
+
+export {coordination, AgentRole, agentBuffer, parcelBuffer, otherAgent, sendMsg, sendRequest, awaitRequest};
