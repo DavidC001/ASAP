@@ -536,7 +536,7 @@ let map = null;
 function createMap(mapData) {
     map = new Maps(mapData);
     console.log('Map created');
-    map.precalculateCleanBFSPlans(process.env.USE_PDDL);
+    map.precalculateCleanBFSPlans(process.env.USE_PDDL||false);
     setInterval(() => {
         // timeTaken(updateMap);
         updateMap();
