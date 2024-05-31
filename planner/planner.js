@@ -328,10 +328,10 @@ async function handleNegotiation(index, plan) {
         let incomingRequest = await awaitRequest();
         console.log(incomingRequest);
         if (incomingRequest.content.type !== "moveOut") {
-            incomingRequest.reply("RE-SYNC");
+            if (incomingRequest.content !== "FAILED") incomingRequest.reply({type: "moveOut", content: "RE-SYNC"});
             plan = [];
         } else if (newPlan.length > 0){
-            incomingRequest.reply("SUCCESS");
+            incomingRequest.reply({type: "moveOut", content: "SUCCESS"});
             plan = newPlan;
             console.log("\t\tMove aside successful");
         } else{
@@ -339,10 +339,10 @@ async function handleNegotiation(index, plan) {
             newPlan = goAround(index, plan);
             incomingRequest = await awaitRequest();
             if (incomingRequest.content.type !== "planAround"){
-                incomingRequest.reply("RE-SYNC");
+                if (incomingRequest.content !== "FAILED") incomingRequest.reply({type: "planAround", content: "RE-SYNC"});
                 plan = [];
             } else if (newPlan.length > 0){
-                incomingRequest.reply("SUCCESS");
+                incomingRequest.reply({type: "planAround", content: "SUCCESS"});
                 plan = newPlan;
                 console.log("\t\tPlan around successful");
             } else {
@@ -356,16 +356,19 @@ async function handleNegotiation(index, plan) {
     } else {
         //first only try to negotiate the move aside
         let response = await sendRequest({header: "request", content: { type: "moveOut", position: {x: x, y: y}}});
-        if (response !== "FAILED") {
+        console.log(response);
+        if (response === "RE-SYNC") {
+            plan = [];
+        } else if (response === "SUCCESS") {
             plan = [{x: x, y: y, move: "wait"}].concat(plan.slice(index));
             console.log("\t\tMove aside successful");
-            if (response === "RE-SYNC") {
-                plan = [];
-            }
         } else {
             // negotiate the go around
             response = await sendRequest({header: "request", content: { type: "planAround", position: {x: x, y: y}}});
-            if (response !== "FAILED") {
+            console.log(response);
+            if (response === "RE-SYNC") {
+                plan = [];
+            } else if (response !== "FAILED") {
                 plan = new Array(6).fill({x: x, y: y, move: "wait"}).concat(plan.slice(index));
                 console.log("\t\tPlan around successful");
                 if (response === "RE-SYNC") {
