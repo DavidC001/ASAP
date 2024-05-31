@@ -4,6 +4,9 @@ import {Beliefset} from "../planner/pddl-client/index.js";
 
 import myServer from '../server.js';
 
+const MAX_REQUEST_TIME = 1000;
+const MAX_AWAIT_RETRY = 20;
+
 /**
  * The client to communicate with the other agent
  * @type {DeliverooApi}
@@ -96,6 +99,20 @@ function handshake(id, name, msg) {
 }
 
 /**
+ * Register the request in the buffer
+ * @param {object} msg The message
+ * @param {function} reply The function to reply to the agent
+ */
+function registerRequest(msg, reply) {
+    let request = {content: msg, reply: reply, timeout: timeout, expired: false};
+    let timeout = setTimeout(() => {
+        request.expired = true;
+        reply({header: "requestResponse", content: "FAILED"});
+    }, 1000);
+    requestBuffer.push(request);
+}
+
+/**
  * Handle the message
  *
  * @param {string} id The id of the agent
@@ -111,7 +128,7 @@ function handleMsg(id, name, msg, reply) {
     if (msg.header === "belief") beliefSharing(msg.content);
     if (msg.header === "intent") otherAgentIntention(msg.content);
 
-    if (msg.header === "request") requestBuffer.push({content: msg.content, reply: reply});
+    if (msg.header === "request") registerRequest(msg.content, reply);
 }
 
 /**
@@ -147,18 +164,16 @@ async function sendRequest(msg) {
             resolve(res);
         });
         setTimeout(() => {
-            resolve("timeout");
-        }, 500);
+            resolve({content: "FAILED"});
+        }, MAX_REQUEST_TIME);
     });
-    if (response === "timeout") response = {content: "FAILED"};
-
     return response.content;
 }
 
 async function awaitRequest(){
     let request = [];
     // see if there are requests in the buffer, otherwise wait for maximum 1 second
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < MAX_AWAIT_RETRY; i++) {
         request = requestBuffer.readBuffer();
         if (request.length > 0) {
             break;
@@ -167,11 +182,13 @@ async function awaitRequest(){
         }
     }
     for (let i = 0; i < request.length; i++) {
-        if (i < request.length - 1) {
-            request[i].reply({header: "requestResponse", content: "FAILED"});
+        clearTimeout(request[i].timeout);
+        if (i < request.length - 1 && !request[i].expired) {
+            request[i].reply({content: "FAILED"});
         }
     }
     request = request[request.length - 1];
+    if(!request) return request = {content: "FAILED"};
 
     return request;
 }
