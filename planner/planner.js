@@ -6,7 +6,7 @@ import {agents} from "../beliefs/agents.js";
 import {search_path} from "./search_planners.js";
 import {PDDL_path} from "./PDDL_planners.js";
 
-import {otherAgent, AgentRole} from "../coordination/coordination.js";
+import {otherAgent, AgentRole, sendRequest, awaitRequest} from "../coordination/coordination.js";
 
 const MAX_EXPLORE_PATH_LENGTH = 20;
 const PROBABILITY_KEEP_BEST_TILE = 0.75;
@@ -261,26 +261,39 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
 
 }
 
-async function recoverPlan(index, plan, goals, usePDDL = false) {
+/**
+ * Tries to recover the plan by going around the agent if possible or negotiating the swap of packages to avoid re-planning
+ * @param {number} index The index of the failed move in the plan
+ * @param {[{x: number, y: number, move: string}]} plan The plan to recover
+ * @returns {[{x: number, y: number, move: string}]} The new plan, [] if the plan is not recoverable
+ */
+async function recoverPlan(index, plan) {
+    console.log("[RECOVER PLAN]");
     let x = plan[index].x;
     let y = plan[index].y;
     if (!map.map[x][y].agent) {
-        // if the by waiting the agent is gone then try to keep going with the original plan
+        console.log("\tAgent is gone");
+        // if by waiting the agent is gone then try to keep going with the original plan
         plan = plan.slice(index, plan.length);
     } else if (map.map[x][y].agent.id !== otherAgent.id) {
+        console.log("\tAgent is not the other agent");
         // try to go around the agent if possible
         plan = goAround(index, plan);
-        if (plan.length === 0) {
-            // if no soft re-plan is possible, hard replan
-            plan = await beamPackageSearch(me,goals, usePDDL);
-        }
     } else {
         // TODO: We know it's our friend agent we need to negotiate the swap of packages or who stays still
-        
+        handleNegotiation(index, plan);
     }
     return plan;
 }
 
+
+
+/**
+ * Tries to go around the agent if possible without going too far and without recalculating the whole path
+ * @param {number} index The index of the failed move in the plan
+ * @param {[{x: number, y: number, move: string}]} plan The plan to recover
+ * @returns {[{x: number, y: number, move: string}]} The new plan, [] if the plan is not recoverable
+ */
 async function goAround(index, plan) {
     //let currMovX = plan[index].x, currMovY = plan[index].y;
     let currMovX = me.x, currMovY = me.y;
@@ -292,6 +305,100 @@ async function goAround(index, plan) {
             newPlan = []
         } else {
             newPlan = newPlan.concat(plan.slice(index + 2));
+        }
+    }
+    return newPlan;
+}
+
+/**
+ * Handles the negotiation with the other agent to swap packages or who stays still
+ * @param {number} index The index of the failed move in the plan
+ * @param {[{x: number, y: number, move: string}]} plan The plan to recover
+ * 
+ * @returns {[{x: number, y: number, move: string}]} The new plan, [] if the plan is not recoverable
+ */
+async function handleNegotiation(index, plan) {
+    console.log("\t[NEGOTIATION]");
+    if (AgentRole === 1) {
+        //first only try to move aside
+        newPlan = MoveAside(index, plan);
+        let incomingRequest = await awaitRequest();
+        if (incomingRequest.content.type !== "moveOut") {
+            incomingRequest.reply("RE-SYNC");
+            plan = [];
+        } else if (newPlan.length > 0){
+            incomingRequest.reply("SUCCESS");
+            plan = newPlan;
+            console.log("\t\tMove aside successful");
+        } else{
+            //if this is not possible then try to go around the other agent
+            newPlan = goAround(index, plan);
+            incomingRequest = await awaitRequest();
+            if (incomingRequest.content.type !== "planAround"){
+                incomingRequest.reply("RE-SYNC");
+                plan = [];
+            } else if (newPlan.length > 0){
+                incomingRequest.reply("SUCCESS");
+                plan = newPlan;
+                console.log("\t\tPlan around successful");
+            } else {
+                //TODO: negotiate the swap of packages
+                //if this is still not possible then try to negotiate the swap of packages
+                plan = [];
+                console.log("\t\tHARD REPLAN");
+                //otherwise the plan is not recoverable so return an empty plan
+            }
+        }
+    } else {
+        //first only try to negotiate the move aside
+        let response = await sendRequest({header: "request", content: { type: "moveOut", position: {x: x, y: y}}});
+        if (response !== "FAILED") {
+            plan = [{x: x, y: y, move: "wait"}].concat(plan.slice(index));
+            console.log("\t\tMove aside successful");
+            if (response === "RE-SYNC") {
+                plan = [];
+            }
+        } else {
+            // negotiate the go around
+            response = await sendRequest({header: "request", content: { type: "planAround", position: {x: x, y: y}}});
+            if (response !== "FAILED") {
+                plan = new Array(6).fill({x: x, y: y, move: "wait"}).concat(plan.slice(index));
+                console.log("\t\tPlan around successful");
+                if (response === "RE-SYNC") {
+                    plan = [];
+                }
+            } else {
+                //TODO: negotiate the swap of packages
+                // negotiate the swap of packages
+                plan = [];
+                console.log("\t\tHARD REPLAN");
+            }
+        }
+    }
+
+    return plan;
+}
+
+async function MoveAside(index, plan) {
+    let newPlan = [];
+    let currX = me.x, currY = me.y;
+    let currMove = plan[index].move;
+    let orthogonalMoves = {
+        "up": [[1, 0, "right", "left"], [-1, 0, "left", "right"]],
+        "down": [[1, 0, "right", "left"], [-1, 0, "left", "right"]],
+        "left": [[0, 1, "up", "down"], [0, -1, "down", "up"]],
+        "right": [[0, 1, "up", "down"], [0, -1, "down", "up"]]
+    }
+    for (let dir of orthogonalMoves[currMove]) {
+        let newX = currX + dir[0];
+        let newY = currY + dir[1];
+        if (
+            !map.map[newX][newY].agent
+            && map.map[newX][newY].type !== "obstacle"
+            && !otherAgent.plan.some((p) => p.x === newX && p.y === newY)
+        ){
+            newPlan = [{x: newX, y: newY, move: dir[2]}, {x: newX, y: newY, move: "wait"}, {x: currX, y: currY, move: dir[3]}].concat(plan.slice(index));
+            break;
         }
     }
     return newPlan;
