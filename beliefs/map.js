@@ -39,6 +39,8 @@ const actionBuffer = new Map();
  * @property {{id:string,carried:string,score:number}} parcel - Some information about the parcel on the tile
  * @property {number} last_seen - The last time the tile was seen
  * @property {number} agent_heat - The number of agents that are in the vicinity of the tile
+ * @property {number} probability - The probability of the tile to have a parcel spawn on it
+ * @property {number} RegionIndex - The index of the region of the tile
  */
 class Tile {
     heuristic;
@@ -48,6 +50,8 @@ class Tile {
     parcel = null;
     last_seen = 1;
     agent_heat = 1;
+    probability = 1;
+    RegionIndex = 0;
 
 
     constructor(tileData) {
@@ -61,13 +65,14 @@ class Tile {
  *
  * @property {number} width - The width of the map
  * @property {number} height - The height of the map
- * @property {[[{x:number,y:number,delivery:boolean}]]} map - The tiles of the map
- * @property {[[[{x:number,y:number,delivery:boolean}]]]} predictedMap - The predicted tiles of the map
+ * @property {[[Tile]]} map - The tiles of the map
+ * @property {[[[Tile]]]} predictedMap - The predicted map of the future
  * @property {[{x:number,y:number}]} deliveryZones - The positions of the delivery zones
  * @property {Map<string, {x:number,y:number}>} currentAgentPosition - The current position of the agents
  * @property {Map<string, {x:number,y:number}>} currentParcelPosition - The current position of the parcels
  * @property {Beliefset} beliefSet - The beliefset of the map to use in the PDDL planner
  * @property {Map<string, [{x:number,y:number,move:string}]>} planLookUp - The lookup of the plans
+ * @property {number} numberOfRegions - The number of regions in the map
  */
 class Maps {
     width;
@@ -80,6 +85,7 @@ class Maps {
     currentParcelPosition = new Map();
     beliefSet = new Beliefset();
     planLookUp = new Map();
+    numberOfRegions = 0;
 
     /**
      * Generates the map given the tiles received from the server
@@ -114,6 +120,7 @@ class Maps {
             } 
         });
 
+        let RegionIndex = 0;
         if ((this.spawnableTiles.length + this.deliveryZones.length) === tiles.length) {
             this.spawnableTiles.forEach(spawnableTile => {
                 spawnableTile.probability = 0;
@@ -142,10 +149,13 @@ class Maps {
                 } else {
                     region.forEach(tile => {
                         tile.probability = region.length / this.spawnableTiles.length;
+                        tile.RegionIndex = RegionIndex;
                     });
+                    RegionIndex++;
                 }
             });
         }
+        this.numberOfRegions = RegionIndex;
 
         let directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
 

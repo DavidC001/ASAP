@@ -235,19 +235,28 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
         );
 
         if (
-            (
-                (best_tile.x === -1 && best_tile.y === -1) ||
-                best_utility > tile_utility
+            (best_tile.x === -1 && best_tile.y === -1) 
+            || (
+                best_utility >= tile_utility
+                && map.cleanBFS(pos, [tile]).length > 1
+                && (
+                    otherAgent.intention.type === ""
+                    || (map.map[otherAgent.intention.goal.x][otherAgent.intention.goal.y].RegionIndex !== map.map[tileX][tileY].RegionIndex)
+                    || map.numberOfRegions < 2
+                )
             )
-            && map.cleanBFS(pos, [tile]).length > 1
         ) {
-            best_tile = {x: tile.x, y: tile.y, probability: tile.probability};
-            best_utility = tile_utility
+            if (best_utility === tile_utility) {
+                if (Math.random() > PROBABILITY_KEEP_BEST_TILE) {
+                    best_tile = {x: tile.x, y: tile.y, probability: tile.probability};
+                    best_utility = tile_utility
+                }
+            } else {
+                best_tile = {x: tile.x, y: tile.y, probability: tile.probability};
+                best_utility = tile_utility
+            }
         }
-        if (best_utility === tile_utility && Math.random() > PROBABILITY_KEEP_BEST_TILE) {
-            best_tile = {x: tile.x, y: tile.y, probability: tile.probability};
-            best_utility = tile_utility
-        }
+        
     }
 
     // console.log("\t", best_tile, best_last_seen, best_agent_heat, "Utility", best_utility);
