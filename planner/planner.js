@@ -246,6 +246,7 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
                 )
             )
         ) {
+            // console.log("\t", tile, tile_last_seen, tile_agent_heat, "Utility", tile_utility, "Region", map.map[tileX][tileY].RegionIndex, "Regions", map.numberOfRegions);
             if (best_utility === tile_utility) {
                 if (Math.random() > PROBABILITY_KEEP_BEST_TILE) {
                     best_tile = {x: tile.x, y: tile.y, probability: tile.probability};

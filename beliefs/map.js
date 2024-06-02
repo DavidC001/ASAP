@@ -18,7 +18,7 @@ import { PDDL_cleanBFS } from "../planner/PDDL_planners.js";
  */
 const MAX_FUTURE = 2;
 
-const MAX_SPAWNABLE_TILES_DISTANCE = 2.5;
+const MAX_SPAWNABLE_TILES_DISTANCE = 1;
 const MAX_AGENT_HEATMAP_DISTANCE = 3;
 const MAX_TIME = 500;
 let startingTime = Date.now() / 1000;
@@ -50,7 +50,7 @@ class Tile {
     parcel = null;
     last_seen = 1;
     agent_heat = 1;
-    probability = 1;
+    probability = 0;
     RegionIndex = 0;
 
 
@@ -68,6 +68,7 @@ class Tile {
  * @property {[[Tile]]} map - The tiles of the map
  * @property {[[[Tile]]]} predictedMap - The predicted map of the future
  * @property {[{x:number,y:number}]} deliveryZones - The positions of the delivery zones
+ * @property {[{x:number,y:number,last_seen:number,probability:number,RegionIndex:number}]} spawnableTiles - The spawnable tiles
  * @property {Map<string, {x:number,y:number}>} currentAgentPosition - The current position of the agents
  * @property {Map<string, {x:number,y:number}>} currentParcelPosition - The current position of the parcels
  * @property {Beliefset} beliefSet - The beliefset of the map to use in the PDDL planner
@@ -133,8 +134,8 @@ class Maps {
                 this.spawnableTiles.forEach(otherSpawnableTile => {
                     if (otherSpawnableTile.probability !== undefined) return;
                     if (spawnableTile.x === otherSpawnableTile.x && spawnableTile.y === otherSpawnableTile.y) return;
-                    let dist = distance(spawnableTile, otherSpawnableTile);
-                    if (dist < minDist) {
+                    let dist = this.cleanBFS(spawnableTile, [otherSpawnableTile]).length-1;
+                    if (dist <= minDist) {
                         minDist += dist;
                         region.push(otherSpawnableTile);
                     }
@@ -147,9 +148,13 @@ class Maps {
                         tile.probability = 0;
                     });
                 } else {
+                    // console.log('Region', region);
                     region.forEach(tile => {
                         tile.probability = region.length / this.spawnableTiles.length;
+                        this.map[tile.x][tile.y].probability = tile.probability;
                         tile.RegionIndex = RegionIndex;
+                        this.map[tile.x][tile.y].RegionIndex = RegionIndex;
+                        // console.log('\tRegionIndex', tile.RegionIndex);
                     });
                     RegionIndex++;
                 }
