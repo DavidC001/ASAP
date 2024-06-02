@@ -174,7 +174,7 @@ class Intention {
                 });
             }),
             "none": () => new Promise((resolve) => resolve(true)),
-            "wait": () => new Promise((resolve) => setTimeout(resolve, Math.ceil(me.config.MOVEMENT_DURATION*1.2)))
+            "wait": () => new Promise((resolve) => setTimeout(resolve(true), Math.ceil(me.config.MOVEMENT_DURATION*1.2)))
         }
 
         let retryCount = 0;
