@@ -23,7 +23,7 @@ import { sendMsg } from "../coordination/coordination.js";
  *      AGENT_TIMEOUT:number,
  *      PARCEL_REWARD_AVG:number,
  *      PARCEL_REWARD_VARIANCE:number,
- *      PARCEL_DECADING_INTERVAL:string,
+ *      PARCEL_DECADING_INTERVAL:number,
  *      RANDOMLY_MOVING_AGENTS:number,
  *      RANDOM_AGENT_SPEED:string,
  *      CLOCK:number
@@ -98,6 +98,7 @@ function RegisterBeliefsRevisions(client) {
         }
     }
 
+    me.config.PARCEL_DECADING_INTERVAL = interval_num;
     me.moves_per_parcel_decay = Math.ceil(interval_num / me.config.MOVEMENT_DURATION);
     //console.log('moves per parcel decay', me.moves_per_parcel_decay);
 

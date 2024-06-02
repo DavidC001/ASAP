@@ -30,6 +30,7 @@ const SOFT_REPLAN_INTERVAL = 2;
 const USE_PDDL = process.env.USE_PDDL || false;
 const INTENTION_REVISION_INTERVAL = 100;
 const BASE_FAIL_WAIT = 1000;
+const PLANNING_TIME = 500;
 
 /** @type {EventEmitter} */
 const stopEmitter = new EventEmitter();
@@ -258,6 +259,7 @@ class Intention {
         let utility = 0;
         let numParcels = carriedParcels.length;
         let toRemove = []
+        let planning_time = 0;
 
         //compute the score of the carried parcels
         let score = carriedParcels.reduce((acc, id) => {
@@ -276,6 +278,7 @@ class Intention {
         let steps = 0;
         switch (this.type) {
             case 'pickup':
+                planning_time = PLANNING_TIME * 2;
                 //TODO: if carried parcel over limit return -1
                 if (map.map[this.goal.x][this.goal.y].agent !== null
                     || map.map[this.goal.x][this.goal.y].parcel === null
@@ -324,7 +327,7 @@ class Intention {
                 }
                 break;
             case 'deliver':
-                //use the heuristic to the closest delivery point
+                planning_time = PLANNING_TIME;
                 steps = map.BFS(me, this.goal).length;
                 break;
             case 'explore':
@@ -332,10 +335,10 @@ class Intention {
                 steps = 0;
                 break;
             default:
-            //console.log('Invalid intention type');
+                console.log('Invalid intention type');
         }
 
-        utility = score - steps * (numParcels) / me.moves_per_parcel_decay;
+        utility = score - (numParcels)* Math.ceil(steps / me.moves_per_parcel_decay) - (numParcels) * Math.ceil(planning_time/me.config.PARCEL_DECADING_INTERVAL);
         return utility;
     }
 
