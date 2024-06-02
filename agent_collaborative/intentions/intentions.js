@@ -189,7 +189,7 @@ class Intention {
                     console.log('\tMax retries exceeded', this.type, "on move", plan[i]);
                     //wait some moves before replanning
                     await new Promise((resolve) => setTimeout(resolve, BASE_FAIL_WAIT+me.config.MOVEMENT_DURATION * (Math.round(Math.random() * MAX_WAIT_FAIL))));
-                    plan = await recoverPlan(i, plan);
+                    plan = await recoverPlan(i, plan, this.type);
                     if (plan.length === 0) {
                         console.log('\tReplanning unsuccessful', this.type);
                         plan = await planner[this.type](me, this.goal, USE_PDDL);
