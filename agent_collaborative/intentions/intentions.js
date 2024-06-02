@@ -17,7 +17,7 @@ import myServer from '../../server.js';
 //wait console input
 import readline from 'readline';
 import { clear } from 'console';
-import { sendMsg, otherAgent } from '../../coordination/coordination.js';
+import { sendMsg, otherAgent, awaitRequest, sendRequest } from '../../coordination/coordination.js';
 import { frozenBFS } from '../../planner/search_planners.js';
 
 const input = readline.createInterface({
@@ -174,7 +174,9 @@ class Intention {
             }),
             "none": () => new Promise((resolve) => resolve(true)),
             "fail": () => new Promise((resolve) => resolve(false)),
-            "wait": () => new Promise((resolve) => setTimeout(resolve(true), Math.ceil(me.config.MOVEMENT_DURATION*1.5)))
+            "wait": () => new Promise((resolve) => setTimeout(resolve(true), Math.ceil(me.config.MOVEMENT_DURATION*2))),
+            "await": () => new Promise(async (resolve) => { await awaitRequest(); resolve(true) }),
+            "answer": () => new Promise((resolve) => { sendRequest().then(); resolve(true) })
         }
 
         let retryCount = 0;
