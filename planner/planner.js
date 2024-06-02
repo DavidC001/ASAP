@@ -363,6 +363,7 @@ async function agent0Negotiation(index, plan) {
             console.log("\t\tHARD REPLAN");
         }
     }
+    return plan;
 }
 
 /**
@@ -398,6 +399,7 @@ async function agent1Negotiation(index, plan) {
             return agent1Negotiation(index, plan);
         }
     }
+    return plan;
 }
 
 async function MoveAside(index, plan) {
