@@ -4,8 +4,8 @@ import {Beliefset} from "../planner/pddl-client/index.js";
 
 import myServer from '../server.js';
 
-const MAX_REQUEST_TIME = 5000;
-const MAX_AWAIT_RETRY = 50;
+const MAX_REQUEST_TIME = 1000;
+const MAX_AWAIT_RETRY = 10;
 
 /**
  * The client to communicate with the other agent

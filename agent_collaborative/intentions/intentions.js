@@ -8,9 +8,9 @@ import {
     deliveryBFS,
     beamPackageSearch,
     exploreBFS,
-    exploreBFS2,
-    recoverPlan
+    exploreBFS2
 } from '../../planner/planner.js';
+import { recoverPlan } from '../../planner/recover.js';
 import { DeliverooApi } from '@unitn-asa/deliveroo-js-client';
 import myServer from '../../server.js';
 
