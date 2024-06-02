@@ -30,7 +30,7 @@ const SOFT_REPLAN_INTERVAL = 2;
 const USE_PDDL = process.env.USE_PDDL || false;
 const INTENTION_REVISION_INTERVAL = 100;
 const BASE_FAIL_WAIT = 1000;
-const PLANNING_TIME = 500;
+const PLANNING_TIME = 100;
 
 /** @type {EventEmitter} */
 const stopEmitter = new EventEmitter();
@@ -322,7 +322,23 @@ class Intention {
                                 score = 0.2 + parcelScore + distanceScore;
                                 steps = 0;
                                 if(agent.id === otherAgent.id){
-                                    score = 0;
+                                    //if positive utility for the other agent set the score to 0
+                                    let OAParcelsScore = otherAgent.carriedParcels.reduce((acc, id) => { 
+                                        if (parcels.has(id)) {
+                                            return acc + parcels.get(id).score
+                                        } else {
+                                            return acc;
+                                        }
+                                     }, 0);
+                                    distance_agent += map.BFS(otherAgent.position, map.deliveryZones).length;
+                                    let OAUtility = 
+                                        OAParcelsScore + parcelScore
+                                        - (otherAgent.carriedParcels.length+1) * Math.ceil(distance_agent / me.moves_per_parcel_decay);
+                                    if(OAUtility > 0) {
+                                        score = 0;
+                                    } else {
+                                        closer = false;
+                                    }
                                 }
                                 //console.log('\t\tcloser agent', agent.id, 'distance', distance_agent, 'score', score);
                             }
@@ -345,7 +361,10 @@ class Intention {
                 console.log('Invalid intention type');
         }
 
-        utility = score - (numParcels)* Math.ceil(steps / me.moves_per_parcel_decay) - (numParcels) * Math.ceil(planning_time/me.config.PARCEL_DECADING_INTERVAL);
+        utility = 
+            score 
+            - (numParcels)* Math.ceil(steps / me.moves_per_parcel_decay) 
+            - (numParcels) * Math.ceil(planning_time/me.config.PARCEL_DECADING_INTERVAL);
         return utility;
     }
 
@@ -404,7 +423,7 @@ class Intentions {
         let maxIntention = null;
         for (let intention of this.intentions) {
             let utility = await intention.utility();
-            //console.log('utility', intention.type, utility);
+            // console.log('utility', intention.type, utility);
             if ((
                 utility > maxUtility ||
                 (
