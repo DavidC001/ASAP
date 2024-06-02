@@ -51,6 +51,12 @@ function updateMe({id, name, x, y, score}) {
             }
         }
     }).then(() => {});
+
+    sendMsg({
+        header: 'agent_info', content: {
+            header: 'position', content: {x: me.x, y: me.y}
+        }
+    }).then(() => {});
 }
 
 /**

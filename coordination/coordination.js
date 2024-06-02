@@ -36,10 +36,12 @@ const requestBuffer = new CommunicationBuffer();
 
 /**
  * The informations of the other agent
- * @type {{intention: {type: string, goal: {x: number, y: number}}, plan: [{x: number, y: number, move: string}], planBeliefset: Beliefset}} otherAgent
+ * @type {{id: string, position: {x: number, y: number}, carriedParcels: [string], intention: {type: string, goal: {x: number, y: number}}, plan: [], planBeliefset: Beliefset}}
  */
 let otherAgent = {
     id: "",
+    position: {x: -1, y: -1},
+    carriedParcels: [],
     intention: {
         type: "",
         goal: {x: -1, y: -1}
@@ -52,18 +54,26 @@ let otherAgent = {
  * Handle the message with the intention of the other agent
  * @param {{header: string, content: {object}}} msg
  */
-function otherAgentIntention(msg) {
+function otherAgentInformation(msg) {
     otherAgent[msg.header] = msg.content;
-    if (msg.header === "plan") {
-        otherAgent.planBeliefset = new Beliefset();
-        for (let move of otherAgent.plan) {
-            otherAgent.planBeliefset.declare("collaborator t_" + move.x + "_" + move.y);
-        }
-        // console.log("other agent plan", otherAgent.plan);
-        myServer.emitMessage("otherAgentPlan", otherAgent.plan);
-    }
-    if (msg.header === "intention") {
-        myServer.emitMessage("otherAgentIntention", otherAgent.intention);
+    switch (msg.header) {
+        case "position":
+            otherAgent.position = msg.content;
+            break;
+        case msg.header === "plan":
+            otherAgent.planBeliefset = new Beliefset();
+            for (let move of otherAgent.plan) {
+                otherAgent.planBeliefset.declare("collaborator t_" + move.x + "_" + move.y);
+            }
+            // console.log("other agent plan", otherAgent.plan);
+            myServer.emitMessage("otherAgentPlan", otherAgent.plan);
+            break;
+        case "intention":
+            myServer.emitMessage("otherAgentIntention", otherAgent.intention);
+            break;
+        case "carriedParcels":
+            otherAgent.carriedParcels = msg.content;
+            break;
     }
 }
 
@@ -133,10 +143,17 @@ function handleMsg(id, name, msg, reply) {
     if (msg.header === "handshake") handshake(id, name, msg.content);
     if (id !== otherAgent.id) return;
 
-    if (msg.header === "belief") beliefSharing(msg.content);
-    if (msg.header === "intent") otherAgentIntention(msg.content);
-
-    if (msg.header === "request") registerRequest(msg.content, reply);
+    switch (msg.header) {
+        case "belief":
+            beliefSharing(msg.content);
+            break;
+        case "agent_info":
+            otherAgentInformation(msg.content);
+            break;
+        case "request":
+            registerRequest(msg.content, reply);
+            break;
+    }
 }
 
 /**

@@ -105,7 +105,7 @@ class Intention {
         if (earlyStop) return;
         if (this.type === "explore" && plan.length>0) this.goal = { x: plan[plan.length - 1].x, y: plan[plan.length - 1].y }
         sendMsg({
-            header: "intent",
+            header: "agent_info",
             content: {
                 header: "intention",
                 content: {
@@ -116,7 +116,7 @@ class Intention {
         })
         myServer.emitMessage('intention', { type: this.type, goal: this.goal });
         sendMsg({
-            header: "intent",
+            header: "agent_info",
             content: {
                 header: "plan",
                 content: plan
@@ -154,6 +154,13 @@ class Intention {
                     for (let p of res) {
                         carriedParcels.push(p.id);
                     }
+                    sendMsg({
+                        header: "agent_info",
+                        content: {
+                            header: "carriedParcels",
+                            content: carriedParcels
+                        }
+                    })
                     if (!res) res = [];
                     resolve(res);
                 });
@@ -190,7 +197,7 @@ class Intention {
                     i = 0;
                     myServer.emitMessage('plan', plan);
                     sendMsg({
-                        header: "intent",
+                        header: "agent_info",
                         content: {
                             header: "plan",
                             content: plan
@@ -211,7 +218,7 @@ class Intention {
                     plan = await planner[this.type](me, this.goal, USE_PDDL);
                     myServer.emitMessage('plan', plan);
                     sendMsg({
-                        header: "intent",
+                        header: "agent_info",
                         content: {
                             header: "plan",
                             content: plan
@@ -225,7 +232,7 @@ class Intention {
                     plan = await beamSearch(plan.splice(i + 1, plan.length), [plan[plan.length - 1]], USE_PDDL);
                     myServer.emitMessage('plan', plan);
                     sendMsg({
-                        header: "intent",
+                        header: "agent_info",
                         content: {
                             header: "plan",
                             content: plan
