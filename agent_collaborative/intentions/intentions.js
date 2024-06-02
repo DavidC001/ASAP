@@ -18,18 +18,17 @@ import myServer from '../../server.js';
 import readline from 'readline';
 import { clear } from 'console';
 import { sendMsg, otherAgent } from '../../coordination/coordination.js';
+import { frozenBFS } from '../../planner/search_planners.js';
 
 const input = readline.createInterface({
     input: process.stdin,
     output: process.stdout
 });
 const MAX_RETRIES = 2;
-const MAX_WAIT_FAIL = 5;
 const REPLAN_MOVE_INTERVAL = Math.Infinity;
-const SOFT_REPLAN_INTERVAL = 2;
+const SOFT_REPLAN_INTERVAL = 10;
 const USE_PDDL = process.env.USE_PDDL || false;
 const INTENTION_REVISION_INTERVAL = 100;
-const BASE_FAIL_WAIT = 1000;
 const PLANNING_TIME = 100;
 
 /** @type {EventEmitter} */
@@ -174,12 +173,13 @@ class Intention {
                 });
             }),
             "none": () => new Promise((resolve) => resolve(true)),
-            "wait": () => new Promise((resolve) => setTimeout(resolve(true), Math.ceil(me.config.MOVEMENT_DURATION*1.2)))
+            "fail": () => new Promise((resolve) => resolve(false)),
+            "wait": () => new Promise((resolve) => setTimeout(resolve(true), Math.ceil(me.config.MOVEMENT_DURATION*1.5)))
         }
 
         let retryCount = 0;
         for (let i = 0; i < plan.length; i++) {
-            // console.log(this.type,'move', i, plan[i]);
+            console.log(this.type,'move', i, plan[i]);
             let res = await moves[plan[i].move]();
 
             if (!res) {
@@ -187,9 +187,8 @@ class Intention {
                 if (retryCount >= MAX_RETRIES) {
                     if (this.stop) break;
                     console.log('\tMax retries exceeded', this.type, "on move", plan[i]);
-                    //wait some moves before replanning
-                    await new Promise((resolve) => setTimeout(resolve, BASE_FAIL_WAIT+me.config.MOVEMENT_DURATION * (Math.round(Math.random() * MAX_WAIT_FAIL))));
                     plan = await recoverPlan(i, plan, this.type);
+                    console.log('\tReplanning', this.type, plan);
                     if (plan.length === 0) {
                         console.log('\tReplanning unsuccessful', this.type);
                         plan = await planner[this.type](me, this.goal, USE_PDDL);
@@ -312,7 +311,7 @@ class Intention {
                     let closer = false;
                     for (let [id, agent] of agents) {
                         if (agent.id !== me.id && agent.position.x !== -1) {
-                            let distance_agent = map.BFS(agent.position, this.goal).length;
+                            let distance_agent = frozenBFS(agent.position, this.goal).length-1;
                             //console.log('\tagent', agent.id, 'position', agent.position, 'distance', distance_agent);
                             //let distance_agent = distance(agent, this.goal);
                             if (distance_agent < steps && distance_agent > 1) {
@@ -330,7 +329,7 @@ class Intention {
                                             return acc;
                                         }
                                      }, 0);
-                                    distance_agent += map.BFS(otherAgent.position, map.deliveryZones).length;
+                                    distance_agent += frozenBFS(otherAgent.position, map.deliveryZones).length-1;
                                     let OAUtility = 
                                         OAParcelsScore + parcelScore
                                         - (otherAgent.carriedParcels.length+1) * Math.ceil(distance_agent / me.moves_per_parcel_decay);
@@ -351,7 +350,7 @@ class Intention {
                 break;
             case 'deliver':
                 planning_time = PLANNING_TIME;
-                steps = map.BFS(me, this.goal).length;
+                steps = frozenBFS(me, this.goal).length;
                 break;
             case 'explore':
                 score = 0.1;

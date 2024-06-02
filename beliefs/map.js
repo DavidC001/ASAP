@@ -182,62 +182,6 @@ class Maps {
     }
 
     /**
-     * A simple BFS that gives the path to the objective. Considers the current map and does count Agents as obstacles
-     * @param pos - The starting position
-     * @param objective - The objective of the BFS
-     * @returns {*|*[]} - A path to the objective if possible to reach
-     */
-    BFS(pos, objective) {
-        let queue = [];
-        let visited = new Array(this.width).fill().map(() => new Array(this.height).fill().map(() => false));
-        if (pos instanceof Array) queue.push(pos); else queue.push([pos]);
-        if (!(objective instanceof Array)) objective = [objective];
-        //console.log(this.width, this.height);
-        visited[pos.x][pos.y] = true;
-        let current = null;
-        let node = null;
-        let directions = [[[0, 1, 'up'], [0, -1, 'down'], [1, 0, 'right'], [-1, 0, 'left']],
-            [[1, 0, 'right'], [-1, 0, 'left'], [0, 1, 'up'], [0, -1, 'down']]];
-
-        //if objective is obstracted, return empty array
-        for (let obj of objective) {
-            if (this.map[obj.x][obj.y].type === 'obstacle'
-                || this.map[obj.x][obj.y].agent !== null) {
-                return [];
-            }
-        }
-
-        while (queue.length > 0) {
-            current = queue.shift();
-            node = current.at(-1)
-
-            for (let obj of objective) {
-                if (node.x === obj.x && node.y === obj.y) {
-                    //remove the first element of the array
-                    return current;
-                }
-            }
-
-            for (let dir of directions[current.length % 2]) {
-                let newX = node.x + dir[0];
-                let newY = node.y + dir[1];
-                if ((newX >= 0) && (newX < this.width) && (newY >= 0) && (newY < this.height)
-                    && (!visited[newX][newY])
-                    && this.map[newX][newY].type !== 'obstacle'
-                    && this.map[newX][newY].agent === null) {
-                    let newCurrent = JSON.parse(JSON.stringify(current));
-                    newCurrent.push({x: newX, y: newY, move: dir[2]});
-                    queue.push(newCurrent);
-                    visited[newX][newY] = true;
-                }
-            }
-        }
-
-        // If we don't find a path, return an empty array
-        return [pos];
-    }
-
-    /**
      * A BFS that doesn't count the agents in its path. This always return a path if there is one, even if there are
      * agents blocking the path
      * @param pos - The starting position

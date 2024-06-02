@@ -15,6 +15,7 @@ function BFStoObjective(pos, objectiveList, startTime = 0) {
     let queue = [];
     let visited = new Array(map.width).fill().map(() => new Array(map.height).fill().map(() => 0));
     queue.push([pos]);
+    if (!(objectiveList instanceof Array)) objectiveList = [objectiveList];
     visited[pos.x][pos.y] = 1;
     let current = null;
     let node = null;
@@ -68,6 +69,64 @@ function BFStoObjective(pos, objectiveList, startTime = 0) {
 }
 
 /**
+ * A simple BFS that gives the path to the objective. Considers the current map and does count Agents as obstacles
+ * @param pos - The starting position
+ * @param objective - The objective of the BFS
+ * @returns {*|*[]} - A path to the objective if possible to reach
+*/
+function frozenBFS(pos, objective) {
+    let queue = [];
+    let visited = new Array(map.width).fill().map(() => new Array(map.height).fill().map(() => false));
+    queue.push([{x: pos.x, y: pos.y, move: 'none'}]);
+    if (!(objective instanceof Array)) objective = [objective];
+    //console.log(map.width, map.height);
+    visited[pos.x][pos.y] = true;
+    let current = null;
+    let node = null;
+    let directions = [[[0, 1, 'up'], [0, -1, 'down'], [1, 0, 'right'], [-1, 0, 'left']],
+        [[1, 0, 'right'], [-1, 0, 'left'], [0, 1, 'up'], [0, -1, 'down']]];
+
+    //if objective is obstructed, remove it from the list
+    objective = objective.filter(objective => {
+        return (
+            map.map[objective.x][objective.y].type !== 'obstacle' 
+            && map.map[objective.x][objective.y].agent === null
+        );
+    });
+
+    while (queue.length > 0) {
+        current = queue.shift();
+        node = current.at(-1)
+
+        for (let obj of objective) {
+            if (node.x === obj.x && node.y === obj.y) {
+                // console.log("Path found");
+                return current;
+            }
+        }
+
+        for (let dir of directions[current.length % 2]) {
+            let newX = node.x + dir[0];
+            let newY = node.y + dir[1];
+            if ((newX >= 0) && (newX < map.width) && (newY >= 0) && (newY < map.height)
+                && (!visited[newX][newY])
+                && map.map[newX][newY].type !== 'obstacle'
+                && map.map[newX][newY].agent === null) {
+                // console.log( "checking", newX, newY, map.width, map.height, visited[newX][newY], map.map[newX][newY].type, map.map[newX][newY].agent);
+                let newCurrent = JSON.parse(JSON.stringify(current));
+                newCurrent.push({x: newX, y: newY, move: dir[2]});
+                queue.push(newCurrent);
+                visited[newX][newY] = true;
+            }
+        }
+    }
+
+    // If we don't find a path, return an empty array
+    // console.log("No path found");
+    return [pos];
+}
+
+/**
  * Use BFS to find the path to the closest objective
  * 
  * @param {{x: number, y: number}} pos
@@ -81,7 +140,7 @@ function search_path(pos, objective, fallback = true) {
     if (path.length === 1 && fallback) {
         //use normal BFS to find the path
         // console.log("\t[BEAM SEARCH] No path found, using BFS");
-        path = map.BFS(pos, objective);
+        path = frozenBFS(pos, objective);
         // console.log("\t[BEAM SEARCH] BFS path", path);
         if (path.length === 1) {
             //fallback to clean BFS
@@ -94,4 +153,4 @@ function search_path(pos, objective, fallback = true) {
     return path;
 }
 
-export {search_path};
+export {search_path, BFStoObjective, frozenBFS}

@@ -6,7 +6,7 @@ import {agents} from "../beliefs/agents.js";
 import {search_path} from "./search_planners.js";
 import {PDDL_path} from "./PDDL_planners.js";
 
-import {otherAgent, AgentRole, sendRequest, awaitRequest} from "../coordination/coordination.js";
+import {otherAgent} from "../coordination/coordination.js";
 
 const MAX_EXPLORE_PATH_LENGTH = 20;
 const PROBABILITY_KEEP_BEST_TILE = 0.75;
@@ -235,15 +235,15 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
         );
 
         if (
-            (best_tile.x === -1 && best_tile.y === -1)
-            || (
-                best_utility >= tile_utility
-                && map.cleanBFS(pos, [tile]).length > 1
-                && (
-                    otherAgent.intention.type === ""
-                    || (map.map[otherAgent.intention.goal.x][otherAgent.intention.goal.y].RegionIndex !== map.map[tileX][tileY].RegionIndex)
-                    || map.numberOfRegions < 2
-                )
+            (
+                best_tile.x === -1
+                || best_utility >= tile_utility
+            )
+            && (map.cleanBFS(pos, [tile]).length > 1 || (pos.x === tileX && pos.y === tileY))
+            && (
+                otherAgent.intention.type === ""
+                || map.numberOfRegions < 2
+                || (map.map[otherAgent.intention.goal.x][otherAgent.intention.goal.y].RegionIndex !== map.map[tileX][tileY].RegionIndex)
             )
         ) {
             // console.log("\t", tile, tile_last_seen, tile_agent_heat, "Utility", tile_utility, "Region", map.map[tileX][tileY].RegionIndex, "Regions", map.numberOfRegions);
@@ -258,6 +258,12 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
             }
         }
 
+    }
+
+    if (best_tile.x === -1) {
+        //no available tiles, go to the closest delivery zone
+        console.log("\tNo available tiles, going to the closest delivery zone");
+        return await beamPackageSearch(pos, map.deliveryZones, usePDDL);
     }
 
     // console.log("\t", best_tile, best_last_seen, best_agent_heat, "Utility", best_utility);

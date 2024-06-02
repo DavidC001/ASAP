@@ -4,6 +4,7 @@ import {agentsCarrying} from './parcels.js';
 import {Beliefset} from "../planner/pddl-client/index.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
 import {agentBuffer, otherAgent, sendMsg} from "../coordination/coordination.js";
+import { frozenBFS } from '../planner/search_planners.js';
 
 const MAX_HISTORY = 5;
 
@@ -159,7 +160,7 @@ class BelievedIntention {
     goTo(pos, obj) {
         this.futureMoves = [];
         //TODO: use a more efficient path planner
-        let steps = map.BFS(pos, obj);
+        let steps = frozenBFS(pos, obj);
 
         for (let i = 0; i < MAX_FUTURE; i++) {
             if (steps.length === 0) {

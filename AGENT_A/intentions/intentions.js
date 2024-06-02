@@ -11,6 +11,7 @@ import myServer from '../../server.js';
 import readline from 'readline';
 import { clear } from 'console';
 import { sendMsg, otherAgent } from '../../coordination/coordination.js';
+import { frozenBFS } from '../../planner/search_planners.js';
 
 const input = readline.createInterface({
     input: process.stdin,
@@ -289,7 +290,7 @@ class Intention {
                     let closer = false;
                     for (let [id, agent] of agents) {
                         if (agent.id !== me.id && agent.position.x !== -1) {
-                            let distance_agent = map.BFS(agent.position, this.goal).length;
+                            let distance_agent = frozenBFS(agent.position, this.goal).length;
                             //console.log('\tagent', agent.id, 'position', agent.position, 'distance', distance_agent);
                             //let distance_agent = distance(agent, this.goal);
                             if (distance_agent < steps) {
@@ -312,7 +313,7 @@ class Intention {
                 break;
             case 'deliver':
                 //use the heuristic to the closest delivery point
-                steps = map.BFS(me, this.goal).length;
+                steps = frozenBFS(me, this.goal).length;
                 break;
             case 'explore':
                 score = 0.1;
