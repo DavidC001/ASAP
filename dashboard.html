@@ -73,12 +73,12 @@
             top: 0;
         }
 
-        .incomingRequest {
+        .Request {
             background-color: #ff0000;
             z-index: 10;
         }
 
-        .respondRequest {
+        .Response {
             background-color: #00ff00;
             z-index: 10;
         }
@@ -97,12 +97,12 @@
             <div class="row">
                 <!-- Current intention -->
                 <div class="col">
-                    <h2>Current intention</h2>
+                    <h5>Current intention</h5>
                     <p id="current_intention">No intention</p>
                 </div>
                 <!-- Other agent intention -->
                 <div class="col">
-                    <h2>Other agent intention</h2>
+                    <h5>Other agent intention</h5>
                     <p id="other_agent_intention">No intention</p>
                 </div>
             </div>
@@ -116,14 +116,14 @@
             <h2>Requests</h2>
             <div class="row">
                 <div class="col">
-                    <h3>Incoming requests</h3>
-                    <ul id="incoming_requests">
+                    <h5 id="request_tile">Requests</h5>
+                    <ul id="requests">
                         <!-- List of incoming requests -->
                     </ul>
                 </div>
                 <div class="col">
-                    <h3>Responded requests</h3>
-                    <ul id="responded_requests">
+                    <h5 id="response_title">Answers</h5>
+                    <ul id="response">
                         <!-- List of responded requests -->
                     </ul>
                 </div>
@@ -200,16 +200,17 @@
         }
         //console.log(plan);
     });
-    socket.on('incomingRequest', (request) => {
+    socket.on('request', (request) => {
         //append the requests to the list to the top
         console.log(request);
-        $('#incoming_requests').prepend(`<li class="incomingRequest">${JSON.stringify(request)}</li>`)
+        $('#requests').prepend(`<li class="Request">${JSON.stringify(request)}</li>`)
     });
-    socket.on('respondRequest', (request) => {
+    socket.on('response', (response) => {
         //append the requests to the list
-        console.log(request);
-        $('#responded_requests').prepend(`<li class="respondRequest">${JSON.stringify(request)}</li>`)
+        console.log(response);
+        $('#response').prepend(`<li class="Response">${JSON.stringify(response)}</li>`)
     });
+
 </script>
 </body>
 

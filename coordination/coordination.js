@@ -105,7 +105,7 @@ function handshake(id, name, msg) {
  */
 function registerRequest(msg, replyReq) {
     let replyFun = (msg) => {
-        myServer.emitMessage("respondRequest", msg);
+        myServer.emitMessage("response", msg);
         return replyReq({header: "requestResponse", content: msg});
     }
     let request = {content: msg, reply: replyFun, timeout: null, expired: false};
@@ -117,7 +117,7 @@ function registerRequest(msg, replyReq) {
     request.timeout = timeout;
     requestBuffer.push(request);
 
-    myServer.emitMessage("incomingRequest", msg);
+    myServer.emitMessage("request", ["Received", msg]);
 }
 
 /**
@@ -167,6 +167,7 @@ async function sendMsg(msg) {
 
 async function sendRequest(msg) {
     let message = {header: "request", content: msg};
+    myServer.emitMessage("request", ["Sent", msg]);
     let response = await new Promise((resolve) => {
         client.ask(otherAgent.id, message).then((res) => {
             resolve(res);
@@ -175,6 +176,7 @@ async function sendRequest(msg) {
             resolve({content: "RE-SYNC"});
         }, MAX_REQUEST_TIME);
     });
+    myServer.emitMessage("response", response.content);
     return response.content;
 }
 
