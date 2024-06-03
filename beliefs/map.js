@@ -196,7 +196,7 @@ class Maps {
         if (this.planLookUp.has(JSON.stringify(key)) && lookUp) {
             let lookUpPlan = this.planLookUp.get(JSON.stringify(key));
             // console.log("\t[CleanBFS] plan found in lookUp");
-            return lookUpPlan;
+            return JSON.parse(JSON.stringify(lookUpPlan));
         }
 
         //otherwise calculate the plan and store it in the lookUp

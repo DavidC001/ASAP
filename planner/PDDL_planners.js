@@ -197,7 +197,7 @@ async function PDDL_cleanBFS(pos, objective, lookUp = true) {
         let lookUpPlan = map.planLookUp.get(key);
         // console.log("\t[PDDL] plan found in lookUp for", key);
         // console.log("\t[PDDL] plaan", lookUpPlan);
-        return lookUpPlan;
+        return JSON.parse(JSON.stringify(lookUpPlan));
     }
 
     // otherwise calculate the plan
