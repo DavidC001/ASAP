@@ -174,14 +174,14 @@ async function agent0Negotiation(index, plan) {
 async function agent1Negotiation(index, plan) {
     let planners = {
         "moveOut": async (index, plan) => {
-            plan = MoveAside(index, plan, false);
+            plan = await MoveAside(index, plan, false);
             if (plan.length > 0) {
                 return [plan[0], {x: 0, y: 0, move: "answer"}].concat(plan.slice(1));
             }
             return [];
         },
         "planAround": async (index, plan) => {
-            plan = goAround(index, plan);
+            plan = await goAround(index, plan);
             if (plan.length > 0) {
                 return [plan[0], {x: 0, y: 0, move: "answer"}].concat(plan.slice(1));
             }
@@ -235,12 +235,6 @@ async function MoveAside(index, plan, no_check = false) {
     let newPlan = [];
     let currX = me.x, currY = me.y;
     let currMove = plan[index].move;
-    /*let orthogonalMoves = {
-        "up": [[1, 0, "right", "left"], [-1, 0, "left", "right"]],
-        "down": [[1, 0, "right", "left"], [-1, 0, "left", "right"]],
-        "left": [[0, 1, "up", "down"], [0, -1, "down", "up"]],
-        "right": [[0, 1, "up", "down"], [0, -1, "down", "up"]]
-    }*/
     let directions = [
         [0, 1, 'up', "down"], [0, -1, 'down', "up"], [1, 0, 'right', "left"], [-1, 0, 'left', "right"]
     ].filter((el) => el[2] !== currMove);

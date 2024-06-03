@@ -4,7 +4,7 @@ import {distance, me} from "../beliefs/beliefs.js";
 import {agents} from "../beliefs/agents.js";
 
 import {search_path} from "./search_planners.js";
-import {PDDL_path} from "./PDDL_planners.js";
+import {PDDL_path, PDDL_pickupAndDeliver} from "./PDDL_planners.js";
 
 import {otherAgent} from "../coordination/coordination.js";
 
@@ -135,6 +135,24 @@ async function beamPackageSearch(pos, objective, PDDL = false, fallback = true) 
 }
 
 /**
+ * Planner that attempts to find a path to pick up and deliver a package in one call
+ * @param pos
+ * @param objective
+ * @returns {Promise<{x: number, y: number, move: string}[]>}
+ */
+async function pickupAndDeliver(pos, objective) {
+    let path = [];
+    if(!(objective instanceof Array)) objective = [objective];
+    console.log("[Pickup and deliver planner]");
+    if(objective.length===1) path = await PDDL_pickupAndDeliver(pos, objective);
+    if (path.length === 0) {
+        path = await beamPackageSearch(pos, objective, true);
+    }
+    path = await beamSearch(path, objective, true);
+    return path;
+}
+
+/**
  * BFS to find the path to the closest delivery zone and deliver the package
  *
  * @param {{x: number, y: number}} pos The starting position
@@ -241,7 +259,7 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
             )
             && (map.cleanBFS(pos, [tile]).length > 1 || (pos.x === tileX && pos.y === tileY))
             && (
-                otherAgent.intention.type === ""
+                otherAgent.intention.type === "" || otherAgent.intention.type === "deliver"
                 || map.numberOfRegions < 2
                 || (map.map[otherAgent.intention.goal.x][otherAgent.intention.goal.y].RegionIndex !== map.map[tileX][tileY].RegionIndex)
             )
@@ -278,4 +296,4 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
 }
 
 
-export {beamSearch, beamPackageSearch, deliveryBFS, exploreBFS, exploreBFS2};
+export {beamSearch, beamPackageSearch, deliveryBFS, pickupAndDeliver, exploreBFS2};

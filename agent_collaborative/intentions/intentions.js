@@ -1,24 +1,24 @@
-import { map } from '../../beliefs/map.js';
-import { distance, me } from '../../beliefs/beliefs.js';
-import { parcels } from '../../beliefs/parcels.js';
-import { agents } from '../../beliefs/agents.js';
-import { EventEmitter } from 'events';
+import {map} from '../../beliefs/map.js';
+import {distance, me} from '../../beliefs/beliefs.js';
+import {parcels} from '../../beliefs/parcels.js';
+import {agents} from '../../beliefs/agents.js';
+import {EventEmitter} from 'events';
 import {
     beamSearch,
     deliveryBFS,
     beamPackageSearch,
-    exploreBFS,
+    pickupAndDeliver,
     exploreBFS2
 } from '../../planner/planner.js';
-import { recoverPlan } from '../../planner/recover.js';
-import { DeliverooApi } from '@unitn-asa/deliveroo-js-client';
+import {recoverPlan} from '../../planner/recover.js';
+import {DeliverooApi} from '@unitn-asa/deliveroo-js-client';
 import myServer from '../../server.js';
 
 //wait console input
 import readline from 'readline';
-import { clear } from 'console';
-import { sendMsg, otherAgent, awaitRequest, sendRequest } from '../../coordination/coordination.js';
-import { frozenBFS } from '../../planner/search_planners.js';
+import {clear} from 'console';
+import {sendMsg, otherAgent, awaitRequest, sendRequest} from '../../coordination/coordination.js';
+import {frozenBFS} from '../../planner/search_planners.js';
 
 const input = readline.createInterface({
     input: process.stdin,
@@ -29,7 +29,7 @@ const REPLAN_MOVE_INTERVAL = Math.Infinity;
 const SOFT_REPLAN_INTERVAL = 5;
 const USE_PDDL = process.env.USE_PDDL || false;
 const INTENTION_REVISION_INTERVAL = 100;
-const PLANNING_TIME = 100;
+const PLANNING_TIME = 0;
 
 /** @type {EventEmitter} */
 const stopEmitter = new EventEmitter();
@@ -94,7 +94,7 @@ class Intention {
         }, 100);
 
         let planner = {
-            'pickup': beamPackageSearch,
+            'pickup': USE_PDDL ? pickupAndDeliver : beamPackageSearch,
             'deliver': deliveryBFS,
             'explore': exploreBFS2
         }
@@ -102,7 +102,10 @@ class Intention {
         let plan = await planner[this.type](me, this.goal, USE_PDDL);
         clearInterval(stopWhilePlanning);
         if (earlyStop) return;
-        if (this.type === "explore" && plan.length>0) this.goal = { x: plan[plan.length - 1].x, y: plan[plan.length - 1].y }
+        if (this.type === "explore" && plan.length > 0) this.goal = {
+            x: plan[plan.length - 1].x,
+            y: plan[plan.length - 1].y
+        }
         sendMsg({
             header: "agent_info",
             content: {
@@ -113,7 +116,7 @@ class Intention {
                 }
             }
         })
-        myServer.emitMessage('intention', { type: this.type, goal: this.goal });
+        myServer.emitMessage('intention', {type: this.type, goal: this.goal});
         sendMsg({
             header: "agent_info",
             content: {
@@ -174,14 +177,20 @@ class Intention {
             }),
             "none": () => new Promise((resolve) => resolve(true)),
             "fail": () => new Promise((resolve) => resolve(false)),
-            "wait": () => new Promise((resolve) => setTimeout(resolve(true), Math.ceil(me.config.MOVEMENT_DURATION*2))),
-            "await": () => new Promise(async (resolve) => { await awaitRequest(); resolve(true) }),
-            "answer": () => new Promise((resolve) => { sendRequest().then(); resolve(true) })
+            "wait": () => new Promise((resolve) => setTimeout(resolve(true), Math.ceil(me.config.MOVEMENT_DURATION * 2))),
+            "await": () => new Promise(async (resolve) => {
+                await awaitRequest();
+                resolve(true)
+            }),
+            "answer": () => new Promise((resolve) => {
+                sendRequest().then();
+                resolve(true)
+            })
         }
 
         let retryCount = 0;
         for (let i = 0; i < plan.length; i++) {
-            console.log(this.type,'move', i, plan[i]);
+            // console.log(this.type, 'move', i, plan[i]);
             let res = await moves[plan[i].move]();
 
             if (!res) {
@@ -313,7 +322,7 @@ class Intention {
                     let closer = false;
                     for (let [id, agent] of agents) {
                         if (agent.id !== me.id && agent.position.x !== -1) {
-                            let distance_agent = frozenBFS(agent.position, this.goal).length-1;
+                            let distance_agent = frozenBFS(agent.position, this.goal).length - 1;
                             //console.log('\tagent', agent.id, 'position', agent.position, 'distance', distance_agent);
                             //let distance_agent = distance(agent, this.goal);
                             if (distance_agent < steps && distance_agent > 1) {
@@ -322,24 +331,26 @@ class Intention {
                                 let distanceScore = (steps - distance_agent) / (map.width + map.height) * 0.3;
                                 score = 0.2 + parcelScore + distanceScore;
                                 steps = 0;
-                                if(agent.id === otherAgent.id){
+                                if (agent.id === otherAgent.id) {
+                                    //console.log("\t score prima ",score);
                                     //if positive utility for the other agent set the score to 0
-                                    let OAParcelsScore = otherAgent.carriedParcels.reduce((acc, id) => { 
+                                    let OAParcelsScore = otherAgent.carriedParcels.reduce((acc, id) => {
                                         if (parcels.has(id)) {
                                             return acc + parcels.get(id).score
                                         } else {
                                             return acc;
                                         }
-                                     }, 0);
-                                    distance_agent += frozenBFS(otherAgent.position, map.deliveryZones).length-1;
-                                    let OAUtility = 
+                                    }, 0);
+                                    distance_agent += frozenBFS(otherAgent.position, map.deliveryZones).length - 1;
+                                    let OAUtility =
                                         OAParcelsScore + parcelScore
-                                        - (otherAgent.carriedParcels.length+1) * Math.ceil(distance_agent / me.moves_per_parcel_decay);
-                                    if(OAUtility > 0) {
+                                        - (otherAgent.carriedParcels.length + 1) * Math.ceil(distance_agent / me.moves_per_parcel_decay);
+                                    if (OAUtility > 0) {
                                         score = 0;
                                     } else {
                                         closer = false;
                                     }
+                                    //console.log("\t score se agente è l'altro ", score, closer, OAUtility);
                                 }
                                 //console.log('\t\tcloser agent', agent.id, 'distance', distance_agent, 'score', score);
                             }
@@ -362,10 +373,10 @@ class Intention {
                 console.log('Invalid intention type');
         }
 
-        utility = 
-            score 
-            - (numParcels)* Math.ceil(steps / me.moves_per_parcel_decay) 
-            - (numParcels) * Math.ceil(planning_time/me.config.PARCEL_DECADING_INTERVAL);
+        utility =
+            score
+            - (numParcels) * Math.ceil(steps / me.moves_per_parcel_decay)
+            - (numParcels) * Math.ceil(planning_time / me.config.PARCEL_DECADING_INTERVAL);
         return utility;
     }
 
@@ -426,12 +437,12 @@ class Intentions {
             let utility = await intention.utility();
             // console.log('utility', intention.type, utility);
             if ((
-                utility > maxUtility ||
-                (
-                    utility === maxUtility
-                    && distance(me, intention.goal) < distance(me, maxIntention.goal)
+                    utility > maxUtility ||
+                    (
+                        utility === maxUtility
+                        && distance(me, intention.goal) < distance(me, maxIntention.goal)
+                    )
                 )
-            )
                 &&
                 (
                     intention.type === 'explore' || intention.type === 'deliver'
@@ -475,7 +486,7 @@ class Intentions {
         let deliver = true;
         this.addIntention(new Intention(goal, pickUp, deliver, 'deliver'));
         //explore intention
-        goal = { x: 0, y: 0 };
+        goal = {x: 0, y: 0};
         pickUp = false;
         deliver = false;
         this.addIntention(new Intention(goal, pickUp, deliver, 'explore'));
@@ -540,4 +551,4 @@ function IntentionRevision(client) {
     });
 }
 
-export { IntentionRevision };
+export {IntentionRevision};
