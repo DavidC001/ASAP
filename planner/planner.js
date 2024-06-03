@@ -10,6 +10,7 @@ import {otherAgent} from "../coordination/coordination.js";
 
 const MAX_EXPLORE_PATH_LENGTH = 20;
 const PROBABILITY_KEEP_BEST_TILE = 0.75;
+const TIME_PENALTY = 3;
 
 //TODO: if the parcel is not there anymore remove deviation from the path
 /**
@@ -142,9 +143,8 @@ async function beamPackageSearch(pos, objective, PDDL = false, fallback = true) 
  */
 async function pickupAndDeliver(pos, objective) {
     let path = [];
-    if(!(objective instanceof Array)) objective = [objective];
-    console.log("[Pickup and deliver planner]");
-    if(objective.length===1) path = await PDDL_pickupAndDeliver(pos, objective);
+    if (!(objective instanceof Array)) objective = [objective];
+    if (objective.length === 1) path = await PDDL_pickupAndDeliver(pos, objective);
     if (path.length === 0) {
         path = await beamPackageSearch(pos, objective, true);
     }
@@ -225,6 +225,8 @@ function exploreBFS(pos, goal, usePDDL = false) {
     return path;
 }
 
+let last_explore = null;
+
 /**
  * Improved BFS searching in least seen areas and based on a simple agent heat map
  * @param pos - Where to start the search
@@ -290,6 +292,12 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
         // console.log("\tPlan length 1");
         plan = map.cleanBFS(pos, [best_tile]);
     }
+    if (last_explore && best_tile.x === last_explore.x && best_tile.y === last_explore.y) {
+        for (let step of plan) {
+            map.map[step.x][step.y].last_seen += TIME_PENALTY;
+        }
+    }
+    last_explore = best_tile;
     //console.log(plan);
     return plan;
 

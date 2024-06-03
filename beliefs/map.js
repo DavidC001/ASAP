@@ -8,9 +8,9 @@ import {timeTaken} from '../helper.js';
 import * as fs from 'node:fs';
 import {Beliefset} from "../planner/pddl-client/index.js";
 import myserver from "../server.js";
-import { otherAgent } from "../coordination/coordination.js";
+import {otherAgent} from "../coordination/coordination.js";
 
-import { PDDL_cleanBFS } from "../planner/PDDL_planners.js";
+import {PDDL_cleanBFS} from "../planner/PDDL_planners.js";
 
 /**
  * A variable that sets the maximum prediction of the map
@@ -51,7 +51,7 @@ class Tile {
     last_seen = 1;
     agent_heat = 1;
     probability = 0;
-    RegionIndex = 0;
+    RegionIndex = -1;
 
 
     constructor(tileData) {
@@ -118,7 +118,7 @@ class Maps {
             if (tile.delivery) currentTile.type = 'delivery';
             if (tile.parcelSpawner) {
                 this.spawnableTiles.push({x: tile.x, y: tile.y, last_seen: MAX_TIME + 1});
-            } 
+            }
         });
 
         let RegionIndex = 0;
@@ -134,7 +134,7 @@ class Maps {
                 this.spawnableTiles.forEach(otherSpawnableTile => {
                     if (otherSpawnableTile.probability !== undefined) return;
                     if (spawnableTile.x === otherSpawnableTile.x && spawnableTile.y === otherSpawnableTile.y) return;
-                    let dist = this.cleanBFS(spawnableTile, [otherSpawnableTile]).length-1;
+                    let dist = this.cleanBFS(spawnableTile, [otherSpawnableTile]).length - 1;
                     if (dist <= minDist) {
                         minDist += dist;
                         region.push(otherSpawnableTile);
@@ -191,7 +191,7 @@ class Maps {
      */
     cleanBFS(pos, objectiveList, lookUp = false) {
         let key = {"pos": {x: pos.x, y: pos.y}, "objective": objectiveList};
-        
+
         //if the plan is already calculated, return it
         if (this.planLookUp.has(JSON.stringify(key)) && lookUp) {
             let lookUpPlan = this.planLookUp.get(JSON.stringify(key));
@@ -435,14 +435,14 @@ class Maps {
     }
 
     async precalculateCleanBFSPlans(use_PDDL) {
-        if (use_PDDL) use_PDDL = "PDDL"; 
+        if (use_PDDL) use_PDDL = "PDDL";
         else use_PDDL = "BFS";
-        
+
         let planner = {
             "PDDL": PDDL_cleanBFS, // if use_PDDL is "true" use the PDDL planner
             "BFS": this.cleanBFS // if use_PDDL is "false" use the normal BFS planner
         }
-        
+
         //for each spawnable tile, calculate the path to the closest delivery zone and the other spawnable tiles and store them in the planLookUp
         for (let spawnableTile of this.spawnableTiles) {
             // console.log("Calculating BFS for spawnable tile", spawnableTile);
@@ -496,7 +496,7 @@ let map = null;
 function createMap(mapData) {
     map = new Maps(mapData);
     console.log('Map created');
-    map.precalculateCleanBFSPlans(process.env.USE_PDDL||false);
+    map.precalculateCleanBFSPlans(process.env.USE_PDDL || false);
     setInterval(() => {
         // timeTaken(updateMap);
         updateMap();
@@ -529,7 +529,7 @@ function drawMap(filename, tilemap) {
 
             if (tile.agent) {
                 color = 'agent';
-                if (tile.agent === otherAgent.id)  color = 'collaborator';
+                if (tile.agent === otherAgent.id) color = 'collaborator';
             }
             if (tile.parcel) {
                 color = 'parcel';
