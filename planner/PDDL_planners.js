@@ -256,7 +256,7 @@ async function PDDL_cleanBFS(pos, objective, lookUp = true) {
     
     // save the plan in the lookUp
     // console.log("\t[PDDL] adding plan", plan);
-    if (lookUp) map.planLookUp.set(key, plan);
+    if (lookUp) map.planLookUp.set(key, JSON.parse(JSON.stringify(plan)));
     // console.log("\t[PDDL] adding plan to lookUp", key, map.planLookUp.get(key));
     
     return plan;

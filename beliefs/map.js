@@ -225,7 +225,7 @@ class Maps {
             // If the current objective is blocked, I will skip the blocked objective
             for (let goal of objectiveList) {
                 if ((node.x === goal.x && node.y === goal.y)) {
-                    if (lookUp) this.planLookUp.set(JSON.stringify(key), current);
+                    if (lookUp) this.planLookUp.set(JSON.stringify(key), JSON.parse(JSON.stringify(current)));
                     return current;
                 }
             }
@@ -244,7 +244,7 @@ class Maps {
             }
         }
 
-        if (lookUp) this.planLookUp.set(JSON.stringify(key), [pos]);
+        if (lookUp) this.planLookUp.set(JSON.stringify(key), JSON.parse(JSON.stringify([pos])));
 
         // If we don't find a path, return an empty array
         return [pos];
@@ -463,6 +463,7 @@ class Maps {
                 await planner[use_PDDL](deliveryTile, goal, true);
             }
         }
+
     }
 }
 
