@@ -26,7 +26,7 @@ const input = readline.createInterface({
 });
 const MAX_RETRIES = 2;
 const REPLAN_MOVE_INTERVAL = Math.Infinity;
-const SOFT_REPLAN_INTERVAL = 10;
+const SOFT_REPLAN_INTERVAL = 5;
 const USE_PDDL = process.env.USE_PDDL || false;
 const INTENTION_REVISION_INTERVAL = 100;
 const PLANNING_TIME = 100;

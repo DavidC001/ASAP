@@ -150,7 +150,7 @@ async function agent0Negotiation(index, plan) {
                         console.log("\t\t Leaving clear path for the other agent to swap");
                         response = await sendRequest("goForward");
                         let newX = backtrack[0].x, newY = backtrack[0].y;
-                        plan = [backtrack[0], {x: newX, y: newY, move: "answer"}, backtrack[1]].concat(plan.slice(index));
+                        plan = [backtrack[0], {x: newX, y: newY, move: "answer"}, backtrack[1], backtrack[2]];
                     } else {
                         //do not know what to do, hard replan
                         plan = [];
@@ -195,7 +195,7 @@ async function agent1Negotiation(index, plan) {
             return [];
         },
         "goForward": async (index, plan) => {
-            return [{x: me.x, y: me.y, move: "await"}, plan[index], {x: me.x, y: me.y, move: "answer"}].concat(plan.slice(index));
+            return [{x: me.x, y: me.y, move: "await"}, plan[index], {x: me.x, y: me.y, move: "answer"}].concat(plan.slice(index+1));
         },
         "pickUp": async (index, plan) => {
             return [{x: me.x, y: me.y, move: "await"}, plan[index], {x: plan[index].x, y: plan[index].y, move: "pickup"}, {x:  plan[index].x, y: plan[index].y, move: "answer"}];
