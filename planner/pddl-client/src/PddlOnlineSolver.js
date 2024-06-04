@@ -15,9 +15,9 @@ const PATH = process.env.PAAS_PATH || '/package/dual-bfws-ffparser/solve';
  */
 export default async function onlineSolver (pddlDomain, pddlProblem) {
 
-    var responseCheckUrl = await postRequest(pddlDomain, pddlProblem);
+    // var responseCheckUrl = await postRequest(pddlDomain, pddlProblem);
 
-    var json = await getResult(responseCheckUrl);
+    var json = await getResult(pddlDomain, pddlProblem);
     if (json == "") return [];
 
     var plan = parsePlan(json);
@@ -42,7 +42,7 @@ async function postRequest (pddlDomain, pddlProblem) {
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify( {domain: pddlDomain, problem: pddlProblem, number_of_plans: "1"} )
+        body: JSON.stringify( {domain: pddlDomain, problem: pddlProblem} )
     })
     
     if ( res.status != 200 ) {
@@ -62,19 +62,24 @@ async function postRequest (pddlDomain, pddlProblem) {
 }
 
 
-async function getResult (responseCheckUrl) {
+async function getResult (pddlDomain, pddlProblem) {
+    if ( typeof pddlDomain !== 'string' && ! pddlDomain instanceof String )
+        throw new Error( 'pddlDomain is not a string' );
+
+    if ( typeof pddlProblem !== 'string' && ! pddlProblem instanceof String )
+        throw new Error( 'pddlProblem is not a string' );
 
     while (true) {
 
         // console.log('PENDING planning result from', responseCheckUrl);
 
-        let res = await fetch(responseCheckUrl, {
-            method: "GET",
+        let res = await fetch( HOST + PATH, {
+            method: "POST",
             headers: {
                 'Content-Type': 'application/json'
             },
-            // body: JSON.stringify( {adaptor: "planning_editor_adaptor"} )
-        });
+            body: JSON.stringify( {domain: pddlDomain, problem: pddlProblem} )
+        })
 
         if ( res.status != 200 ) {
             throw new Error( `Received HTTP error from ${ HOST + res.result } ` + await res.text() );
@@ -82,7 +87,7 @@ async function getResult (responseCheckUrl) {
     
         var json = await res.json();
 
-        if ( json.status == 'PENDING') {
+        if ( json.status === 'PENDING') {
             await new Promise( (res, rej) => setTimeout(res, 100) );
         }
         else
@@ -94,23 +99,10 @@ async function getResult (responseCheckUrl) {
     // console.log(json.plans[0].result);
     // console.log(json.plans[0].result.plan);
 
-    if ( json.status != 'ok') {
-        console.log(json);
-        if ( json.status == 'SUCCESS' ) {
-            // console.log( 'Plan not found!' );
-            return "";
-        }
-        throw new Error( `Invalid 'status' in response body from ${responseCheckUrl}` );
-    }
     
-    if ( ! json.result ) {
+    if ( ! 'stdout' in json ) {
         console.log(json);
-        throw new Error( `No 'result' in response body from ${responseCheckUrl}` );
-    }
-    
-    if ( ! 'stdout' in json.result ) {
-        console.log(json);
-        throw new Error( `No 'result.stdout' in response from ${responseCheckUrl}` );
+        throw new Error( `No 'result.stdout' in response` );
     }
 
     return json;
@@ -122,11 +114,11 @@ async function parsePlan (json) {
 
     /**@type {[string]}*/
     var lines = [];
-    if ( json.result.output.plan )
-        lines = json.result.output.plan.split('\n');
+    if ( json.plan )
+        lines = json.plan.split('\n');
 
     // PARSING plan from /package/dual-bfws-ffparser/solve
-    if ( json.result.stdout.split('\n').includes(' --- OK.') ) {
+    if ( json.stdout.split('\n').includes(' --- OK.') ) {
 
         // console.log( '\tUsing parser for /package/dual-bfws-ffparser/solve');
 
@@ -135,7 +127,7 @@ async function parsePlan (json) {
     }
 
     // PARSING plan from /package/delfi/solve
-    else if ( json.result.call.split(' ').includes('delfi') && json.result.stdout.split('\n').includes('Solution found.') ) {
+    else if ( json.call.split(' ').includes('delfi') && json.result.stdout.split('\n').includes('Solution found.') ) {
         
         // console.log( '\tUsing parser for /package/delfi/solve');
 
@@ -156,7 +148,7 @@ async function parsePlan (json) {
     }
 
     // PARSING plan from /package/optic/solve
-    else if ( json.result.call.split(' ').includes('optic') && lines.includes(';;;; Solution Found') ) {
+    else if ( json.call.split(' ').includes('optic') && lines.includes(';;;; Solution Found') ) {
         
         // console.log( '\tUsing parser for /package/optic/solve');
         
@@ -168,11 +160,11 @@ async function parsePlan (json) {
     }
 
     // PARSING plan from /package/lama-first/solve
-    else if ( json.result.call.split(' ').includes('lama-first')&& json.result.stdout.includes('Solution found!') ) {
+    else if ( json.call.split(' ').includes('lama-first')&& json.result.stdout.includes('Solution found!') ) {
         
         // console.log( '\tUsing parser for /package/lama-first/solve');
 
-        lines = json.result.output.sas_plan.split('\n').slice(0,-2);
+        lines = json.output.sas_plan.split('\n').slice(0,-2);
         lines = lines.map( line => line.replace('(','').replace(')','').split(' ') );
     }
 
