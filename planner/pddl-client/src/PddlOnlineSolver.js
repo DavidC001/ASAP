@@ -114,9 +114,10 @@ async function parsePlan (json) {
 
     /**@type {[string]}*/
     var lines = [];
-    if ( json.plan )
+    if(json.plan==='') return [];
+    if ( json.plan ) {
         lines = json.plan.split('\n');
-
+    }
     // PARSING plan from /package/dual-bfws-ffparser/solve
     if ( json.stdout.split('\n').includes(' --- OK.') ) {
 
