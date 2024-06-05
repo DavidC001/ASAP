@@ -2,7 +2,7 @@ import {senseParcels} from "./parcels.js";
 import {senseAgents} from "./agents.js";
 import {createMap} from "./map.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
-import { sendMsg } from "../coordination/coordination.js";
+import { sendMsg, sendBelief } from "../coordination/coordination.js";
 
 /**
  * Variables with all the information about myself
@@ -43,14 +43,10 @@ function updateMe({id, name, x, y, score}) {
     me.y = Math.round(y);
     me.score = score;
 
-    sendMsg({
-        header: 'belief', content: {
-            header: 'agent', content: {
-                id: me.id,
-                position: {x: me.x, y: me.y},
-            }
-        }
-    }).then(() => {});
+    sendBelief("agent", {
+        id: me.id,
+        position: {x: me.x, y: me.y},
+    });
 
     sendMsg({
         header: 'agent_info', content: {

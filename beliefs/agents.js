@@ -3,7 +3,7 @@ import {distance, me} from './beliefs.js';
 import {agentsCarrying} from './parcels.js';
 import {Beliefset} from "../planner/pddl-client/index.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
-import {agentBuffer, sendMsg} from "../coordination/coordination.js";
+import {agentBuffer, sendBelief} from "../coordination/coordination.js";
 import { frozenBFS } from '../planner/search_planners.js';
 
 import { MAX_FUTURE, MAX_HISTORY } from '../config.js';
@@ -321,14 +321,10 @@ function senseAgents(sensedAgents) {
             agents.get(agent.id).updateHistory({x: Math.round(agent.x), y: Math.round(agent.y)});
             // console.log("updating history")
         }
-        sendMsg({
-            header: 'belief', content: {
-                header: 'agent', content: {
-                    id: agent.id,
-                    position: {x: Math.round(agent.x), y: Math.round(agent.y)},
-                }
-            }
-        }).then(() => {});
+        sendBelief("agent", {
+            id: agent.id,
+            position: {x: Math.round(agent.x), y: Math.round(agent.y)},
+        });
     }
 
     let receivedAgents = agentBuffer.readBuffer();

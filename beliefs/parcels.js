@@ -1,7 +1,7 @@
 import {EventEmitter} from 'events';
 import {distance, me} from "./beliefs.js";
 import {Beliefset} from "../planner/pddl-client/index.js";
-import {sendMsg, parcelBuffer} from "../coordination/coordination.js";
+import {sendBelief, parcelBuffer} from "../coordination/coordination.js";
 
 /**
  * Event emitter for the parcels
@@ -97,17 +97,13 @@ function senseParcels(sensedParcels, decayInterval) {
         } else {
             parcels.set(id, new Parcel(id, position, score, carried, decayInterval));
         }
-        sendMsg({
-            header: 'belief', content: {
-                header: 'parcel', content: {
-                    id: id,
-                    position: position,
-                    score: score,
-                    carried: carried,
-                    timestamp: Date.now()
-                }
-            }
-        }).then(() => {});
+        sendBelief( "parcel", {
+            id: id,
+            position: position,
+            score: score,
+            carried: carried,
+            timestamp: Date.now()
+        });
     }
 
     let receivedParcels = parcelBuffer.readBuffer();
@@ -130,17 +126,13 @@ function senseParcels(sensedParcels, decayInterval) {
     for (let [id, p] of parcels) {
         if (!inView.includes(id) && (distance(p.position, me) < me.config.PARCELS_OBSERVATION_DISTANCE)) {
             parcelEmitter.emit('deleteParcel', id);
-            sendMsg({
-                header: 'belief', content: {
-                    header: 'parcel', content: {
-                        id: id,
-                        position: p.position,
-                        score: 0,
-                        carried: p.carried,
-                        timestamp: Date.now()
-                    }
-                }
-            }).then(() => {});
+            sendBelief("parcel", {
+                id: id,
+                position: p.position,
+                score: 0,
+                carried: p.carried,
+                timestamp: Date.now()
+            });
         }
         if (p) parcelsBeliefSet.declare(`parcel t_${p.position.x}_${p.position.y}`);
     }

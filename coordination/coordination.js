@@ -184,6 +184,11 @@ function coordination(clientDeliverooApi) {
 async function sendMsg(msg) {
     client.say(otherAgent.id, msg);
 }
+async function sendBelief(type, msg) {
+    await sendMsg({header: "belief", content: {header: type, content: msg}});
+}
+
+
 
 async function sendRequest(msg) {
     let message = {header: "request", content: msg};
@@ -245,4 +250,4 @@ async function answerOtherAgent(){
     }
 }
 
-export {coordination, AgentRole, agentBuffer, parcelBuffer, otherAgent, sendMsg, sendRequest, awaitRequest, awaitOtherAgent, answerOtherAgent};
+export {coordination, AgentRole, agentBuffer, parcelBuffer, otherAgent, sendMsg, sendBelief, sendRequest, awaitRequest, awaitOtherAgent, answerOtherAgent};
