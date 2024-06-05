@@ -8,9 +8,7 @@ import {PDDL_path, PDDL_pickupAndDeliver} from "./PDDL_planners.js";
 
 import {otherAgent} from "../coordination/coordination.js";
 
-const MAX_EXPLORE_PATH_LENGTH = 20;
-const PROBABILITY_KEEP_BEST_TILE = 0.75;
-const TIME_PENALTY = 3;
+import {PROBABILITY_KEEP_BEST_TILE, TIME_PENALTY, MAX_EXPLORE_PATH_LENGTH} from "../config.js";
 
 //TODO: if the parcel is not there anymore remove deviation from the path
 /**

@@ -1,6 +1,4 @@
-import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
-
-const MAX_MSG = 200;
+import {MAX_MSG} from "../config.js";
 
 class CommunicationBuffer {
     messages = new Array(MAX_MSG);

@@ -1,31 +1,74 @@
-import { map } from '../../beliefs/map.js';
-import { distance, me } from '../../beliefs/beliefs.js';
-import { parcels } from '../../beliefs/parcels.js';
-import { agents } from '../../beliefs/agents.js';
+import { map } from './beliefs/map.js';
+import { distance, me } from './beliefs/beliefs.js';
+import { parcels } from './beliefs/parcels.js';
+import { agents } from './beliefs/agents.js';
 import { EventEmitter } from 'events';
-import { beamSearch, deliveryBFS, beamPackageSearch, exploreBFS, exploreBFS2 } from '../../planner/planner.js';
+import {
+    beamSearch,
+    deliveryBFS,
+    beamPackageSearch,
+    pickupAndDeliver,
+    exploreBFS2
+} from './planner/planner.js';
+import { recoverPlan } from './planner/recover.js';
 import { DeliverooApi } from '@unitn-asa/deliveroo-js-client';
-import myServer from '../../server.js';
+import myServer from './visualizations/server.js';
 
 //wait console input
-import readline from 'readline';
-import { clear } from 'console';
-import { sendMsg, otherAgent } from '../../coordination/coordination.js';
-import { frozenBFS } from '../../planner/search_planners.js';
+import { sendMsg, otherAgent, awaitRequest, sendRequest } from './coordination/coordination.js';
+import { frozenBFS } from './planner/search_planners.js';
 
-const input = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
-const MAX_RETRIES = 10;
-const MAX_WAIT_FAIL = 8;
-const REPLAN_MOVE_INTERVAL = Math.Infinity;
-const SOFT_REPLAN_INTERVAL = 2;
-const USE_PDDL = false;
-const INTENTION_REVISION_INTERVAL = 100;
+import {
+    DASHBOARD,
+    MAX_RETRIES,
+    REPLAN_MOVE_INTERVAL,
+    SOFT_REPLAN_INTERVAL,
+    USE_PDDL,
+    INTENTION_REVISION_INTERVAL,
+    BASE_PLANNING_TIME, PLANNING_TIME_DECAY,
+    STOP_WHILE_PLANNING_INTERVAL,
+    PENALITY_RATE_CARRIED_PARCELS,
+    BASE_MOVE_SLACK, SLACK_DECAY,
+} from './config.js';
+let MOVE_SLACK = BASE_MOVE_SLACK;
+let PLANNING_TIME = BASE_PLANNING_TIME;
 
 /** @type {EventEmitter} */
 const stopEmitter = new EventEmitter();
+
+/**
+ * Calculates the slack time for the movement
+ * @param {function} f - The async function to wrap
+ * @returns {function} The wrapped function
+ */
+function MoveSlackWrapper(f) {
+    return async (...args) => {
+        let Stime = new Date().getTime();
+        let res = await f(...args);
+        let Etime = new Date().getTime();
+        let slack = Etime - Stime - me.config.MOVEMENT_DURATION;
+        MOVE_SLACK = MOVE_SLACK * SLACK_DECAY + slack * (1 - SLACK_DECAY);
+        // console.log('slack', slack, MOVE_SLACK);
+        return res;
+    }
+}
+
+/**
+ * Calculates the planning time for the planner
+ * @param {function} f - The async function to wrap
+ * @returns {function} The wrapped function
+ */
+function PlanningTimeWrapper(f){
+    return async (...args) => {
+        let Stime = new Date().getTime();
+        let res = await f(...args);
+        let Etime = new Date().getTime();
+        let planning_time = Etime - Stime;
+        PLANNING_TIME = PLANNING_TIME * PLANNING_TIME_DECAY + planning_time * (1 - PLANNING_TIME_DECAY);
+        // console.log('planning time', planning_time, PLANNING_TIME);
+        return res;
+    }
+}
 
 /**
  * @class Intention
@@ -84,18 +127,21 @@ class Intention {
                 console.log('stopped intention', this.type, "to", (this.type !== "deliver") ? this.goal : "delivery zone");
                 stopEmitter.emit('stoppedIntention' + this.type + ' ' + this.goal);
             }
-        }, 100);
+        }, STOP_WHILE_PLANNING_INTERVAL);
 
         let planner = {
-            'pickup': beamPackageSearch,
-            'deliver': deliveryBFS,
-            'explore': exploreBFS2
+            'pickup': PlanningTimeWrapper(USE_PDDL ? pickupAndDeliver : beamPackageSearch),
+            'deliver': PlanningTimeWrapper(deliveryBFS),
+            'explore': PlanningTimeWrapper(exploreBFS2)
         }
 
         let plan = await planner[this.type](me, this.goal, USE_PDDL);
         clearInterval(stopWhilePlanning);
         if (earlyStop) return;
-        if (this.type === "explore" && plan.length>0) this.goal = { x: plan[plan.length - 1].x, y: plan[plan.length - 1].y }
+        if (this.type === "explore" && plan.length > 0) this.goal = {
+            x: plan[plan.length - 1].x,
+            y: plan[plan.length - 1].y
+        }
         sendMsg({
             header: "agent_info",
             content: {
@@ -106,6 +152,7 @@ class Intention {
                 }
             }
         })
+        if ( DASHBOARD) myServer.emitMessage('intention', { type: this.type, goal: this.goal });
         sendMsg({
             header: "agent_info",
             content: {
@@ -113,8 +160,7 @@ class Intention {
                 content: plan
             }
         })
-
-        myServer.emitMessage('plan', plan);
+        if ( DASHBOARD) myServer.emitMessage('plan', plan);
 
         //await input from console
         // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
@@ -137,15 +183,22 @@ class Intention {
         }
 
         let moves = {
-            "up": () => client.move("up"),
-            "down": () => client.move("down"),
-            "left": () => client.move("left"),
-            "right": () => client.move("right"),
+            "up": () => MoveSlackWrapper(() => client.move("up"))(),
+            "down": () => MoveSlackWrapper(() => client.move("down"))(),
+            "left": () => MoveSlackWrapper(() => client.move("left"))(),
+            "right": () => MoveSlackWrapper(() => client.move("right"))(),
             "pickup": () => new Promise((resolve) => {
                 client.pickup().then((res) => {
                     for (let p of res) {
                         carriedParcels.push(p.id);
                     }
+                    sendMsg({
+                        header: "agent_info",
+                        content: {
+                            header: "carriedParcels",
+                            content: carriedParcels
+                        }
+                    })
                     if (!res) res = [];
                     resolve(res);
                 });
@@ -158,12 +211,22 @@ class Intention {
                     resolve(res);
                 });
             }),
-            "none": () => new Promise((resolve) => resolve(true))
+            "none": () => new Promise((resolve) => resolve(true)),
+            "fail": () => new Promise((resolve) => resolve(false)),
+            "wait": () => new Promise((resolve) => setTimeout(resolve(true), Math.ceil(me.config.MOVEMENT_DURATION * 2))),
+            "await": () => new Promise(async (resolve) => {
+                await awaitRequest();
+                resolve(true)
+            }),
+            "answer": () => new Promise((resolve) => {
+                sendRequest().then();
+                resolve(true)
+            })
         }
 
         let retryCount = 0;
         for (let i = 0; i < plan.length; i++) {
-            // console.log(this.type,'move', i, plan[i]);
+            // console.log(this.type, 'move', i, plan[i]);
             let res = await moves[plan[i].move]();
 
             if (!res) {
@@ -171,11 +234,14 @@ class Intention {
                 if (retryCount >= MAX_RETRIES) {
                     if (this.stop) break;
                     console.log('\tMax retries exceeded', this.type, "on move", plan[i]);
-                    //wait some moves before replanning
-                    await new Promise((resolve) => setTimeout(resolve, me.config.MOVEMENT_DURATION * (Math.round(Math.random() * MAX_WAIT_FAIL) + 1)));
+                    plan = await recoverPlan(i, plan, this.type);
+                    // console.log('\tReplanning', this.type, plan);
+                    if (plan.length === 0) {
+                        console.log('\tReplanning unsuccessful', this.type);
+                        plan = await planner[this.type](me, this.goal, USE_PDDL);
+                    }
                     i = 0;
-                    plan = await planner[this.type](me, this.goal, USE_PDDL);
-                    myServer.emitMessage('plan', plan);
+                    if ( DASHBOARD) myServer.emitMessage('plan', plan);
                     sendMsg({
                         header: "agent_info",
                         content: {
@@ -195,8 +261,8 @@ class Intention {
                     if (this.stop) break;
                     i = -1;
                     // console.log('\tReplanning', this.type);
-                    plan = await planner[this.type](me, this.goal, USE_PDDL);
-                    myServer.emitMessage('plan', plan);
+                    plan = await beamPackageSearch(me, this.goal, USE_PDDL);
+                    if ( DASHBOARD) myServer.emitMessage('plan', plan);
                     sendMsg({
                         header: "agent_info",
                         content: {
@@ -210,7 +276,7 @@ class Intention {
                     // let time = new Date().getTime();
                     // console.log('\tSoft replanning', this.type, 'from', plan[i]);
                     plan = await beamSearch(plan.splice(i + 1, plan.length), [plan[plan.length - 1]], USE_PDDL);
-                    myServer.emitMessage('plan', plan);
+                    if ( DASHBOARD) myServer.emitMessage('plan', plan);
                     sendMsg({
                         header: "agent_info",
                         content: {
@@ -246,6 +312,7 @@ class Intention {
         let utility = 0;
         let numParcels = carriedParcels.length;
         let toRemove = []
+        let planning_time = 0;
 
         //compute the score of the carried parcels
         let score = carriedParcels.reduce((acc, id) => {
@@ -264,6 +331,7 @@ class Intention {
         let steps = 0;
         switch (this.type) {
             case 'pickup':
+                numParcels *= PENALITY_RATE_CARRIED_PARCELS;
                 //TODO: if carried parcel over limit return -1
                 if (map.map[this.goal.x][this.goal.y].agent !== null
                     || map.map[this.goal.x][this.goal.y].parcel === null
@@ -290,17 +358,38 @@ class Intention {
                     let closer = false;
                     for (let [id, agent] of agents) {
                         if (agent.id !== me.id && agent.position.x !== -1) {
-                            let distance_agent = frozenBFS(agent.position, this.goal).length;
+                            let distance_agent = frozenBFS(agent.position, this.goal).length - 1;
                             //console.log('\tagent', agent.id, 'position', agent.position, 'distance', distance_agent);
                             //let distance_agent = distance(agent, this.goal);
-                            if (distance_agent < steps) {
+                            if (distance_agent < steps && distance_agent > 1) {
                                 closer = true;
                                 let parcelScore = parcels.get(this.pickUp).score / (me.config.PARCEL_REWARD_AVG + me.config.PARCEL_REWARD_VARIANCE) / 2;
                                 let distanceScore = (steps - distance_agent) / (map.width + map.height) * 0.3;
                                 score = 0.2 + parcelScore + distanceScore;
+                                //if positive utility for the other agent set the score to 0
                                 steps = 0;
-                                if(agent.id === otherAgent.id){
-                                    score = 0;
+                                if (agent.id === otherAgent.id) {
+                                    //console.log("\t score prima ",score);
+                                    let OAParcelsScore = otherAgent.carriedParcels.reduce((acc, id) => {
+                                        if (parcels.has(id)) {
+                                            return acc + parcels.get(id).score
+                                        } else {
+                                            return acc;
+                                        }
+                                    }, 0);
+                                    distance_agent += map.cleanBFS(otherAgent.position, map.deliveryZones).length - 1;
+                                    let OAUtility =
+                                        OAParcelsScore + parcelScore
+                                        - (otherAgent.carriedParcels.length + 1) * (distance_agent / me.moves_per_parcel_decay);
+                                    if (OAUtility > 0) {
+                                        score = 0;
+                                        break;
+                                    } else {
+                                        closer = false;
+                                    }
+                                    //console.log("\t score se agente è l'altro ", score, closer, OAUtility);
+                                } else {
+                                    break;
                                 }
                                 //console.log('\t\tcloser agent', agent.id, 'distance', distance_agent, 'score', score);
                             }
@@ -312,7 +401,6 @@ class Intention {
                 }
                 break;
             case 'deliver':
-                //use the heuristic to the closest delivery point
                 steps = frozenBFS(me, this.goal).length;
                 break;
             case 'explore':
@@ -320,10 +408,14 @@ class Intention {
                 steps = 0;
                 break;
             default:
-            //console.log('Invalid intention type');
+                console.log('Invalid intention type');
         }
 
-        utility = score - steps * (numParcels) / me.moves_per_parcel_decay;
+        utility =
+            score
+            - (numParcels) * Math.ceil(steps / me.moves_per_parcel_decay)
+            - (numParcels) * Math.ceil(PLANNING_TIME / me.config.PARCEL_DECADING_INTERVAL);
+            - (numParcels) * Math.ceil(steps * MOVE_SLACK / me.config.PARCEL_DECADING_INTERVAL);
         return utility;
     }
 
@@ -382,7 +474,7 @@ class Intentions {
         let maxIntention = null;
         for (let intention of this.intentions) {
             let utility = await intention.utility();
-            //console.log('utility', intention.type, utility);
+            // console.log('utility', intention.type, utility);
             if ((
                 utility > maxUtility ||
                 (
@@ -392,7 +484,7 @@ class Intentions {
             )
                 &&
                 (
-                    intention.type === 'explore'
+                    intention.type === 'explore' || intention.type === 'deliver'
                     || intention.type !== otherAgent.intention.type
                     || JSON.stringify(intention.goal) !== JSON.stringify(otherAgent.intention.goal)
                 )

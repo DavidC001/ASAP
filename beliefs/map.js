@@ -1,27 +1,25 @@
 import {parcels, parcelEmitter, agentsCarrying} from "./parcels.js";
 import {me, distance} from "./beliefs.js"
-import {agents, Agent} from "./agents.js";
-import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
+import {agents} from "./agents.js";
 
-import {timeTaken} from '../helper.js';
-
-import * as fs from 'node:fs';
 import {Beliefset} from "../planner/pddl-client/index.js";
-import myserver from "../server.js";
+import myServer from "../visualizations/server.js";
 import {otherAgent} from "../coordination/coordination.js";
 
 import {PDDL_cleanBFS} from "../planner/PDDL_planners.js";
 
+import {
+    DASHBOARD,
+    MAX_AGENT_HEATMAP_DISTANCE, MAX_SPAWNABLE_TILES_DISTANCE, 
+    MAX_TIME, MAX_FUTURE, USE_PDDL
+} from "../config.js";
+
 /**
- * A variable that sets the maximum prediction of the map
+ * The starting time of the agent
  * @type {number}
  */
-const MAX_FUTURE = 2;
-
-const MAX_SPAWNABLE_TILES_DISTANCE = 1;
-const MAX_AGENT_HEATMAP_DISTANCE = 3;
-const MAX_TIME = 500;
 let startingTime = Date.now() / 1000;
+
 /**
  * Buffer in which I put the updated actions of my agents and parcels
  * @type {Map<string, Object>}
@@ -72,7 +70,6 @@ class Tile {
  * @property {Map<string, {x:number,y:number}>} currentAgentPosition - The current position of the agents
  * @property {Map<string, {x:number,y:number}>} currentParcelPosition - The current position of the parcels
  * @property {Beliefset} beliefSet - The beliefset of the map to use in the PDDL planner
- * @property {Map<string, [{x:number,y:number,move:string}]>} planLookUp - The lookup of the plans
  * @property {number} numberOfRegions - The number of regions in the map
  */
 class Maps {
@@ -85,7 +82,6 @@ class Maps {
     currentAgentPosition = new Map();
     currentParcelPosition = new Map();
     beliefSet = new Beliefset();
-    planLookUp = new Map();
     numberOfRegions = 0;
 
     /**
@@ -189,15 +185,8 @@ class Maps {
      * @param lookUp - A boolean that tells if the plan should be stored in the lookUp
      * @returns {*|*[]} - A path to the objective if possible to reach
      */
-    cleanBFS(pos, objectiveList, lookUp = false) {
+    cleanBFS(pos, objectiveList) {
         let key = {"pos": {x: pos.x, y: pos.y}, "objective": objectiveList};
-
-        //if the plan is already calculated, return it
-        if (this.planLookUp.has(JSON.stringify(key)) && lookUp) {
-            let lookUpPlan = this.planLookUp.get(JSON.stringify(key));
-            // console.log("\t[CleanBFS] plan found in lookUp");
-            return JSON.parse(JSON.stringify(lookUpPlan));
-        }
 
         //otherwise calculate the plan and store it in the lookUp
         let queue = [];
@@ -225,7 +214,6 @@ class Maps {
             // If the current objective is blocked, I will skip the blocked objective
             for (let goal of objectiveList) {
                 if ((node.x === goal.x && node.y === goal.y)) {
-                    if (lookUp) this.planLookUp.set(JSON.stringify(key), JSON.parse(JSON.stringify(current)));
                     return current;
                 }
             }
@@ -243,8 +231,6 @@ class Maps {
                 }
             }
         }
-
-        if (lookUp) this.planLookUp.set(JSON.stringify(key), JSON.parse(JSON.stringify([pos])));
 
         // If we don't find a path, return an empty array
         return [pos];
@@ -292,9 +278,6 @@ class Maps {
             }
         }
 
-        /*for (let i in newMap) {
-            drawMap(`./map_${i}.txt`, newMap[i])
-        }*/
         this.predictedMap = newMap;
     }
 
@@ -386,7 +369,7 @@ class Maps {
         }
         actionBuffer.clear();
         this.map = JSON.parse(JSON.stringify(new_map));
-        drawMap('./map.txt', this.map);
+        if ( DASHBOARD) drawMap('./map.txt', this.map);
         this.updatePrediction();
     }
 
@@ -434,24 +417,19 @@ class Maps {
         }
     }
 
-    async precalculateCleanBFSPlans(use_PDDL) {
-        if (use_PDDL) use_PDDL = "PDDL";
-        else use_PDDL = "BFS";
-
-        let planner = {
-            "PDDL": PDDL_cleanBFS, // if use_PDDL is "true" use the PDDL planner
-            "BFS": this.cleanBFS // if use_PDDL is "false" use the normal BFS planner
-        }
-
+    /**
+     * Precalculates the BFS plans for the map when using the PDDL planner
+     */
+    async precalculateCleanBFSPlans() {
         //for each spawnable tile, calculate the path to the closest delivery zone and the other spawnable tiles and store them in the planLookUp
         for (let spawnableTile of this.spawnableTiles) {
             // console.log("Calculating BFS for spawnable tile", spawnableTile);
-            await planner[use_PDDL](spawnableTile, this.deliveryZones, true);
+            await PDDL_cleanBFS(spawnableTile, this.deliveryZones, true);
             for (let otherSpawnableTile of this.spawnableTiles) {
                 // console.log("Calculating BFS for spawnable tile", spawnableTile, "to", otherSpawnableTile);
                 if (otherSpawnableTile.x === spawnableTile.x && otherSpawnableTile.y === spawnableTile.y) continue;
                 let goal = [{x: spawnableTile.x, y: otherSpawnableTile.y}]
-                await planner[use_PDDL](spawnableTile, goal, true);
+                await PDDL_cleanBFS(spawnableTile, goal, true);
             }
         }
 
@@ -460,7 +438,7 @@ class Maps {
             // console.log("Calculating BFS for delivery tile", deliveryTile);
             for (let spawnableTile of this.spawnableTiles) {
                 let goal = [{x: spawnableTile.x, y: spawnableTile.y}]
-                await planner[use_PDDL](deliveryTile, goal, true);
+                await PDDL_cleanBFS(deliveryTile, goal, true);
             }
         }
 
@@ -496,7 +474,7 @@ let map = null;
 function createMap(mapData) {
     map = new Maps(mapData);
     console.log('Map created');
-    map.precalculateCleanBFSPlans(process.env.USE_PDDL || false);
+    if (USE_PDDL) map.precalculateCleanBFSPlans();
     setInterval(() => {
         // timeTaken(updateMap);
         updateMap();
@@ -548,7 +526,7 @@ function drawMap(filename, tilemap) {
     //         console.error('Error writing file:', err);
     //     }
     // });
-    myserver.emitMessage('map', text_map);
+    myServer.emitMessage('map', text_map);
 }
 
 

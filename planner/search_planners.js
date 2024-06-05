@@ -1,7 +1,7 @@
 import {map, MAX_FUTURE} from "../beliefs/map.js";
 import { otherAgent } from "../coordination/coordination.js";
 
-const MAX_WAIT = 10;
+import {MAX_WAIT} from "../config.js";
 
 /**
  * BFS to find the path to the closest objective

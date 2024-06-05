@@ -1,12 +1,12 @@
-import {map, MAX_FUTURE} from './map.js';
+import {map} from './map.js';
 import {distance, me} from './beliefs.js';
 import {agentsCarrying} from './parcels.js';
 import {Beliefset} from "../planner/pddl-client/index.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
-import {agentBuffer, otherAgent, sendMsg} from "../coordination/coordination.js";
+import {agentBuffer, sendMsg} from "../coordination/coordination.js";
 import { frozenBFS } from '../planner/search_planners.js';
 
-const MAX_HISTORY = 5;
+import { MAX_FUTURE, MAX_HISTORY } from '../config.js';
 
 //believed intentions
 

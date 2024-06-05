@@ -4,6 +4,8 @@ import http from "http";
 import express from "express";
 import path from "path";
 
+import { DASHBOARD } from "../config.js";
+
 class MyServer {
     constructor() {
         this.app = express();
@@ -37,5 +39,5 @@ class MyServer {
  * The server
  * @type {MyServer}
  */
-let myserver = new MyServer();
+let myserver = (DASHBOARD) ? new MyServer() : null;
 export default myserver;

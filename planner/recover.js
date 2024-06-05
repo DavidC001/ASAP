@@ -4,8 +4,7 @@ import {me} from "../beliefs/beliefs.js";
 import {otherAgent, AgentRole, sendRequest, awaitRequest} from "../coordination/coordination.js";
 import { frozenBFS } from "./search_planners.js";
 
-const MAX_WAIT_FAIL = 5;
-const BASE_FAIL_WAIT = 1000;
+import {BASE_FAIL_WAIT, MAX_WAIT_FAIL} from "../config.js";
 
 /**
  * Tries to recover the plan by going around the agent if possible or negotiating the swap of packages to avoid re-planning

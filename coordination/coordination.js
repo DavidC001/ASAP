@@ -2,10 +2,13 @@ import {CommunicationBuffer} from "./CommunicationBuffer.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
 import {Beliefset} from "../planner/pddl-client/index.js";
 
-import myServer from '../server.js';
+import myServer from '../visualizations/server.js';
 
-const MAX_REQUEST_TIME = 4000;
-const MAX_AWAIT_RETRY = 40;
+import {
+    DASHBOARD,
+    NAME, 
+    MAX_REQUEST_TIME, MAX_AWAIT_RETRY
+} from "../config.js";
 
 /**
  * The client to communicate with the other agent
@@ -13,8 +16,6 @@ const MAX_AWAIT_RETRY = 40;
  */
 let client = null;
 let AgentRole = 1;
-
-const agentName = process.env.NAME;
 
 /**
  * A buffer where you share which agents you have seen
@@ -66,10 +67,10 @@ function otherAgentInformation(msg) {
                 otherAgent.planBeliefset.declare("collaborator t_" + move.x + "_" + move.y);
             }
             // console.log("other agent plan", otherAgent.plan);
-            myServer.emitMessage("otherAgentPlan", otherAgent.plan);
+            if ( DASHBOARD) myServer.emitMessage("otherAgentPlan", otherAgent.plan);
             break;
         case "intention":
-            myServer.emitMessage("otherAgentIntention", otherAgent.intention);
+            if ( DASHBOARD) myServer.emitMessage("otherAgentIntention", otherAgent.intention);
             break;
         case "carriedParcels":
             otherAgent.carriedParcels = msg.content;
@@ -98,7 +99,7 @@ function beliefSharing(msg) {
  * @param msg
  */
 function handshake(id, name, msg) {
-    if (name.includes(agentName)) {
+    if (name.includes(NAME)) {
         console.log("handshake with", name, id);
         if (msg === "hello") {
             AgentRole = 0;
@@ -115,7 +116,7 @@ function handshake(id, name, msg) {
  */
 function registerRequest(msg, replyReq) {
     let replyFun = (msg) => {
-        myServer.emitMessage("response", msg);
+        if ( DASHBOARD) myServer.emitMessage("response", msg);
         return replyReq({header: "requestResponse", content: msg});
     }
     let request = {content: msg, reply: replyFun, timeout: null, expired: false};
@@ -127,7 +128,7 @@ function registerRequest(msg, replyReq) {
     request.timeout = timeout;
     requestBuffer.push(request);
 
-    myServer.emitMessage("request", ["Received", msg]);
+    if ( DASHBOARD) myServer.emitMessage("request", ["Received", msg]);
 }
 
 /**
@@ -184,7 +185,7 @@ async function sendMsg(msg) {
 
 async function sendRequest(msg) {
     let message = {header: "request", content: msg};
-    myServer.emitMessage("request", ["Sent", msg]);
+    if ( DASHBOARD) myServer.emitMessage("request", ["Sent", msg]);
     let response = await new Promise((resolve) => {
         client.ask(otherAgent.id, message).then((res) => {
             resolve(res);
@@ -193,7 +194,7 @@ async function sendRequest(msg) {
             resolve({content: "RE-SYNC"});
         }, MAX_REQUEST_TIME);
     });
-    myServer.emitMessage("response", response.content);
+    if ( DASHBOARD) myServer.emitMessage("response", response.content);
     return response.content;
 }
 
@@ -205,6 +206,7 @@ async function awaitRequest(){
         if (request.length > 0) {
             break;
         } else {
+            console.log("waiting for request");
             await new Promise((resolve) => setTimeout(resolve, 100));
         }
     }

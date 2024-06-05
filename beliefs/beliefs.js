@@ -105,7 +105,7 @@ function RegisterBeliefsRevisions(client) {
     }
 
     me.config.PARCEL_DECADING_INTERVAL = interval_num;
-    me.moves_per_parcel_decay = Math.ceil(interval_num / me.config.MOVEMENT_DURATION);
+    me.moves_per_parcel_decay = Math.floor(interval_num / (me.config.MOVEMENT_DURATION));
     //console.log('moves per parcel decay', me.moves_per_parcel_decay);
 
     client.onParcelsSensing(async (perceived_parcels) => {
