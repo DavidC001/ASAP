@@ -126,7 +126,9 @@ function registerRequest(msg, replyReq) {
         replyFun("RE-SYNC");
     }, MAX_REQUEST_TIME);
     request.timeout = timeout;
-    requestBuffer.push(request);
+
+    if (msg === "awaiting") awaitBuffer.push(request);
+    else requestBuffer.push(request);
 
     if ( DASHBOARD) myServer.emitMessage("request", ["Received", msg]);
 }
@@ -221,4 +223,26 @@ async function awaitRequest(){
     return request;
 }
 
-export {coordination, AgentRole, agentBuffer, parcelBuffer, otherAgent, sendMsg, sendRequest, awaitRequest};
+const awaitBuffer = new CommunicationBuffer();
+
+async function awaitOtherAgent(){
+    await sendRequest("awaiting");
+}
+
+async function answerOtherAgent(){
+    let awaiting;
+    for (let i = 0; i < MAX_AWAIT_RETRY; i++){
+        awaiting = awaitBuffer.readBuffer();
+        if (awaiting.length > 0) {
+            break;
+        } else {
+            console.log("waiting for request");
+            await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+    }
+    for (let waiting of awaiting){
+        waiting.reply("answer");
+    }
+}
+
+export {coordination, AgentRole, agentBuffer, parcelBuffer, otherAgent, sendMsg, sendRequest, awaitRequest, awaitOtherAgent, answerOtherAgent};

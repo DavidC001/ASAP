@@ -15,14 +15,15 @@ import { DeliverooApi } from '@unitn-asa/deliveroo-js-client';
 import myServer from './visualizations/server.js';
 
 //wait console input
-import { sendMsg, otherAgent, awaitRequest, sendRequest } from './coordination/coordination.js';
+import { sendMsg, otherAgent, awaitOtherAgent, answerOtherAgent } from './coordination/coordination.js';
 import { frozenBFS } from './planner/search_planners.js';
 
 import {
     DASHBOARD,
     MAX_RETRIES,
-    REPLAN_MOVE_INTERVAL,
+    HARD_REPLAN_MOVE_INTERVAL,
     SOFT_REPLAN_INTERVAL,
+    CHANGE_INTENTION_INTERVAL,
     USE_PDDL,
     INTENTION_REVISION_INTERVAL,
     BASE_PLANNING_TIME, PLANNING_TIME_DECAY,
@@ -183,6 +184,7 @@ class Intention {
                     for (let p of res) {
                         carriedParcels.push(p.id);
                     }
+                    // console.log('pickup', carriedParcels);
                     sendMsg({
                         header: "agent_info",
                         content: {
@@ -206,11 +208,11 @@ class Intention {
             "fail": () => new Promise((resolve) => resolve(false)),
             "wait": () => new Promise((resolve) => setTimeout(resolve(true), Math.ceil(me.config.MOVEMENT_DURATION * 2))),
             "await": () => new Promise(async (resolve) => {
-                await awaitRequest();
+                await awaitOtherAgent();
                 resolve(true)
             }),
             "answer": () => new Promise((resolve) => {
-                sendRequest().then();
+                answerOtherAgent().then();
                 resolve(true)
             })
         }
@@ -228,7 +230,7 @@ class Intention {
                     plan = await recoverPlan(i, plan, this.type);
                     // console.log('\tReplanning', this.type, plan);
                     if (plan.length === 0) {
-                        console.log('\tReplanning unsuccessful', this.type);
+                        console.log('\tRecover unsuccessful', this.type);
                         plan = await planner[this.type](me, this.goal, USE_PDDL);
                     }
                     i = 0;
@@ -248,7 +250,7 @@ class Intention {
             } else {
                 // console.log('\tmove ',i, plan[i],this.type);
                 retryCount = 0; // reset retry count if move was successful
-                if (i % REPLAN_MOVE_INTERVAL === 0 && i > 0) {
+                if (i % HARD_REPLAN_MOVE_INTERVAL === 0 && i > 0) {
                     if (this.stop) break;
                     i = -1;
                     // console.log('\tReplanning', this.type);
@@ -278,6 +280,10 @@ class Intention {
                     // console.log('\tSoft replanning', this.type, 'to', plan);
                     i = -1;
                 }
+
+                if (i % CHANGE_INTENTION_INTERVAL === 0 && i > 0 && this.stop) {
+                    break;
+                }
             }
         }
 
@@ -302,8 +308,7 @@ class Intention {
     async utility() {
         let utility = 0;
         let numParcels = carriedParcels.length;
-        let toRemove = []
-        let planning_time = 0;
+        let toRemove = [];
 
         //compute the score of the carried parcels
         let score = carriedParcels.reduce((acc, id) => {
@@ -391,6 +396,7 @@ class Intention {
                 break;
             case 'deliver':
                 steps = frozenBFS(me, this.goal).length;
+                // console.log('deliver', score, numParcels, steps);
                 break;
             case 'explore':
                 score = 0.1;
@@ -403,7 +409,7 @@ class Intention {
         utility =
             score
             - (numParcels) * Math.ceil(steps / me.moves_per_parcel_decay)
-            - (numParcels) * Math.ceil(PLANNING_TIME / me.config.PARCEL_DECADING_INTERVAL);
+            - (numParcels) * Math.ceil(PLANNING_TIME / me.config.PARCEL_DECADING_INTERVAL) * (this.started ? 0 : 1)
             - (numParcels) * Math.ceil(steps * MOVE_SLACK / me.config.PARCEL_DECADING_INTERVAL);
         return utility;
     }
@@ -463,7 +469,7 @@ class Intentions {
         let maxIntention = null;
         for (let intention of this.intentions) {
             let utility = await intention.utility();
-            // console.log('utility', intention.type, utility);
+            // console.log('\tutility', intention.type, utility);
             if ((
                 utility > maxUtility ||
                 (
