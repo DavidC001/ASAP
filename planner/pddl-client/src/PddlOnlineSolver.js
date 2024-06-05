@@ -114,7 +114,7 @@ async function parsePlan (json) {
 
     /**@type {[string]}*/
     var lines = [];
-    if(json.plan==='') return [];
+    if(json.plan==='') return;
     if ( json.plan ) {
         lines = json.plan.split('\n');
     }
@@ -128,7 +128,7 @@ async function parsePlan (json) {
     }
 
     // PARSING plan from /package/delfi/solve
-    else if ( json.call.split(' ').includes('delfi') && json.result.stdout.split('\n').includes('Solution found.') ) {
+    else if ( json.stdout.split('\n').includes('Solution found.') ) {
         
         // console.log( '\tUsing parser for /package/delfi/solve');
 
@@ -149,7 +149,7 @@ async function parsePlan (json) {
     }
 
     // PARSING plan from /package/optic/solve
-    else if ( json.call.split(' ').includes('optic') && lines.includes(';;;; Solution Found') ) {
+    else if ( lines.includes(';;;; Solution Found') ) {
         
         // console.log( '\tUsing parser for /package/optic/solve');
         
@@ -161,7 +161,7 @@ async function parsePlan (json) {
     }
 
     // PARSING plan from /package/lama-first/solve
-    else if ( json.call.split(' ').includes('lama-first')&& json.result.stdout.includes('Solution found!') ) {
+    else if ( json.result.stdout.includes('Solution found!') ) {
         
         // console.log( '\tUsing parser for /package/lama-first/solve');
 

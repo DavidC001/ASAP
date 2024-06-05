@@ -130,7 +130,7 @@ class Intention {
         }, STOP_WHILE_PLANNING_INTERVAL);
 
         let planner = {
-            'pickup': PlanningTimeWrapper(USE_PDDL ? pickupAndDeliver : beamPackageSearch),
+            'pickup': PlanningTimeWrapper(beamPackageSearch),
             'deliver': PlanningTimeWrapper(deliveryBFS),
             'explore': PlanningTimeWrapper(exploreBFS2)
         }
@@ -142,16 +142,7 @@ class Intention {
             x: plan[plan.length - 1].x,
             y: plan[plan.length - 1].y
         }
-        sendMsg({
-            header: "agent_info",
-            content: {
-                header: "intention",
-                content: {
-                    type: this.type,
-                    goal: this.goal
-                }
-            }
-        })
+        
         if ( DASHBOARD) myServer.emitMessage('intention', { type: this.type, goal: this.goal });
         sendMsg({
             header: "agent_info",
@@ -384,8 +375,6 @@ class Intention {
                                     if (OAUtility > 0) {
                                         score = 0;
                                         break;
-                                    } else {
-                                        closer = false;
                                     }
                                     //console.log("\t score se agente è l'altro ", score, closer, OAUtility);
                                 } else {
@@ -485,8 +474,7 @@ class Intentions {
                 &&
                 (
                     intention.type === 'explore' || intention.type === 'deliver'
-                    || intention.type !== otherAgent.intention.type
-                    || JSON.stringify(intention.goal) !== JSON.stringify(otherAgent.intention.goal)
+                    || intention.goal !== otherAgent.intention.goal
                 )
             ) {
                 //console.log('utility', utility);
@@ -507,6 +495,16 @@ class Intentions {
             //wait for the current intention to stop before starting the new one
             stopEmitter.once('stoppedIntention' + this.currentIntention.type + ' ' + this.currentIntention.goal, () => {
                 console.log("starting intention", maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone");
+                sendMsg({
+                    header: "agent_info",
+                    content: {
+                        header: "intention",
+                        content: {
+                            type: maxIntention.type,
+                            goal: maxIntention.goal
+                        }
+                    }
+                })
                 maxIntention.executeInt(client);
             });
 
