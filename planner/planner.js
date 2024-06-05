@@ -223,8 +223,6 @@ function exploreBFS(pos, goal, usePDDL = false) {
     return path;
 }
 
-let last_explore = null;
-
 /**
  * Improved BFS searching in least seen areas and based on a simple agent heat map
  * @param pos - Where to start the search
@@ -264,7 +262,6 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
                 || (map.map[otherAgent.intention.goal.x][otherAgent.intention.goal.y].RegionIndex !== map.map[tileX][tileY].RegionIndex)
             )
         ) {
-            // console.log("\t", tile, tile_last_seen, tile_agent_heat, "Utility", tile_utility, "Region", map.map[tileX][tileY].RegionIndex, "Regions", map.numberOfRegions);
             if (best_utility === tile_utility) {
                 if (Math.random() > PROBABILITY_KEEP_BEST_TILE) {
                     best_tile = {x: tile.x, y: tile.y, probability: tile.probability};
@@ -284,18 +281,21 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
         return await beamPackageSearch(pos, map.deliveryZones, usePDDL);
     }
 
+    // give penality to all the tiles in the region of the best tile
+    let region = map.map[best_tile.x][best_tile.y].RegionIndex;
+    for (let tile of map.spawnableTiles) {
+        if (map.map[tile.x][tile.y].RegionIndex === region) {
+            // console.log("\tPenalizing tile", tile);
+            map.map[tile.x][tile.y].last_seen += TIME_PENALTY;
+        }
+    }
+
     // console.log("\t", best_tile, best_last_seen, best_agent_heat, "Utility", best_utility);
     let plan = await beamPackageSearch(pos, [best_tile], usePDDL);
     if (plan.length === 1) {
         // console.log("\tPlan length 1");
         plan = map.cleanBFS(pos, [best_tile]);
     }
-    if (last_explore && best_tile.x === last_explore.x && best_tile.y === last_explore.y) {
-        for (let step of plan) {
-            map.map[step.x][step.y].last_seen += TIME_PENALTY;
-        }
-    }
-    last_explore = best_tile;
     //console.log(plan);
     return plan;
 
