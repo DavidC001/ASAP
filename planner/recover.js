@@ -116,7 +116,7 @@ async function agent0Negotiation(index, plan) {
             let myPlan = frozenBFS(me, map.deliveryZones).length-1;
             let otherPlan = frozenBFS(otherAgent.position, map.deliveryZones).length-1;
             console.log(myPlan, otherPlan);
-            if (myPlan < 1 || (otherPlan < myPlan)) {
+            if ((myPlan < 1 && !map.deliveryZones.some((el) => el.x === x && el.y === y)) || (otherPlan < myPlan)) {
                 console.log("\t\t L'altro agent ha un piano più corto ");
                 let backtrack = await MoveAside(index, plan, true);
                 if (backtrack.length > 0){
@@ -149,7 +149,7 @@ async function agent0Negotiation(index, plan) {
                         console.log("\t\t Leaving clear path for the other agent to swap");
                         response = await sendRequest("goForward");
                         let newX = backtrack[0].x, newY = backtrack[0].y;
-                        plan = [backtrack[0], {x: newX, y: newY, move: "answer"}, backtrack[1], backtrack[2]];
+                        plan = [backtrack[0], {x: newX, y: newY, move: "answer"}, backtrack[1], backtrack[2], {x: x, y: y, move: "fail"}];
                     } else {
                         //do not know what to do, hard replan
                         plan = [];
