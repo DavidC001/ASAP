@@ -6,7 +6,7 @@ import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
 import {agentBuffer, sendBelief} from "../coordination/coordination.js";
 import { frozenBFS } from '../planner/search_planners.js';
 
-import { MAX_FUTURE, MAX_HISTORY } from '../config.js';
+import { MAX_FUTURE, MAX_HISTORY, DELETE_UNSEEN_AGENTS_INTERVAL } from '../config.js';
 
 //believed intentions
 
@@ -230,6 +230,7 @@ class BelievedIntention {
  * @property {BelievedIntention} believedIntetion - The believed intention of the agent
  * @property {boolean} inView - True if the agent is in the field of view
  * @property {string} id - The id of the agent
+ * @property {number} last_seen - The last time the agent was seen
  */
 class Agent {
     position;
@@ -238,6 +239,7 @@ class Agent {
     believedIntetion;
     inView;
     id;
+    last_seen = 0;
 
     /**
      *
@@ -277,6 +279,8 @@ class Agent {
         this.carrying = agentsCarrying.has(this.id).length > 0;
 
         this.believedIntetion = new BelievedIntention(this.history, this.carrying);
+
+        this.last_seen = Date.now();
     }
 
     /**
@@ -285,6 +289,10 @@ class Agent {
     updatePredicted() {
         this.inView = false;
         this.position = this.believedIntetion.nextStep();
+        let time = Date.now();
+        if (time - this.last_seen > DELETE_UNSEEN_AGENTS_INTERVAL) {
+            this.invalidatePrediction();
+        }
     }
 
     /**

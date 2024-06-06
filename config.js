@@ -42,7 +42,7 @@ const MAX_FUTURE = (USE_PDDL)? 1:20; // Maximum number of future to calculate
 const MAX_SPAWNABLE_TILES_DISTANCE = 1; // Maximum distance to consider a tile spawnable in the same region
 const MAX_AGENT_HEATMAP_DISTANCE = 3; // distance an agent affets the heatmap
 const MAX_TIME = 500; // Maximum time for last_seen for the tiles
-
+const DELETE_UNSEEN_AGENTS_INTERVAL = 2500; // Interval to delete the agents that are not seen anymore
 
 export {
     config, DASHBOARD,
@@ -58,5 +58,5 @@ export {
     NAME, MAX_REQUEST_TIME, MAX_AWAIT_RETRY, MAX_MSG,
 
     MAX_HISTORY, MAX_FUTURE, MAX_SPAWNABLE_TILES_DISTANCE, 
-    MAX_AGENT_HEATMAP_DISTANCE, MAX_TIME,
+    MAX_AGENT_HEATMAP_DISTANCE, MAX_TIME, DELETE_UNSEEN_AGENTS_INTERVAL
 };
