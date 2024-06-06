@@ -61,7 +61,7 @@ function otherAgentInformation(msg) {
         case "position":
             otherAgent.position = msg.content;
             break;
-        case msg.header === "plan":
+        case "plan":
             otherAgent.planBeliefset = new Beliefset();
             for (let move of otherAgent.plan) {
                 otherAgent.planBeliefset.declare("collaborator t_" + move.x + "_" + move.y);
@@ -187,7 +187,9 @@ async function sendMsg(msg) {
 async function sendBelief(type, msg) {
     await sendMsg({header: "belief", content: {header: type, content: msg}});
 }
-
+async function sendMeInfo(type, msg) {
+    await sendMsg({header: "agent_info", content: {header: type, content: msg}});
+}
 
 
 async function sendRequest(msg) {
@@ -250,4 +252,4 @@ async function answerOtherAgent(){
     }
 }
 
-export {coordination, AgentRole, agentBuffer, parcelBuffer, otherAgent, sendMsg, sendBelief, sendRequest, awaitRequest, awaitOtherAgent, answerOtherAgent};
+export {coordination, AgentRole, agentBuffer, parcelBuffer, otherAgent, sendMsg, sendBelief, sendMeInfo, sendRequest, awaitRequest, awaitOtherAgent, answerOtherAgent};

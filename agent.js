@@ -15,7 +15,7 @@ import { DeliverooApi } from '@unitn-asa/deliveroo-js-client';
 import myServer from './visualizations/server.js';
 
 //wait console input
-import { sendMsg, otherAgent, awaitOtherAgent, answerOtherAgent } from './coordination/coordination.js';
+import { sendMeInfo, otherAgent, awaitOtherAgent, answerOtherAgent } from './coordination/coordination.js';
 import { frozenBFS } from './planner/search_planners.js';
 
 import {
@@ -145,13 +145,7 @@ class Intention {
         }
         
         if ( DASHBOARD) myServer.emitMessage('intention', { type: this.type, goal: this.goal });
-        sendMsg({
-            header: "agent_info",
-            content: {
-                header: "plan",
-                content: plan
-            }
-        })
+        sendMeInfo("plan", plan);
         if ( DASHBOARD) myServer.emitMessage('plan', plan);
 
         //await input from console
@@ -185,13 +179,7 @@ class Intention {
                         carriedParcels.push(p.id);
                     }
                     // console.log('pickup', carriedParcels);
-                    sendMsg({
-                        header: "agent_info",
-                        content: {
-                            header: "carriedParcels",
-                            content: carriedParcels
-                        }
-                    })
+                    sendMeInfo("carriedParcels", carriedParcels);
                     if (!res) res = [];
                     resolve(res);
                 });
@@ -235,13 +223,7 @@ class Intention {
                     }
                     i = 0;
                     if ( DASHBOARD) myServer.emitMessage('plan', plan);
-                    sendMsg({
-                        header: "agent_info",
-                        content: {
-                            header: "plan",
-                            content: plan
-                        }
-                    })
+                    sendMeInfo("plan", plan);
                     // console.log('replanning', this.type, plan);
                     // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
                 }
@@ -256,13 +238,7 @@ class Intention {
                     // console.log('\tReplanning', this.type);
                     plan = await beamPackageSearch(me, this.goal, USE_PDDL);
                     if ( DASHBOARD) myServer.emitMessage('plan', plan);
-                    sendMsg({
-                        header: "agent_info",
-                        content: {
-                            header: "plan",
-                            content: plan
-                        }
-                    })
+                    sendMeInfo("plan", plan);
                     // console.log('replanning', this.type, plan);
                     // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
                 } else if (i % SOFT_REPLAN_INTERVAL === 0 && i > 0 && plan[i].move !== 'pickup' && plan[i].move !== 'deliver') {
@@ -270,13 +246,7 @@ class Intention {
                     // console.log('\tSoft replanning', this.type, 'from', plan[i]);
                     plan = await beamSearch(plan.splice(i + 1, plan.length), [plan[plan.length - 1]], USE_PDDL);
                     if ( DASHBOARD) myServer.emitMessage('plan', plan);
-                    sendMsg({
-                        header: "agent_info",
-                        content: {
-                            header: "plan",
-                            content: plan
-                        }
-                    })
+                    sendMeInfo("plan", plan);
                     // console.log('\tSoft replanning', this.type, 'to', plan);
                     i = -1;
                 }
@@ -365,24 +335,7 @@ class Intention {
                                 //if positive utility for the other agent set the score to 0
                                 steps = 0;
                                 if (agent.id === otherAgent.id) {
-                                    //console.log("\t score prima ",score);
-                                    let OAParcelsScore = otherAgent.carriedParcels.reduce((acc, id) => {
-                                        if (parcels.has(id)) {
-                                            return acc + parcels.get(id).score
-                                        } else {
-                                            return acc;
-                                        }
-                                    }, 0);
-                                    distance_agent += map.cleanBFS(otherAgent.position, map.deliveryZones).length - 1;
-                                    let OAUtility =
-                                        OAParcelsScore + parcelScore
-                                        - (otherAgent.carriedParcels.length + 1) * (distance_agent / me.moves_per_parcel_decay);
-                                    if (OAUtility > 0) {
-                                        score = 0;
-                                        break;
-                                    }
-                                    //console.log("\t score se agente è l'altro ", score, closer, OAUtility);
-                                } else {
+                                    score = 0
                                     break;
                                 }
                                 //console.log('\t\tcloser agent', agent.id, 'distance', distance_agent, 'score', score);
@@ -501,16 +454,7 @@ class Intentions {
             //wait for the current intention to stop before starting the new one
             stopEmitter.once('stoppedIntention' + this.currentIntention.type + ' ' + this.currentIntention.goal, () => {
                 console.log("starting intention", maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone");
-                sendMsg({
-                    header: "agent_info",
-                    content: {
-                        header: "intention",
-                        content: {
-                            type: maxIntention.type,
-                            goal: maxIntention.goal
-                        }
-                    }
-                })
+                sendMeInfo("intention", { type: maxIntention.type, goal: maxIntention.goal });
                 maxIntention.executeInt(client);
             });
 

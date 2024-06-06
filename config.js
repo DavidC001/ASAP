@@ -10,14 +10,14 @@ const DASHBOARD = true; // if true, the dashboard will be available at http://lo
 // Agent intention revision and execution hyperparameters
 const MAX_RETRIES = 2; // Number of retries before trying to recover the plan
 const USE_PDDL = (process.env.USE_PDDL) ? process.env.USE_PDDL === "true" : false; // If true, the agent will use PDDL to plan its actions
-const CHANGE_INTENTION_INTERVAL = 5; // Number of moves before checking if the intention should be changed
+const CHANGE_INTENTION_INTERVAL = 10; // Number of moves before checking if the intention should be changed
 const HARD_REPLAN_MOVE_INTERVAL = (USE_PDDL) ? Math.Infinity : 6; // Number of moves before hard replanning
 const SOFT_REPLAN_INTERVAL = (USE_PDDL) ? 6 : Math.Infinity; // Number of moves before soft replanning
 const INTENTION_REVISION_INTERVAL = 100; // Interval between intention revision
 const BASE_PLANNING_TIME = (USE_PDDL) ? 400 : 0; // Time taken by the planner to plan the actions
 const PLANNING_TIME_DECAY = 0.8; // Decay rate for the planning time
 const STOP_WHILE_PLANNING_INTERVAL = 100; // Interval used to check if another intention wins before planning finishes
-const PENALITY_RATE_CARRIED_PARCELS = 1.2; // Rate of penalty for each carried parcel
+const PENALITY_RATE_CARRIED_PARCELS = 1.25; // Rate of penalty for each carried parcel
 const BASE_MOVE_SLACK = 100; // Slack time to consider in the movement duration
 const SLACK_DECAY = 0.8; // Decay rate for the slack time
 
