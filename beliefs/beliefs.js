@@ -2,7 +2,7 @@ import {senseParcels} from "./parcels.js";
 import {senseAgents} from "./agents.js";
 import {createMap} from "./map.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
-import { sendMsg, sendBelief } from "../coordination/coordination.js";
+import { sendMeInfo, sendBelief } from "../coordination/coordination.js";
 
 /**
  * Variables with all the information about myself
@@ -33,6 +33,7 @@ import { sendMsg, sendBelief } from "../coordination/coordination.js";
 const me = {};
 
 /**
+ * Updates the agent information
  *
  * @param {{id:string, name:string, x:number, y:number, score:number}} param0
  */
@@ -43,19 +44,17 @@ function updateMe({id, name, x, y, score}) {
     me.y = Math.round(y);
     me.score = score;
 
+    // Send the agent information to the other agent
     sendBelief("agent", {
         id: me.id,
         position: {x: me.x, y: me.y},
     });
 
-    sendMsg({
-        header: 'agent_info', content: {
-            header: 'position', content: {x: me.x, y: me.y}
-        }
-    }).then(() => {});
+    sendMeInfo("position", {x: me.x, y: me.y});
 }
 
 /**
+ * Calculates the Manhattan distance between two points
  *
  * @param {{x:number,y:number}} param0
  * @param {{x:number,y:number}} param1
@@ -78,9 +77,9 @@ function RegisterBeliefsRevisions(client) {
     client.onYou(updateMe);
     me.config = client.config;
 
+    // compute the decay interval in milliseconds
     let interval = me.config.PARCEL_DECADING_INTERVAL.match(/(\d+)(\w+)/);
     let interval_num = Infinity;
-
     if (interval !== null) {
         switch (interval[2]) {
             case 'ms':
@@ -104,14 +103,17 @@ function RegisterBeliefsRevisions(client) {
     me.moves_per_parcel_decay = Math.floor(interval_num / (me.config.MOVEMENT_DURATION));
     //console.log('moves per parcel decay', me.moves_per_parcel_decay);
 
+    // register the function to sense the parcels
     client.onParcelsSensing(async (perceived_parcels) => {
         senseParcels(perceived_parcels, interval_num);
     })
 
+    // register the function to create the map
     client.onMap(async (width, height, tiles) => {
         createMap({width, height, tiles}, client);
     })
 
+    // register the function to sense the agents
     client.onAgentsSensing(async (agents) => {
         senseAgents(agents);
     })

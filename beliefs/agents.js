@@ -316,12 +316,23 @@ let futureAgentsBeliefSet;
  */
 function senseAgents(sensedAgents) {
     //console.log("sensing agents")
+
+    // list of agents in the field of view
     let inView = new Set();
+
+    // beliefsets for the agents in the current state to be used in the PDDL planner
     agentsBeliefSet = new Beliefset();
     futureAgentsBeliefSet = new Beliefset();
+
+    // loop through the sensed agents
     for (const agent of sensedAgents) {
+        // add the agent to the field of view
         inView.add(agent.id);
+
+        // discard "in-between" positions
         if (agent.x % 1 !== 0 || agent.y % 1 !== 0) continue;
+
+        // update the agent's position
         if (!agents.has(agent.id)) {
             agents.set(agent.id, new Agent({x: Math.round(agent.x), y: Math.round(agent.y)}, agent.id));
             // console.log("new agent")
@@ -329,39 +340,52 @@ function senseAgents(sensedAgents) {
             agents.get(agent.id).updateHistory({x: Math.round(agent.x), y: Math.round(agent.y)});
             // console.log("updating history")
         }
+
+        // send the agent's position to the other agent
         sendBelief("agent", {
             id: agent.id,
             position: {x: Math.round(agent.x), y: Math.round(agent.y)},
         });
     }
 
+    // loop through the agents received from the other agent
     let receivedAgents = agentBuffer.readBuffer();
     // console.log("received agents", receivedAgents);
     for (let a of receivedAgents) {
-        if(!a || a.id===me.id) continue;
+        if(!a || a.id===me.id) continue; // skip if the agent is me
 
-        if (!agents.has(a.id)) agents.set(a.id, new Agent(a.position, a.id));
-        else if (!inView.has(a.id)) agents.get(a.id).updateHistory(a.position);
+        // update the agent's position
+        if (!agents.has(a.id)) agents.set(a.id, new Agent(a.position, a.id)); // if I never saw the agent then add it to the beliefset
+        else if (!inView.has(a.id)) agents.get(a.id).updateHistory(a.position); // if the agent was not in view then update the history
         
         // console.log("agent", a.id, "added to the beliefset");
         inView.add(a.id);
     }
 
+    // loop through the agents in the beliefset and update the predicted positions
     for (const [id, agent] of agents) {
         if (!inView.has(id)) {
+            // If the agent is not in view then update the predicted position
             agent.updatePredicted();
-            //if old position is in view then move agent out of bounds
+
+            // If old position is in view then move agent out of bounds, since the prediction is wrong
             if (distance(agent.position, me) < me.config.AGENTS_OBSERVATION_DISTANCE - 1) {
                 agent.invalidatePrediction();
                 // console.log("invalidating prediction")
             }
         }
+
         //console.log(agent);
+
+        // add the agents to the beliefset to be used in the PDDL planner
         if (agent.position.x > 0 && agent.position.y > 0 && agent.position.x < map.width && agent.position.y < map.height && map.map[agent.position.x][agent.position.y].type !== "obstacle") {
             agentsBeliefSet.declare(`agent t_${agent.position.x}_${agent.position.y}`);
             futureAgentsBeliefSet.declare(`agent t_${agent.position.x}_${agent.position.y} T0`);
         }
+        
         // console.log(agent.believedIntetion.futureMoves);
+
+        // add the future positions of the agents to the beliefset to be used in the PDDL planner
         for (let [index, move] of agent.believedIntetion.futureMoves.entries()) {
             if (move.x > 0 && move.y > 0 && move.x < map.width && move.y < map.height && map.map[move.x][move.y].type !== "obstacle") {
                 futureAgentsBeliefSet.declare(`agent t_${move.x}_${move.y} T${index + 1}`);

@@ -7,7 +7,7 @@ class CommunicationBuffer {
     
 
     /**
-     * Reads the array with the beliefs in it
+     * Reads the array with the messages in it
      * @returns {Array<string>}
      */
     readBuffer() {
@@ -23,11 +23,11 @@ class CommunicationBuffer {
     }
 
     /**
-     * Adds a belief to the queue
-     * @param {object} belief
+     * Adds a message to the queue
+     * @param {object} msg
      */
-    push(belief) {
-        this.messages[this.writeIndex] = belief;
+    push(msg) {
+        this.messages[this.writeIndex] = msg;
         this.writeIndex = (this.writeIndex + 1) % MAX_MSG;
     }
 }

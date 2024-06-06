@@ -31,7 +31,10 @@ import {
     PENALITY_RATE_CARRIED_PARCELS,
     BASE_MOVE_SLACK, SLACK_DECAY,
 } from './config.js';
+
+/** @type {number} The slack time for the movement added to the movement duration */
 let MOVE_SLACK = BASE_MOVE_SLACK;
+/** @type {number} The planning time taken by the planner */
 let PLANNING_TIME = BASE_PLANNING_TIME;
 
 /** @type {EventEmitter} */
@@ -42,7 +45,7 @@ const stopEmitter = new EventEmitter();
  * @param {function} f - The async function to wrap
  * @returns {function} The wrapped function
  */
-function MoveSlackWrapper(f) {
+function moveSlackWrapper(f) {
     return async (...args) => {
         let Stime = new Date().getTime();
         let res = await f(...args);
@@ -59,7 +62,7 @@ function MoveSlackWrapper(f) {
  * @param {function} f - The async function to wrap
  * @returns {function} The wrapped function
  */
-function PlanningTimeWrapper(f){
+function planningTimeWrapper(f) {
     return async (...args) => {
         let Stime = new Date().getTime();
         let res = await f(...args);
@@ -81,6 +84,8 @@ function PlanningTimeWrapper(f){
  * @property {boolean} stop - True if the intention has to stop
  * @property {boolean} reached - True if the goal has been reached
  * @property {boolean} started - True if the intention has started
+ * @property {Object} planner - Dictionary of the planner functions
+ * @property {Object} move - Dictionary of the move functions
  */
 class Intention {
     goal;
@@ -90,6 +95,12 @@ class Intention {
     stop;
     reached;
     started;
+    planner = {
+        'pickup': planningTimeWrapper(beamPackageSearch),
+        'deliver': planningTimeWrapper(deliveryBFS),
+        'explore': planningTimeWrapper(exploreBFS2)
+    };
+    move;
 
     /**
      * Creates an instance of Intention.
@@ -98,8 +109,9 @@ class Intention {
      * @param {string|boolean} pickUp - The id of the parcel to pick up, false if the intention is not to pick up a parcel
      * @param {boolean} deliver - True if the intention is to deliver a parcel
      * @param {string} type - The type of the intention
+     * @param {DeliverooApi} client - The client to interact with the server
      */
-    constructor(goal, pickUp = false, deliver = false, type) {
+    constructor(goal, pickUp = false, deliver = false, type, client) {
         this.goal = goal;
         this.pickUp = pickUp;
         this.deliver = deliver;
@@ -107,72 +119,11 @@ class Intention {
         this.stop = false;
         this.reached = false;
         this.started = false;
-    }
-
-    /**
-     * Plans and executes the intention, tries to be resilient to failed moves and can be stopped
-     *
-     * @param {DeliverooApi} client
-     */
-    async executeInt(client) {
-        let earlyStop = false;
-        this.started = true;
-        this.reached = false;
-
-        let stopWhilePlanning = setInterval(() => {
-            if (this.stop) {
-                earlyStop = true;
-                clearInterval(stopWhilePlanning);
-                this.started = false;
-                this.stop = false;
-                console.log('stopped intention', this.type, "to", (this.type !== "deliver") ? this.goal : "delivery zone");
-                stopEmitter.emit('stoppedIntention' + this.type + ' ' + this.goal);
-            }
-        }, STOP_WHILE_PLANNING_INTERVAL);
-
-        let planner = {
-            'pickup': PlanningTimeWrapper(beamPackageSearch),
-            'deliver': PlanningTimeWrapper(deliveryBFS),
-            'explore': PlanningTimeWrapper(exploreBFS2)
-        }
-
-        let plan = await planner[this.type](me, this.goal, USE_PDDL);
-        clearInterval(stopWhilePlanning);
-        if (earlyStop) return;
-        if (this.type === "explore" && plan.length > 0) this.goal = {
-            x: plan[plan.length - 1].x,
-            y: plan[plan.length - 1].y
-        }
-        
-        if ( DASHBOARD) myServer.emitMessage('intention', { type: this.type, goal: this.goal });
-        sendMeInfo("plan", plan);
-        if ( DASHBOARD) myServer.emitMessage('plan', plan);
-
-        //await input from console
-        // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
-
-
-        // console.log('\tplan', me.x, me.y, plan);
-
-        if (this.type === 'pickup') {
-            //if the intention is to pick up a parcel check if the parcel is still there
-            if (map.map[this.goal.x][this.goal.y].agent !== null || parcels.get(this.pickUp) === undefined) {
-                console.log('\tunreachable goal', this.type, this.goal);
-                this.started = false;
-                this.reached = true;
-                if (this.stop) {
-                    this.stop = false;
-                    stopEmitter.emit('stoppedIntention' + this.type + ' ' + this.goal);
-                }
-                return;
-            }
-        }
-
-        let moves = {
-            "up": () => MoveSlackWrapper(() => client.move("up"))(),
-            "down": () => MoveSlackWrapper(() => client.move("down"))(),
-            "left": () => MoveSlackWrapper(() => client.move("left"))(),
-            "right": () => MoveSlackWrapper(() => client.move("right"))(),
+        this.move = {
+            "up": () => moveSlackWrapper(() => client.move("up"))(),
+            "down": () => moveSlackWrapper(() => client.move("down"))(),
+            "left": () => moveSlackWrapper(() => client.move("left"))(),
+            "right": () => moveSlackWrapper(() => client.move("right"))(),
             "pickup": () => new Promise((resolve) => {
                 client.pickup().then((res) => {
                     for (let p of res) {
@@ -204,53 +155,145 @@ class Intention {
                 resolve(true)
             })
         }
+    }
 
+    /**
+     * Plans and executes the intention, tries to be resilient to failed moves and can be stopped
+     */
+    async executeInt() {
+        // initialize the variables
+        let earlyStop = false;
+        this.started = true;
+        this.reached = false;
+
+        // if the planning time is too high, maybe I should stop and start again
+        let stopWhilePlanning = setInterval(() => {
+            if (this.stop) {
+                earlyStop = true;
+                clearInterval(stopWhilePlanning);
+                this.started = false;
+                this.stop = false;
+                console.log('stopped intention', this.type, "to", (this.type !== "deliver") ? this.goal : "delivery zone");
+                stopEmitter.emit('stoppedIntention' + this.type + ' ' + this.goal);
+            }
+        }, STOP_WHILE_PLANNING_INTERVAL);
+
+        // initial plan
+        let plan = await this.planner[this.type](me, this.goal, USE_PDDL);
+
+        // stop the interval
+        clearInterval(stopWhilePlanning);
+        // if it already stopped, stop the execution
+        if (earlyStop) return;
+
+        // if the intention is to explore and the plan is not empty, set the goal to the last tile of the plan
+        if (this.type === "explore" && plan.length > 0) {
+            this.goal = {
+                x: plan[plan.length - 1].x,
+                y: plan[plan.length - 1].y
+            }
+            // update the other agent with my objective, to correctly calculate the utilities
+            sendMeInfo("intention", { type: this.type, goal: this.goal });
+        }
+
+        // send the plan to the dashboard and to the other agent
+        if (DASHBOARD) myServer.emitMessage('intention', { type: this.type, goal: this.goal });
+        sendMeInfo("plan", plan);
+        if (DASHBOARD) myServer.emitMessage('plan', plan);
+        // console.log('\tplan', me.x, me.y, plan);
+
+        //if the intention is to pick up a parcel check if the parcel is still there, maybe I took too long to plan so I should stop
+        if (
+            this.type === 'pickup'
+            && (
+                map.map[this.goal.x][this.goal.y].agent !== null    // if an agent is on the same position as the parcel he will pick it up
+                || parcels.get(this.pickUp) === undefined           // or if the parcel is not in the map anymore
+            )
+        ) {
+            console.log('\tunreachable goal', this.type, this.goal);
+            this.started = false;
+            this.reached = true;
+            if (this.stop) {
+                this.stop = false;
+                stopEmitter.emit('stoppedIntention' + this.type + ' ' + this.goal);
+            }
+            return;
+        }
+
+        // initialize the retry count to detect plan failures
         let retryCount = 0;
+
+        // EXECUTE THE PLAN
         for (let i = 0; i < plan.length; i++) {
             // console.log(this.type, 'move', i, plan[i]);
-            let res = await moves[plan[i].move]();
+            let res = await this.move[plan[i].move](); // execute the move and wait for the result
 
             if (!res) {
-                // console.log('\tMove failed, retrying...');
+                // if the move failed, handle the failure
+
                 if (retryCount >= MAX_RETRIES) {
-                    if (this.stop) break;
+                    // if the retry count is too high, try to recover the plan
                     console.log('\tMax retries exceeded', this.type, "on move", plan[i]);
+
+                    if (this.stop) break; // if the intention has to stop, stop the execution
+
+                    // try to recover the plan
                     plan = await recoverPlan(i, plan, this.type);
-                    // console.log('\tReplanning', this.type, plan);
+                    // console.log('\Recover', this.type, plan);
+
                     if (plan.length === 0) {
+                        // if the plan is empty, the plan has to be replanned from scratch
                         console.log('\tRecover unsuccessful', this.type);
-                        plan = await planner[this.type](me, this.goal, USE_PDDL);
+                        plan = await this.planner[this.type](me, this.goal, USE_PDDL);
+                        // console.log('replanning', this.type, plan);
                     }
+
                     i = 0;
-                    if ( DASHBOARD) myServer.emitMessage('plan', plan);
+
+                    // send the new plan to the dashboard and to the other agent
+                    if (DASHBOARD) myServer.emitMessage('plan', plan);
                     sendMeInfo("plan", plan);
-                    // console.log('replanning', this.type, plan);
-                    // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
                 }
+
+                // if the move failed, retry the move
                 i--;
                 retryCount++;
             } else {
-                // console.log('\tmove ',i, plan[i],this.type);
+                // the move was successful, reset the retry count and check if we want to replan
+
                 retryCount = 0; // reset retry count if move was successful
+
                 if (i % HARD_REPLAN_MOVE_INTERVAL === 0 && i > 0) {
+                    // if the move is a multiple of the hard replan interval, replan the plan
                     if (this.stop) break;
                     i = -1;
+
                     // console.log('\tReplanning', this.type);
+                    // get the new plan for the same goal
                     plan = await beamPackageSearch(me, this.goal, USE_PDDL);
-                    if ( DASHBOARD) myServer.emitMessage('plan', plan);
+
+                    // send the new plan to the dashboard and to the other agent
+                    if (DASHBOARD) myServer.emitMessage('plan', plan);
                     sendMeInfo("plan", plan);
+
                     // console.log('replanning', this.type, plan);
-                    // await new Promise((resolve) => input.question('Press Enter to continue...', resolve));
                 } else if (i % SOFT_REPLAN_INTERVAL === 0 && i > 0 && plan[i].move !== 'pickup' && plan[i].move !== 'deliver') {
-                    // let time = new Date().getTime();
+                    // if the move is a multiple of the soft replan interval, replan the plan
+
                     // console.log('\tSoft replanning', this.type, 'from', plan[i]);
+
+                    // get the new plan for the same goal
                     plan = await beamSearch(plan.splice(i + 1, plan.length), [plan[plan.length - 1]], USE_PDDL);
-                    if ( DASHBOARD) myServer.emitMessage('plan', plan);
+
+                    // send the new plan to the dashboard and to the other agent
+                    if (DASHBOARD) myServer.emitMessage('plan', plan);
                     sendMeInfo("plan", plan);
                     // console.log('\tSoft replanning', this.type, 'to', plan);
+
                     i = -1;
                 }
 
+                // each CHANGE_INTENTION_INTERVAL moves check if the intention has changed
                 if (i % CHANGE_INTENTION_INTERVAL === 0 && i > 0 && this.stop) {
                     break;
                 }
@@ -271,15 +314,90 @@ class Intention {
     }
 
     /**
+     * Computes the utility of the intention to pick up a parcel
+     * 
+     * @param {number} numParcels - The number of carried parcels
+     * @param {number} score - The score of the carried parcels
+     * @param {number} steps - The number of steps to pick up the parcel
+     * 
+     * @returns {{score: number, steps: number}} The score and the steps to pick up the parcel
+     */
+    async pickUpUtility(numParcels, score, steps) {
+
+        if (
+            map.map[this.goal.x][this.goal.y].agent !== null
+            || map.map[this.goal.x][this.goal.y].parcel === null
+            || parcels.get(this.pickUp) === undefined
+        ) {
+            //if an agent is on the same position as the parcel return -1
+            score = -1;
+        } else {
+            //compute the plan to pick up the parcel
+            let plan = await beamPackageSearch(me, this.goal, false);
+
+            //compute the number of steps to pick up the parcel and the accumulated score
+            for (let move of plan) {
+                if (move.move !== 'none' && move.move !== 'pickup') {
+                    steps++;
+                } else if (move.move === 'pickup') {
+                    score += map.map[move.x][move.y].parcel.score;
+                    numParcels++;
+                }
+            }
+
+            //check if the goal is unreachable
+            if (steps <= 1 && (me.x !== this.goal.x || me.y !== this.goal.y)) {
+                //if the goal is unreachable set the score to 0
+                score = 0;
+            } else {
+
+                //check if another agent is closer and set the score accordingly
+                let closer = false;
+                let closestAgent = null;
+                for (let [id, agent] of agents) {
+                    if (agent.id !== me.id && agent.position.x !== -1) {
+                        
+                        // compute the distance of the other agent to the parcel, be conservative and use the clean BFS
+                        let distance_agent = frozenBFS(agent.position, this.goal).length - 1;
+                        
+                        if (distance_agent < steps && distance_agent > 1 ) {
+                            // if the other agent is closer set the score in the interval [0.2, 1]
+                            closer = true;
+                            
+                            // compute the score based on the distance and the parcel score
+                            let parcelScore = parcels.get(this.pickUp).score / (me.config.PARCEL_REWARD_AVG + me.config.PARCEL_REWARD_VARIANCE) / 2;
+                            let distanceScore = (steps - distance_agent) / (map.width + map.height) * 0.3;
+                            score = 0.2 + parcelScore + distanceScore;
+                            steps = 0;
+
+                            //if it's the other agent closer, then set the score to 0
+                            if (agent.id === otherAgent.id) {
+                                score = 0
+                                break;
+                            }
+                            //console.log('\t\tcloser agent', agent.id, 'distance', distance_agent, 'score', score);
+                        }
+                    }
+                }
+
+                //if the other agent is not closer use the clean BFS precalculated heuristic to compute the steps to deliver the parcel
+                if (!closer) {
+                    steps += map.map[this.goal.x][this.goal.y].heuristic;
+                }
+            }
+        }
+
+        return { score: score, steps: steps };
+    }
+
+    /**
      * Computes the utility of the intention
      *
      * @returns {number} the utility of the intention
      */
     async utility() {
-        let utility = 0;
-        let numParcels = carriedParcels.length;
+        // check if the carried parcels are still valid and compute the carried parcels score
         let toRemove = [];
-
         //compute the score of the carried parcels
         let score = carriedParcels.reduce((acc, id) => {
             if (parcels.has(id)) {
@@ -294,58 +412,17 @@ class Intention {
             carriedParcels.splice(carriedParcels.indexOf(id), 1);
         }
 
+        // compute the number of carried parcels, after removing the invalid ones
+        let numParcels = carriedParcels.length;
         let steps = 0;
+        let utility = 0;
+
         switch (this.type) {
             case 'pickup':
                 numParcels *= PENALITY_RATE_CARRIED_PARCELS;
-                //TODO: if carried parcel over limit return -1
-                if (map.map[this.goal.x][this.goal.y].agent !== null
-                    || map.map[this.goal.x][this.goal.y].parcel === null
-                    || parcels.get(this.pickUp) === undefined) {
-                    //if an agent is on the same position as the parcel return -1
-                    score = -1;
-                } else {
-                    let plan = await beamPackageSearch(me, this.goal, false);
-                    for (let move of plan) {
-                        if (move.move !== 'none' && move.move !== 'pickup') {
-                            steps++;
-                        } else if (move.move === 'pickup') {
-                            score += map.map[move.x][move.y].parcel.score;
-                            numParcels++;
-                        }
-                    }
-                    if (steps === 0 && (me.x !== this.goal.x || me.y !== this.goal.y)) {
-                        score = 0;
-                        break;
-                    }
-                    //console.log('pickup', this.goal, 'steps', steps);
-
-                    //check if another agent is closer and set the score accordingly
-                    let closer = false;
-                    for (let [id, agent] of agents) {
-                        if (agent.id !== me.id && agent.position.x !== -1) {
-                            let distance_agent = frozenBFS(agent.position, this.goal).length - 1;
-                            //console.log('\tagent', agent.id, 'position', agent.position, 'distance', distance_agent);
-                            //let distance_agent = distance(agent, this.goal);
-                            if (distance_agent < steps && distance_agent > 1) {
-                                closer = true;
-                                let parcelScore = parcels.get(this.pickUp).score / (me.config.PARCEL_REWARD_AVG + me.config.PARCEL_REWARD_VARIANCE) / 2;
-                                let distanceScore = (steps - distance_agent) / (map.width + map.height) * 0.3;
-                                score = 0.2 + parcelScore + distanceScore;
-                                //if positive utility for the other agent set the score to 0
-                                steps = 0;
-                                if (agent.id === otherAgent.id) {
-                                    score = 0
-                                    break;
-                                }
-                                //console.log('\t\tcloser agent', agent.id, 'distance', distance_agent, 'score', score);
-                            }
-                        }
-                    }
-                    if (!closer) {
-                        steps += map.map[this.goal.x][this.goal.y].heuristic;
-                    }
-                }
+                let res = await this.pickUpUtility(numParcels, score, steps);
+                score = res.score;
+                steps = res.steps;
                 break;
             case 'deliver':
                 steps = frozenBFS(me, this.goal).length;
@@ -359,11 +436,13 @@ class Intention {
                 console.log('Invalid intention type');
         }
 
+        // compute the utility of the intention
         utility =
             score
             - (numParcels) * Math.ceil(steps / me.moves_per_parcel_decay)
             - (numParcels) * Math.ceil(PLANNING_TIME / me.config.PARCEL_DECADING_INTERVAL) * (this.started ? 0 : 1)
             - (numParcels) * Math.ceil(steps * MOVE_SLACK / me.config.PARCEL_DECADING_INTERVAL);
+
         return utility;
     }
 
@@ -411,9 +490,8 @@ class Intentions {
 
     /**
      * Selects the intention with the highest utility and executes it
-     * @param {DeliverooApi} client
      */
-    async selectIntention(client) {
+    async selectIntention() {
         //console.log('intentions', this.intentions);
         // console.log('other agent intention', otherAgent.intention.type, otherAgent.intention.goal)
 
@@ -424,17 +502,17 @@ class Intentions {
             let utility = await intention.utility();
             // console.log('\tutility', intention.type, utility);
             if ((
-                utility > maxUtility ||
+                utility > maxUtility || // if the utility is higher
                 (
                     utility === maxUtility
-                    && distance(me, intention.goal) < distance(me, maxIntention.goal)
-                )
+                    && distance(me, intention.goal) < distance(me, maxIntention.goal) 
+                ) // or if the utility is the same and the distance is lower
             )
                 &&
                 (
                     intention.type === 'explore' || intention.type === 'deliver'
                     || intention.goal !== otherAgent.intention.goal
-                )
+                ) // and if the intantion is not picking up the same parcel as the other agent
             ) {
                 //console.log('utility', utility);
                 maxUtility = utility;
@@ -446,18 +524,18 @@ class Intentions {
             //if there is no current intention start the one with the highest utility
             console.log("starting intention", maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone");
             this.currentIntention = maxIntention;
-            this.currentIntention.executeInt(client);
+            this.currentIntention.executeInt();
         } else if ((this.currentIntention.goal !== maxIntention.goal && this.currentIntention.started) || this.currentIntention.reached) {
             //if the goal is different from the current intention switch intention
-            // console.log('switching intention', maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone", " from", this.currentIntention.type, "to", (this.currentIntention.type !== "deliver") ? this.currentIntention.goal : "delivery zone");;
-
+            
             //wait for the current intention to stop before starting the new one
             stopEmitter.once('stoppedIntention' + this.currentIntention.type + ' ' + this.currentIntention.goal, () => {
                 console.log("starting intention", maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone");
                 sendMeInfo("intention", { type: maxIntention.type, goal: maxIntention.goal });
-                maxIntention.executeInt(client);
+                maxIntention.executeInt();
             });
 
+            //stop the current intention
             this.currentIntention.stopInt();
             this.currentIntention = maxIntention;
         }
@@ -465,24 +543,26 @@ class Intentions {
 
     /**
      * Generates the base intentions for the agent (deliver and expolore)
+     * @param {DeliverooApi} client
      */
-    generateIntentions() {
+    generateIntentions(client) {
         //add deliver intention
         let goal = map.deliveryZones;
         let pickUp = false;
         let deliver = true;
-        this.addIntention(new Intention(goal, pickUp, deliver, 'deliver'));
+        this.addIntention(new Intention(goal, pickUp, deliver, 'deliver', client));
         //explore intention
         goal = { x: 0, y: 0 };
         pickUp = false;
         deliver = false;
-        this.addIntention(new Intention(goal, pickUp, deliver, 'explore'));
+        this.addIntention(new Intention(goal, pickUp, deliver, 'explore', client));
     }
 
     /**
      * Updates the intentions based on the parcels in the map
+     * @param {DeliverooApi} client
      */
-    updateIntentions() {
+    updateIntentions(client) {
         let parcelsIDs = new Map();
 
         //remove intentions whose parcels have been picked up or expired
@@ -507,16 +587,23 @@ class Intentions {
                 let goal = parcel.position;
                 let pickUp = id;
                 let deliver = false;
-                this.addIntention(new Intention(goal, pickUp, deliver, 'pickup'));
+                this.addIntention(new Intention(goal, pickUp, deliver, 'pickup', client));
             }
         }
 
     }
 }
 
-/** @type {Array<string>} */
+/** 
+ * List of parcels being currently carried
+ * @type {Array<string>} 
+ */
 const carriedParcels = [];
-/** @type {Intentions} */
+
+/** 
+ * The intentions of the agent
+ * @type {Intentions} 
+*/
 const intentions = new Intentions();
 
 /**
@@ -528,12 +615,18 @@ function IntentionRevision(client) {
     client.onMap(async () => {
         //wait 0.1 second for the map to be created
         await new Promise((resolve) => setTimeout(resolve, 100));
-        await intentions.generateIntentions();
-        intentions.updateIntentions();
-        intentions.selectIntention(client);
+
+        //generate the base intentions
+        await intentions.generateIntentions(client);
+        //update the intentions
+        intentions.updateIntentions(client);
+        //select the intention to start
+        intentions.selectIntention()
+
+        //start the intention revision interval
         setInterval(() => {
-            intentions.updateIntentions();
-            intentions.selectIntention(client);
+            intentions.updateIntentions(client);
+            intentions.selectIntention();
         }, INTENTION_REVISION_INTERVAL);
     });
 }

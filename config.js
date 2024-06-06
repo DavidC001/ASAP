@@ -43,6 +43,7 @@ const MAX_SPAWNABLE_TILES_DISTANCE = 1; // Maximum distance to consider a tile s
 const MAX_AGENT_HEATMAP_DISTANCE = 3; // distance an agent affets the heatmap
 const MAX_TIME = 500; // Maximum time for last_seen for the tiles
 const DELETE_UNSEEN_AGENTS_INTERVAL = 2500; // Interval to delete the agents that are not seen anymore
+const LAST_SEEN_RESCALE_FACTOR = 0.5; // Factor to rescale the last seen time
 
 export {
     config, DASHBOARD,
@@ -58,5 +59,6 @@ export {
     NAME, MAX_REQUEST_TIME, MAX_AWAIT_RETRY, MAX_MSG,
 
     MAX_HISTORY, MAX_FUTURE, MAX_SPAWNABLE_TILES_DISTANCE, 
-    MAX_AGENT_HEATMAP_DISTANCE, MAX_TIME, DELETE_UNSEEN_AGENTS_INTERVAL
+    MAX_AGENT_HEATMAP_DISTANCE, MAX_TIME, DELETE_UNSEEN_AGENTS_INTERVAL,
+    LAST_SEEN_RESCALE_FACTOR
 };
