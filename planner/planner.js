@@ -10,7 +10,7 @@ import {otherAgent} from "../coordination/coordination.js";
 
 import {PROBABILITY_KEEP_BEST_TILE, TIME_PENALTY, MAX_EXPLORE_PATH_LENGTH} from "../config.js";
 
-//TODO: if the parcel is not there anymore remove deviation from the path
+
 /**
  * Searches in a corridor for parcels to pick up
  * @param {[{x: number, y: number, move: string}]} path The plan to soft replan
@@ -21,6 +21,7 @@ async function beamSearch(path, objective, PDDL = false) {
     // console.log("\t[BEAM SEARCH]\n\tObjective", objective);
     // console.log("\t[BEAM SEARCH]\n\tOriginal path", path);
 
+    // define the directions to explore
     let directions = [[0, 0, "pickup"],
         [1, 0, "right"], [-1, 0, "left"],
         [0, 1, "up"], [0, -1, "down"]];
@@ -40,15 +41,8 @@ async function beamSearch(path, objective, PDDL = false) {
         }
         if (move < (MAX_FUTURE - 1)) move++;
     }
-    // console.log("Allowed deviations");
-    // for (let i = map.width - 1; i >= 0; i--) {
-    //     for (let j = 0; j < map.height; j++) {
-    //         process.stdout.write(allowedDeviations[j][i] ? "1 " : "0 ");
-    //     }
-    //     console.log();
-    // }
 
-
+    // Compute the updated path
     move = 0;
     for (let stepNum = 0; stepNum < path.length; stepNum++) {
         let step = path[stepNum]
@@ -63,25 +57,30 @@ async function beamSearch(path, objective, PDDL = false) {
                 && (!path.some((p) => p.x === x && p.y === y) || dir[2] === "pickup") // don't go back to the same tile
                 && !path.some((p) => p.x === x && p.y === y && p.move === "pickup") // don't pick up the same package twice
             ) {
-                allowedDeviations[x][y] = false;
+                allowedDeviations[x][y] = false; // don't allow deviations from this tile anymore
                 //console.log("\texploring deviation at", x, y);
-                if (map.map[x][y].parcel && !map.map[x][y].agent) {
+
+                if (map.map[x][y].parcel && !map.map[x][y].agent) { 
+                    // if there is a package on the way
                     let parcel = parcels.get(map.map[x][y].parcel.id);
+
                     if (parcel && !parcel.carried) {
                         //console.log("\t\tfound a package at", x, y);
 
-                        //add a deviation to the path
+                        // Add a deviation to the path
                         let deviation = [{x: x, y: y, move: dir[2]}];
                         let newPath;
+
                         if (dir[2] === "pickup") {
                             // console.log("\t\tcollecting package at", x, y);
-                            // newPath = path.slice(stepNum + 1);
                             newPath = path.slice(stepNum + 1)
                         } else {
+
                             if (!PDDL) {
+                                // If not using PDDL, search for the new path from the deviation
                                 newPath = search_path({x: x, y: y}, objective, move);
                             } else {
-                                //get back to the original path
+                                // Otherwise, since planning is expensive, get back to the original path
                                 let goBackMove = {x: step.x, y: step.y, move: "none"};
                                 if (dir[2] === "right") goBackMove.move = "left";
                                 if (dir[2] === "left") goBackMove.move = "right";
@@ -89,8 +88,10 @@ async function beamSearch(path, objective, PDDL = false) {
                                 if (dir[2] === "down") goBackMove.move = "up";
                                 newPath = [goBackMove].concat(path.slice(stepNum + 1));
                             }
-                            if (move < (MAX_FUTURE - 1)) move++;
+
                         }
+
+                        // Update the path
                         path = path.slice(0, stepNum + 1)
                             .concat(deviation)
                             .concat(newPath);
@@ -109,7 +110,9 @@ async function beamSearch(path, objective, PDDL = false) {
 
 
 /**
- * Beam search to find the path to the closest objective
+ * Beam search to find the path to the closest objective. 
+ * It use BFS to create a path to the objective, 
+ * then allow for slight deviations to gather other packages on the way
  *
  * @param {{x: number, y: number}} pos The starting position
  * @param {[{x: number, y: number}]} objective The objective to reach
@@ -119,15 +122,17 @@ async function beamSearch(path, objective, PDDL = false) {
  * @returns {[{x: number, y: number, move: string}]} The path to the objective
  */
 async function beamPackageSearch(pos, objective, PDDL = false, fallback = true) {
-    //use BFS to create a path to the objective, then allow for slight deviations to gather other packages on the way
     if (!(objective instanceof Array)) objective = [objective];
-    let path = []
+    let path = [];
+
+    // Use the requested planner to find the path
     if (PDDL) {
         path = await PDDL_path(pos, objective, fallback);
     } else {
         path = search_path(pos, objective, fallback);
     }
 
+    // Search for packages on the way
     path = await beamSearch(path, objective, PDDL);
 
     return path;
@@ -142,11 +147,17 @@ async function beamPackageSearch(pos, objective, PDDL = false, fallback = true) 
 async function pickupAndDeliver(pos, objective) {
     let path = [];
     if (!(objective instanceof Array)) objective = [objective];
+
+    // First, try to find a path to the package
     if (objective.length === 1) path = await PDDL_pickupAndDeliver(pos, objective);
+
+    // If unsuccessful, try to find a path only to the package
     if (path.length === 0) {
         path = await beamPackageSearch(pos, objective, true);
+    } else {
+        path = await beamSearch(path, objective, true);
     }
-    path = await beamSearch(path, objective, true);
+
     return path;
 }
 
@@ -159,10 +170,13 @@ async function pickupAndDeliver(pos, objective) {
  * @returns {[{x: number, y: number, move: string}]} The path to the objective
  */
 async function deliveryBFS(pos, objectiveList, usePDDL = false) {
+    // Compute the path to the closest delivery zone
     let list = await beamPackageSearch(pos, map.deliveryZones, usePDDL);
+
+    // Add a move to the last position to deliver the package
     let last_move = list.at(-1);
     if (!last_move) last_move = pos;
-    // Add a move to the last position to deliver the package
+
     list.push({x: last_move.x, y: last_move.y, move: "deliver"});
 
     return list;
@@ -176,11 +190,8 @@ async function deliveryBFS(pos, objectiveList, usePDDL = false) {
  *
  * @returns {[{x: number, y: number, move: string}]} The explore path
  */
-function exploreBFS(pos, goal, usePDDL = false) {
+function exploreClimb(pos, goal, usePDDL = false) {
     // Select goal based on the last sensed time of the tile
-    // map.map.sort((a, b) => (a.last_seen - b.last_seen));
-    // let goal = map.map[0][0];
-    // console.log("Exploring goal", goal,map.map[19][19]);
     let path = [];
     let directions = [[0, 1, 'up'], [0, -1, 'down'], [1, 0, 'right'], [-1, 0, 'left']];
     let path_length = 0;
@@ -189,16 +200,24 @@ function exploreBFS(pos, goal, usePDDL = false) {
     let selected_move = null;
     let key = "";
     let heuristic = Math.max(me.config.PARCELS_OBSERVATION_DISTANCE - 3, 1);
+
+    // If the agent is close to the border, reduce the heuristic
     if (pos.x <= (heuristic + 2) || pos.x >= (map.width - heuristic - 2) || pos.y <= (heuristic + 2) || pos.y >= (map.height - heuristic - 2)) {
         heuristic = 0;
     }
+
+    // Create the path
     while (path_length < MAX_EXPLORE_PATH_LENGTH) {
         //console.log("Exploring", pos);
+
+        // Choose the next move based on the oldest last seen tile
         for (let dir of directions) {
             let newX = pos.x + dir[0];
             let newY = pos.y + dir[1];
             key = newX + "_" + newY;
             //console.log("visited", visited.has(key), key);
+
+            // Check if the tile is valid, has not been visited and it improves the last seen time
             if ((newX >= heuristic) && (newX < (map.width - heuristic)) && (newY >= heuristic) && (newY < (map.height - heuristic))
                 && map.map[newX][newY].last_seen < oldest_last_seen && (!visited.has(key))
                 && map.map[newX][newY].type !== 'obstacle' && map.map[newX][newY].agent === null) {
@@ -206,8 +225,11 @@ function exploreBFS(pos, goal, usePDDL = false) {
                 oldest_last_seen = map.map[newX][newY].last_seen;
             }
         }
+        
         // console.log("Selected move", selected_move);
+        
         if (selected_move) {
+            // If a move was selected, add it to the path
             pos = {x: selected_move.x, y: selected_move.y};
             key = pos.x + "_" + pos.y;
             visited.set(key, true);
@@ -215,26 +237,31 @@ function exploreBFS(pos, goal, usePDDL = false) {
             selected_move = null;
             oldest_last_seen = Infinity;
         } else {
+            // If no move was selected, break the loop
             break;
         }
+
         path_length++;
     }
+
     // console.log(path, path.length);
     return path;
 }
 
 /**
- * Improved BFS searching in least seen areas and based on a simple agent heat map
+ * Improved BFS searching in least seen areas and based on a simple agent heat map and regions of spawnable tiles
+ * 
  * @param pos - Where to start the search
  * @param goal - not used, just here for parameter expansion
  * @param usePDDL - Use PDDL to find the path
  * @returns {{x: number, y: number, move: string}[]} - A list of nodes containing the path to the goal
  */
-async function exploreBFS2(pos, goal, usePDDL = false) {
-
+async function exploreBFS(pos, goal, usePDDL = false) {
+    // console.log("\t[EXPLORE BFS]");
     let best_tile = {x: -1, y: -1, probability: 1};
     let best_utility = -1;
 
+    // Loop through all the spawnable tiles and calculate the utility of each tile
     for (let tile of map.spawnableTiles) {
         let tileX = tile.x;
         let tileY = tile.y;
@@ -250,24 +277,29 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
             )
         );
 
+        
         if (
-            (
+            ( // If the tile is better than the current best tile
                 best_tile.x === -1
                 || best_utility >= tile_utility
             )
-            && (map.cleanBFS(pos, [tile]).length > 1 || (pos.x === tileX && pos.y === tileY))
-            && (
+            
+            && (map.cleanBFS(pos, [tile]).length > 1 || (pos.x === tileX && pos.y === tileY)) // And the tile is reachable
+            
+            && ( // And the tile is not in the same region as the other agent's goal
                 otherAgent.intention.type === "" || otherAgent.intention.type === "deliver"
                 || map.numberOfRegions < 2
                 || (map.map[otherAgent.intention.goal.x][otherAgent.intention.goal.y].RegionIndex !== map.map[tileX][tileY].RegionIndex)
             )
         ) {
             if (best_utility === tile_utility) {
+                // When equal, randomly choose to keep the current best tile
                 if (Math.random() > PROBABILITY_KEEP_BEST_TILE) {
                     best_tile = {x: tile.x, y: tile.y, probability: tile.probability};
                     best_utility = tile_utility
                 }
             } else {
+                // Otherwise, update the best tile
                 best_tile = {x: tile.x, y: tile.y, probability: tile.probability};
                 best_utility = tile_utility
             }
@@ -291,15 +323,13 @@ async function exploreBFS2(pos, goal, usePDDL = false) {
     }
 
     // console.log("\t", best_tile, best_last_seen, best_agent_heat, "Utility", best_utility);
-    let plan = await beamPackageSearch(pos, [best_tile], usePDDL);
-    if (plan.length === 1) {
-        // console.log("\tPlan length 1");
-        plan = map.cleanBFS(pos, [best_tile]);
-    }
+
+    // Search for the path to the best tile
+    let plan = await beamPackageSearch(pos, [best_tile], usePDDL, true);
+
     //console.log(plan);
     return plan;
-
 }
 
 
-export {beamSearch, beamPackageSearch, deliveryBFS, pickupAndDeliver, exploreBFS2};
+export {beamSearch, beamPackageSearch, deliveryBFS, pickupAndDeliver, exploreBFS as exploreBFS2};

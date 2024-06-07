@@ -12,6 +12,7 @@ import {MAX_WAIT} from "../config.js";
  * @returns {[{x: number, y: number, move: string}]} The path to the objective
  */
 function BFStoObjective(pos, objectiveList, startTime = 0) {
+    // Initialization
     let queue = [];
     let visited = new Array(map.width).fill().map(() => new Array(map.height).fill().map(() => 0));
     queue.push([pos]);
@@ -19,40 +20,40 @@ function BFStoObjective(pos, objectiveList, startTime = 0) {
     visited[pos.x][pos.y] = 1;
     let current = null;
     let node = null;
+    // Allowed moves: up, down, right, left, wait
     let directions = [[[0, 1, 'up'], [0, -1, 'down'], [1, 0, 'right'], [-1, 0, 'left'], [0, 0, 'wait']],
         [[1, 0, 'right'], [-1, 0, 'left'], [0, 1, 'up'], [0, -1, 'down'], [0, 0, 'wait']]];
-    let blocked_goals = [];
 
-    for (let goal of objectiveList) {
-        if (map.predictedMap[MAX_FUTURE - 1][goal.x][goal.y].type === 'obstacle'
-            || map.predictedMap[MAX_FUTURE - 1][goal.x][goal.y].agent !== null) {
-            blocked_goals.push(goal);
-        }
-    }
+    // Check if the goal is blocked by an obstacle or an agent
+    objectiveList = objectiveList.filter(objective => {
+        return (map.predictedMap[MAX_FUTURE - 1][objective.x][objective.y].type !== 'obstacle'
+            && map.predictedMap[MAX_FUTURE - 1][objective.x][objective.y].agent === null);
+    });
 
+    // BFS
     while (queue.length > 0) {
         current = queue.shift();
         node = current.at(-1)
 
-        // Se la posizione di consegna è bloccata, la salto
+        // Check if the node is an objective
         for (let goal of objectiveList) {
-            if (!blocked_goals.includes(goal)) {
-                if ((node.x === goal.x && node.y === goal.y)) {
-                    return current;
-                }
+            if ((node.x === goal.x && node.y === goal.y)) {
+                return current;
             }
         }
-        // Controllo che il nodo che sto esplorando non abbia sopra un agente, prima di esplorarlo
+
+        // Try to move in all directions
         for (let dir of directions[current.length % 2]) {
             let newX = node.x + dir[0];
             let newY = node.y + dir[1];
-            // We don't push the node if out of bound or there is an agent on it
+
+            // We don't push the node if out of bound or there is an agent on it or we already visited it
             if ((newX >= 0) && (newX < map.width) && (newY >= 0) && (newY < map.height)
-                && (!visited[newX][newY] || (dir[2] === 'none' && visited[newX][newY] < MAX_WAIT))
-                && map.predictedMap[startTime][newX][newY].type !== 'obstacle'
-                && map.predictedMap[startTime][newX][newY].agent === null
-                && (startTime > 1 || map.map[newX][newY].agent === null)
-                && !otherAgent.plan.some(move => move.x === newX && move.y === newY)
+                && (!visited[newX][newY] || (dir[2] === 'none' && visited[newX][newY] < MAX_WAIT)) // Wait is allowed to be visited multiple times
+                && map.predictedMap[startTime][newX][newY].type !== 'obstacle' // Check if the node is an obstacle
+                && map.predictedMap[startTime][newX][newY].agent === null // Check if the node has an agent
+                && (startTime > 1 || map.map[newX][newY].agent === null) // Check if the node has an agent when we are performing the first move
+                && !otherAgent.plan.some(move => move.x === newX && move.y === newY) // Check if the node is in the plan of the  another agent
             ) {
                 let newCurrent = current.slice();
                 newCurrent.push({x: newX, y: newY, move: dir[2]});
@@ -60,6 +61,7 @@ function BFStoObjective(pos, objectiveList, startTime = 0) {
                 visited[newX][newY]++;
             }
         }
+        
         // Increase startTime until we reached the MAX_FUTURE for the predictedMap
         if (startTime < (MAX_FUTURE - 1)) startTime++;
     }
@@ -94,10 +96,12 @@ function frozenBFS(pos, objective) {
         );
     });
 
+    // BFS
     while (queue.length > 0) {
         current = queue.shift();
         node = current.at(-1)
 
+        // Check if the node is an objective
         for (let obj of objective) {
             if (node.x === obj.x && node.y === obj.y) {
                 // console.log("Path found");
@@ -105,13 +109,15 @@ function frozenBFS(pos, objective) {
             }
         }
 
+        // Try to move in all directions
         for (let dir of directions[current.length % 2]) {
             let newX = node.x + dir[0];
             let newY = node.y + dir[1];
             if ((newX >= 0) && (newX < map.width) && (newY >= 0) && (newY < map.height)
                 && (!visited[newX][newY])
                 && map.map[newX][newY].type !== 'obstacle'
-                && map.map[newX][newY].agent === null) {
+                && map.map[newX][newY].agent === null
+            ) {
                 // console.log( "checking", newX, newY, map.width, map.height, visited[newX][newY], map.map[newX][newY].type, map.map[newX][newY].agent);
                 let newCurrent = JSON.parse(JSON.stringify(current));
                 newCurrent.push({x: newX, y: newY, move: dir[2]});
