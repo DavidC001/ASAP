@@ -70,7 +70,7 @@ ASAP/
    Create an `.env` file with the following content:
    ```plaintext
    NAME = "AGENT_NAME"
-   HOST="http://cuwu.ddns.net:8082/?name=AGENT_NAME_1"
+   HOST="https://deliveroojs.onrender.com/?name=AGENT_NAME_1"
    TOKEN=""
    NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
