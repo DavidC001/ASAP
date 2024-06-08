@@ -1,4 +1,12 @@
 # Deliveroo Agent
+<p align="center">
+<img src="https://github.com/DavidC001/ASAP/assets/40665241/2ea27169-69c1-474d-95b5-ffb3368c09ea" style="display:block;float:none;margin-left:auto;margin-right:auto;width:50%"/>
+</p>
+
+## Authors
+
+- Davide Cavicchini
+- Laurence Bonat
 
 ## Project Overview
 
@@ -13,33 +21,31 @@ ASAP/
 │   ├── beliefs.js             # General beliefs management
 │   ├── map.js                 # Beliefs about the map layout
 │   ├── parcels.js             # Beliefs about the parcels in the environment
+|
 ├── coordination/
 │   ├── CommunicationBuffer.js # Manages communication between agents
 │   ├── coordination.js        # Handles coordination logic with other agents
-├── node_modules/              # Node.js dependencies
-├── others/
-│   ├── helper.js              # Helper functions used across the project
-│   ├── log.js                 # Logging functionality
+|
 ├── planner/
 │   ├── pddl-client/           # Client for interacting with PDDL planners
 │   ├── PDDL_planners.js       # Interfaces for various PDDL planners
 │   ├── planner.js             # Planning algorithms and logic
 │   ├── recover.js             # Logic for recovering from failed plans
 │   ├── search_planners.js     # Search algorithms for planning
+|
 ├── visualizations/
 │   ├── dashboard.html         # Visualization dashboard for the game state
 │   ├── server.js              # Server for handling visualization updates
+├── others/
+│   ├── helper.js              # Helper functions used across the project
+│   ├── log.js                 # Logging functionality
+|
 ├── agent.js                   # Main agent logic
-├── config.js                  # Configuration parameters
 ├── index.js                   # Entry point for running the agent
-├── package-lock.json          # Lockfile for Node.js dependencies
+├── config.js                  # Configuration parameters
 ├── package.json               # Project metadata and dependencies
-├── README.md                  # Project documentation
 ├── .gitignore                 # Files to be ignored by Git
-├── uni.env                    # Environment configuration for agent 1
-├── uni2.env                   # Environment configuration for agent 2
-├── uniGOD.env                 # Environment configuration for agent 3
-└── uwu.env                    # Environment configuration for agent 4
+└── README.md                  # Project documentation
 ```
 
 ## Getting Started
@@ -111,8 +117,3 @@ The planning process involves generating a sequence of actions to achieve the ag
   - `planner/PDDL_planners.js`: Defines the PDDL problems and domains to send to the PDDL planners, and parses the planner output.
   - `planner/search_planners.js`: Uses BFS search to find a plan for the agent.
   - `planner/recover.js`: Logic for recovering from failed plans.
-
-## Authors
-
-- Davide Cavicchini
-- Laurence Bonat
