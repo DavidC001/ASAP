@@ -2,9 +2,76 @@ import {map} from "../beliefs/map.js";
 import {me} from "../beliefs/beliefs.js";
 
 import {otherAgent, AgentRole, sendRequest, awaitRequest} from "../coordination/coordination.js";
-import { frozenBFS } from "./search_planners.js";
+import {frozenBFS} from "./search_planners.js";
 
 import {BASE_FAIL_WAIT, MAX_WAIT_FAIL} from "../config.js";
+
+/**
+ * An object that contains the different planners to recover the plan for the agent 1 negotiation
+ * */
+let planners = {
+    "moveOut": async (index, plan) => {
+        plan = await MoveAside(index, plan, false);
+        if (plan.length > 0) {
+            return [plan[0], {x: 0, y: 0, move: "answer"}].concat(plan.slice(1));
+        }
+        return [];
+    },
+    "planAround": async (index, plan) => {
+        plan = await goAround(index, plan);
+        if (plan.length > 0) {
+            return [plan[0], {x: 0, y: 0, move: "answer"}].concat(plan.slice(1));
+        }
+        return [];
+    },
+    "swap": async (index, plan) => {
+        let backtrack = await MoveAside(index, plan, true);
+        if (backtrack.length > 0) {
+            return [{x: me.x, y: me.y, move: "deliver"}, backtrack[0], {
+                x: backtrack[0].x,
+                y: backtrack[0].y,
+                move: "answer"
+            }, backtrack[1]];
+        }
+        return [];
+    },
+    "goForward": async (index, plan) => {
+        return [{x: me.x, y: me.y, move: "await"}, plan[index], {
+            x: me.x,
+            y: me.y,
+            move: "answer"
+        }].concat(plan.slice(index + 1));
+    },
+    "pickUp": async (index, plan) => {
+        return [{x: me.x, y: me.y, move: "await"}, plan[index], {
+            x: plan[index].x,
+            y: plan[index].y,
+            move: "pickup"
+        }, {x: plan[index].x, y: plan[index].y, move: "answer"}];
+    },
+    "moveOut & pickUp": async (index, plan) => {
+        let backtrack = await MoveAside(index, plan, true);
+        if (backtrack.length > 0) {
+            return [backtrack[0], {x: 0, y: 0, move: "answer"}, backtrack[1], backtrack[2], {
+                x: me.x,
+                y: me.y,
+                move: "pickup"
+            }, {x: 0, y: 0, move: "answer"}];
+        }
+        return [];
+    },
+    "waitForOther": async (index, plan) => {
+        return [{x: me.x, y: me.y, move: "await"}].concat(plan.slice(index, index + 2)).concat([{
+            x: 0,
+            y: 0,
+            move: "answer"
+        }]).concat(plan.slice(index + 2));
+    },
+    "stayStill": async (index, plan) => {
+        return [{x: me.x, y: me.y, move: "await"}].concat(plan.slice(index));
+    }
+}
+
 
 /**
  * Tries to recover the plan by going around the agent if possible or negotiating the swap of packages to avoid re-planning
@@ -18,8 +85,8 @@ async function recoverPlan(index, plan, intention_type) {
     let y = plan[index].y;
     console.log("[RECOVER PLAN]");
     if (map.map[x][y].agent !== otherAgent.id) {
-        //wait some moves before replanning
-        await new Promise((resolve) => setTimeout(resolve, BASE_FAIL_WAIT+me.config.MOVEMENT_DURATION * (Math.round(Math.random() * MAX_WAIT_FAIL))));
+        // Wait some moves before replanning
+        await new Promise((resolve) => setTimeout(resolve, BASE_FAIL_WAIT + me.config.MOVEMENT_DURATION * (Math.round(Math.random() * MAX_WAIT_FAIL))));
         if (map.map[x][y].agent === null) {
             console.log("\tAgent is gone");
             // if by waiting the agent is gone then try to keep going with the original plan
@@ -84,23 +151,35 @@ async function handleNegotiation(index, plan) {
  */
 async function agent0Negotiation(index, plan) {
     let x = me.x, y = me.y;
-    let inverseMove = {
-        "up": "down",
-        "down": "up",
-        "left": "right",
-        "right": "left"
+    // If the other agent is delivering and I'm not, I try to swap packages
+    if (otherAgent.intention.type === "deliver" && me.intention.type!=='deliver') {
+        plan = await swapPackages(plan, index);
+        if(plan) return plan;
     }
-
-    //first only try to negotiate the move aside
+    // First only try to negotiate the move aside
     let response = await sendRequest("moveOut");
     console.log(response);
     if (response === "RE-SYNC") {
         plan = [];
     } else if (response === "SUCCESS") {
-        plan = [{x: x, y: y, move: "await"}].concat(plan.slice(index, index+2)).concat([{x: x, y: y, move: "answer"}]).concat(plan.slice(index+2));
+        plan = [{x: x, y: y, move: "await"}].concat(plan.slice(index, index + 2)).concat([{
+            x: x,
+            y: y,
+            move: "answer"
+        }]).concat(plan.slice(index + 2));
         console.log("\t\tMove aside successful");
     } else {
-        // negotiate the go around
+        // If the other agent cannot move aside, we try to move aside
+        let newPlan = await MoveAside(index, plan);
+        if (newPlan.length > 0) {
+            response = await sendRequest("waitForOther");
+            if (response === "SUCCESS") {
+                console.log("\tI'm moving aside and waiting for the other agent to pass");
+                return newPlan;
+            }
+        }
+
+        // If we cannot move aside, we ask if the other agent can plan around us
         response = await sendRequest("planAround");
         console.log(response);
         if (response === "RE-SYNC") {
@@ -112,51 +191,18 @@ async function agent0Negotiation(index, plan) {
                 plan = [];
             }
         } else {
-            // TODO: negotiate the swap of packages
-            let myPlan = frozenBFS(me, map.deliveryZones).length-1;
-            let otherPlan = frozenBFS(otherAgent.position, map.deliveryZones).length-1;
-            console.log(myPlan, otherPlan);
-            if ((myPlan < 1 && !map.deliveryZones.some((el) => el.x === x && el.y === y)) || (otherPlan < myPlan)) {
-                console.log("\t\t L'altro agent ha un piano più corto ");
-                let backtrack = await MoveAside(index, plan, true);
-                if (backtrack.length > 0){
-                    console.log("\t\t Delivering and moving aside");
-                    plan = [{x: x, y: y, move: "deliver"}, backtrack[0], {x: 0, y: 0, move: "answer"}, backtrack[1], ];
-                    response = await sendRequest("pickUp");
-                } else {
-                    //send request to other agent to back off
-                    response = await sendRequest("moveOut & pickUp");
-                    if (response === "SUCCESS") {
-                        console.log("\t\t Moving up and delivering");
-                        plan = [{x: x, y: y, move: "await"}, plan[index], {x: plan[index].x, y: plan[index].y, move: "deliver"}, {x: x, y: y, move: inverseMove[plan[index].move]}, {x: x, y: y, move: "answer"}, {x: x, y: y, move: "await"}];
-                    } else {
-                        plan = [];
-                        console.log("\t\tHARD REPLAN");
-                    }
-                }
-            } else {
-                console.log("\t\t L'altro agent ha un piano più lungo o uguale");
-                response = await sendRequest("swap");
+            // We first try to move around the other agent
+            let newPlan = await goAround(index, plan);
+            if (newPlan.length > 0) {
+                response = await sendRequest("stayStill");
                 if (response === "SUCCESS") {
-                    console.log("\t\tSwap successful");
-                    // keep the same plan
-                    plan = [{x: x, y: y, move: "await"}, plan[index], {x: x, y: y, move: "pickup"}, {x: x, y: y, move: "answer"}];
-                } else {
-                    console.log("\t\tSwap failed, trying to move aside");
-                    //if he can't I am problably blocking him, so I drop the package, move aside and wait
-                    let backtrack = await MoveAside(index, plan, true);
-                    if (backtrack.length > 0){
-                        console.log("\t\t Leaving clear path for the other agent to swap");
-                        response = await sendRequest("goForward");
-                        let newX = backtrack[0].x, newY = backtrack[0].y;
-                        plan = [backtrack[0], {x: newX, y: newY, move: "answer"}, backtrack[1], backtrack[2], {x: x, y: y, move: "fail"}];
-                    } else {
-                        //do not know what to do, hard replan
-                        plan = [];
-                        console.log("\t\tHARD REPLAN");
-                    }
+                    console.log("\tI'm moving around the other agent");
+                    return newPlan;
                 }
             }
+            // If we cannot move around the other agent, we try to swap packages
+            plan = await swapPackages(plan, index);
+
         }
     }
     return plan;
@@ -166,47 +212,10 @@ async function agent0Negotiation(index, plan) {
  * Negotiates the move aside or the go around with the other agent
  * @param {number} index The index of the failed move in the plan
  * @param {[{x: number, y: number, move: string}]} plan The plan to recover
- * @param {string} intention_type My current intention
  *
  * @returns {[{x: number, y: number, move: string}]} The new plan, [] if the plan is not recoverable
  */
 async function agent1Negotiation(index, plan) {
-    let planners = {
-        "moveOut": async (index, plan) => {
-            plan = await MoveAside(index, plan, false);
-            if (plan.length > 0) {
-                return [plan[0], {x: 0, y: 0, move: "answer"}].concat(plan.slice(1));
-            }
-            return [];
-        },
-        "planAround": async (index, plan) => {
-            plan = await goAround(index, plan);
-            if (plan.length > 0) {
-                return [plan[0], {x: 0, y: 0, move: "answer"}].concat(plan.slice(1));
-            }
-            return [];
-        },
-        "swap": async (index, plan) => {
-            let backtrack = await MoveAside(index, plan, true);
-            if (backtrack.length > 0) {
-                return [{x: me.x, y: me.y, move: "deliver"}, backtrack[0], {x: backtrack[0].x, y: backtrack[0].y, move: "answer"}, backtrack[1]];
-            }
-            return [];
-        },
-        "goForward": async (index, plan) => {
-            return [{x: me.x, y: me.y, move: "await"}, plan[index], {x: me.x, y: me.y, move: "answer"}].concat(plan.slice(index+1));
-        },
-        "pickUp": async (index, plan) => {
-            return [{x: me.x, y: me.y, move: "await"}, plan[index], {x: plan[index].x, y: plan[index].y, move: "pickup"}, {x:  plan[index].x, y: plan[index].y, move: "answer"}];
-        },
-        "moveOut & pickUp": async (index, plan) => {
-            let backtrack = await MoveAside(index, plan, true);
-            if (backtrack.length > 0) {
-                return [backtrack[0], {x: 0, y: 0, move: "answer"}, backtrack[1], backtrack[2], {x: me.x, y: me.y, move: "pickup"},{x: 0, y: 0, move: "answer"}];
-            }
-            return [];
-        }
-    }
     let newPlan = [];
     //first only try to move aside
     let incomingRequest = await awaitRequest();
@@ -230,6 +239,13 @@ async function agent1Negotiation(index, plan) {
     return plan;
 }
 
+/**
+ * Moves aside the agent to let the other agent pass
+ * @param index At which step of the plan we are
+ * @param plan The plan to recover
+ * @param no_check Whether to check if the other agent plan is colliding with our plan
+ * @returns {Promise<*[]>} The new plan created if possible, otherwise an empty plan
+ */
 async function MoveAside(index, plan, no_check = false) {
     let newPlan = [];
     let currX = me.x, currY = me.y;
@@ -256,6 +272,83 @@ async function MoveAside(index, plan, no_check = false) {
         }
     }
     return newPlan;
+}
+
+/**
+ * Tries to swap packages with the other agent to avoid hard re-planning
+ * @param plan The plan to recover
+ * @param index The index of the current plan
+ * @returns {Promise<*[]>}
+ */
+async function swapPackages(plan, index){
+    let x = me.x, y = me.y;
+    let inverseMove = {
+        "up": "down",
+        "down": "up",
+        "left": "right",
+        "right": "left"
+    }
+    let myPlan = frozenBFS(me, map.deliveryZones).length - 1;
+    let otherPlan = frozenBFS(otherAgent.position, map.deliveryZones).length - 1;
+    let response;
+    if ((myPlan < 1 && !map.deliveryZones.some((el) => el.x === x && el.y === y)) || (otherPlan < myPlan)) {
+        console.log("\t\t L'altro agent ha un piano più corto ");
+        let backtrack = await MoveAside(index, plan, true);
+        if (backtrack.length > 0) {
+            console.log("\t\t Delivering and moving aside");
+            plan = [{x: x, y: y, move: "deliver"}, backtrack[0], {x: 0, y: 0, move: "answer"}, backtrack[1],];
+            response = await sendRequest("pickUp");
+        } else {
+            //send request to other agent to back off
+            response = await sendRequest("moveOut & pickUp");
+            if (response === "SUCCESS") {
+                console.log("\t\t Moving up and delivering");
+                plan = [{x: x, y: y, move: "await"}, plan[index], {
+                    x: plan[index].x,
+                    y: plan[index].y,
+                    move: "deliver"
+                }, {x: x, y: y, move: inverseMove[plan[index].move]}, {x: x, y: y, move: "answer"}, {
+                    x: x,
+                    y: y,
+                    move: "await"
+                }];
+            } else {
+                plan = [];
+                console.log("\t\tHARD REPLAN");
+            }
+        }
+    } else {
+        console.log("\t\t L'altro agent ha un piano più lungo o uguale");
+        response = await sendRequest("swap");
+        if (response === "SUCCESS") {
+            console.log("\t\tSwap successful");
+            // keep the same plan
+            plan = [{x: x, y: y, move: "await"}, plan[index], {x: x, y: y, move: "pickup"}, {
+                x: x,
+                y: y,
+                move: "answer"
+            }];
+        } else {
+            console.log("\t\tSwap failed, trying to move aside");
+            // if he can't, I am probably blocking him, so I drop the package, move aside and wait
+            let backtrack = await MoveAside(index, plan, true);
+            if (backtrack.length > 0) {
+                console.log("\t\t Leaving clear path for the other agent to swap");
+                response = await sendRequest("goForward");
+                let newX = backtrack[0].x, newY = backtrack[0].y;
+                plan = [backtrack[0], {x: newX, y: newY, move: "answer"}, backtrack[1], backtrack[2], {
+                    x: x,
+                    y: y,
+                    move: "fail"
+                }];
+            } else {
+                // do not know what to do, hard replan
+                plan = [];
+                console.log("\t\tHARD REPLAN");
+            }
+        }
+    }
+    return plan;
 }
 
 export {recoverPlan};

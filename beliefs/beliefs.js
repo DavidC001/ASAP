@@ -2,7 +2,7 @@ import {senseParcels} from "./parcels.js";
 import {senseAgents} from "./agents.js";
 import {createMap} from "./map.js";
 import {DeliverooApi} from "@unitn-asa/deliveroo-js-client";
-import { sendMeInfo, sendBelief } from "../coordination/coordination.js";
+import {sendMeInfo, sendBelief} from "../coordination/coordination.js";
 
 /**
  * Variables with all the information about myself
@@ -12,6 +12,7 @@ import { sendMeInfo, sendBelief } from "../coordination/coordination.js";
  * x:number,
  * y:number,
  * score:number,
+ * intention: {type:string, goal:{x:number, y:number}},
  * config:{
  *      MAP_FILE:string,
  *      PARCELS_GENERATION_INTERVAL:string,
@@ -28,7 +29,7 @@ import { sendMeInfo, sendBelief } from "../coordination/coordination.js";
  *      RANDOM_AGENT_SPEED:string,
  *      CLOCK:number
  * },
- * moves_per_parcel_decay:number}} 
+ * moves_per_parcel_decay:number}}
  */
 const me = {};
 

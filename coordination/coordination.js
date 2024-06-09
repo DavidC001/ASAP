@@ -6,7 +6,7 @@ import myServer from '../visualizations/server.js';
 
 import {
     DASHBOARD,
-    NAME, 
+    NAME,
     MAX_REQUEST_TIME, MAX_AWAIT_RETRY
 } from "../config.js";
 
@@ -74,11 +74,11 @@ function otherAgentInformation(msg) {
                 otherAgent.planBeliefset.declare("collaborator t_" + move.x + "_" + move.y);
             }
             // console.log("other agent plan", otherAgent.plan);
-            if ( DASHBOARD) myServer.emitMessage("otherAgentPlan", otherAgent.plan);
+            if (DASHBOARD) myServer.emitMessage("otherAgentPlan", otherAgent.plan);
             break;
 
         case "intention":
-            if ( DASHBOARD) myServer.emitMessage("otherAgentIntention", otherAgent.intention);
+            if (DASHBOARD) myServer.emitMessage("otherAgentIntention", otherAgent.intention);
             break;
 
         case "carriedParcels":
@@ -105,7 +105,7 @@ function beliefSharing(msg) {
 }
 
 /**
- * Handshake function, 
+ * Handshake function,
  * who receives the handshake becomes the master
  *
  * @param id
@@ -132,7 +132,7 @@ function registerRequest(msg, replyReq) {
 
     // create a reply function to show the message in the dashboard
     let replyFun = (msg) => {
-        if ( DASHBOARD) myServer.emitMessage("response", msg);
+        if (DASHBOARD) myServer.emitMessage("response", msg);
         return replyReq({header: "requestResponse", content: msg});
     }
 
@@ -152,7 +152,7 @@ function registerRequest(msg, replyReq) {
     else requestBuffer.push(request);
 
     // show the request in the dashboard
-    if ( DASHBOARD) myServer.emitMessage("request", ["Received", msg]);
+    if (DASHBOARD) myServer.emitMessage("request", ["Received", msg]);
 }
 
 /**
@@ -214,7 +214,7 @@ async function sendMsg(msg) {
 
 /**
  * Send a belief to the other agent
- * 
+ *
  * @param {string} type
  * @param {object} msg
  */
@@ -241,7 +241,7 @@ async function sendRequest(msg) {
     let message = {header: "request", content: msg};
 
     // show the request in the dashboard
-    if ( DASHBOARD) myServer.emitMessage("request", ["Sent", msg]);
+    if (DASHBOARD) myServer.emitMessage("request", ["Sent", msg]);
 
     // send the request and wait for the response
     let response = await new Promise((resolve) => {
@@ -252,21 +252,21 @@ async function sendRequest(msg) {
         // set a timeout to the request to avoid infinite waiting
         setTimeout(() => {
             resolve({content: "RE-SYNC"});
-        }, MAX_REQUEST_TIME+100);
+        }, MAX_REQUEST_TIME + 100);
     });
 
     // show the response in the dashboard
-    if ( DASHBOARD) myServer.emitMessage("response", response.content);
+    if (DASHBOARD) myServer.emitMessage("response", response.content);
 
     return response.content;
 }
 
 /**
  * Wait for a request from the other agent
- * 
+ *
  * @returns {Promise<{content: string}>}
  */
-async function awaitRequest(){
+async function awaitRequest() {
     let request = [];
 
     // see if there are requests in the buffer, otherwise wait for a bit
@@ -291,7 +291,7 @@ async function awaitRequest(){
     // get the last request and return it
     request = request[request.length - 1];
     // if the request is expired or doesn't exist, return a failed request
-    if(!request || request.expired) request = {content: "FAILED"};
+    if (!request || request.expired) request = {content: "FAILED"};
     return request;
 }
 
@@ -305,7 +305,7 @@ const awaitBuffer = new CommunicationBuffer();
  * Wait for the clearence to proceed from the other agent
  * @returns {Promise<void>}
  */
-async function awaitOtherAgent(){
+async function awaitOtherAgent() {
     await sendRequest("awaiting");
 }
 
@@ -313,11 +313,11 @@ async function awaitOtherAgent(){
  * Answer the other agent that the request is cleared
  * @returns {Promise<void>}
  */
-async function answerOtherAgent(){
+async function answerOtherAgent() {
     let awaiting;
 
     // see if there are requests in the buffer, otherwise wait for a bit
-    for (let i = 0; i < MAX_AWAIT_RETRY; i++){
+    for (let i = 0; i < MAX_AWAIT_RETRY; i++) {
         awaiting = awaitBuffer.readBuffer();
         if (awaiting.length > 0) {
             break;
@@ -328,9 +328,22 @@ async function answerOtherAgent(){
     }
 
     // reply to all the requests in the buffer
-    for (let waiting of awaiting){
+    for (let waiting of awaiting) {
         waiting.reply("answer");
     }
 }
 
-export {coordination, AgentRole, agentBuffer, parcelBuffer, otherAgent, sendMsg, sendBelief, sendMeInfo, sendRequest, awaitRequest, awaitOtherAgent, answerOtherAgent};
+export {
+    coordination,
+    AgentRole,
+    agentBuffer,
+    parcelBuffer,
+    otherAgent,
+    sendMsg,
+    sendBelief,
+    sendMeInfo,
+    sendRequest,
+    awaitRequest,
+    awaitOtherAgent,
+    answerOtherAgent
+};

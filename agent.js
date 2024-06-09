@@ -1,8 +1,8 @@
-import { map } from './beliefs/map.js';
-import { distance, me } from './beliefs/beliefs.js';
-import { parcels } from './beliefs/parcels.js';
-import { agents } from './beliefs/agents.js';
-import { EventEmitter } from 'events';
+import {map} from './beliefs/map.js';
+import {distance, me} from './beliefs/beliefs.js';
+import {parcels} from './beliefs/parcels.js';
+import {agents} from './beliefs/agents.js';
+import {EventEmitter} from 'events';
 import {
     beamSearch,
     deliveryBFS,
@@ -10,13 +10,13 @@ import {
     pickupAndDeliver,
     exploreBFS2
 } from './planner/planner.js';
-import { recoverPlan } from './planner/recover.js';
-import { DeliverooApi } from '@unitn-asa/deliveroo-js-client';
+import {recoverPlan} from './planner/recover.js';
+import {DeliverooApi} from '@unitn-asa/deliveroo-js-client';
 import myServer from './visualizations/server.js';
 
 //wait console input
-import { sendMeInfo, otherAgent, awaitOtherAgent, answerOtherAgent } from './coordination/coordination.js';
-import { frozenBFS } from './planner/search_planners.js';
+import {sendMeInfo, otherAgent, awaitOtherAgent, answerOtherAgent} from './coordination/coordination.js';
+import {frozenBFS} from './planner/search_planners.js';
 
 import {
     DASHBOARD,
@@ -193,11 +193,13 @@ class Intention {
                 y: plan[plan.length - 1].y
             }
             // update the other agent with my objective, to correctly calculate the utilities
-            sendMeInfo("intention", { type: this.type, goal: this.goal });
+            sendMeInfo("intention", {type: this.type, goal: this.goal});
+            // Update the intention in the agent
+            me.intention = {type: this.type, goal: this.goal};
         }
 
         // send the plan to the dashboard and to the other agent
-        if (DASHBOARD) myServer.emitMessage('intention', { type: this.type, goal: this.goal });
+        if (DASHBOARD) myServer.emitMessage('intention', {type: this.type, goal: this.goal});
         sendMeInfo("plan", plan);
         if (DASHBOARD) myServer.emitMessage('plan', plan);
         // console.log('\tplan', me.x, me.y, plan);
@@ -314,11 +316,11 @@ class Intention {
 
     /**
      * Computes the utility of the intention to pick up a parcel
-     * 
+     *
      * @param {number} numParcels - The number of carried parcels
      * @param {number} score - The score of the carried parcels
      * @param {number} steps - The number of steps to pick up the parcel
-     * 
+     *
      * @returns {{score: number, steps: number}} The score and the steps to pick up the parcel
      */
     async pickUpUtility(numParcels, score, steps) {
@@ -361,14 +363,14 @@ class Intention {
                     let closer = false;
                     for (let [id, agent] of agents) {
                         if (agent.id !== me.id && agent.position.x !== -1) {
-                            
+
                             // compute the distance of the other agent to the parcel, be conservative and use the clean BFS
                             let distance_agent = frozenBFS(agent.position, this.goal).length - 1;
-                            
+
                             if (distance_agent < steps && distance_agent > 1) {
                                 // if the other agent is closer set the score in the interval [0.2, 1]
                                 closer = true;
-                                
+
                                 // compute the score based on the distance and the parcel score
                                 let parcelScore = parcels.get(this.pickUp).score / (me.config.PARCEL_REWARD_AVG + me.config.PARCEL_REWARD_VARIANCE) / 2;
                                 let distanceScore = (steps - distance_agent) / (map.width + map.height) * 0.3;
@@ -393,7 +395,7 @@ class Intention {
             }
         }
 
-        return { score: score, steps: steps, pickedUpParcles: pickedUpParcles };
+        return {score: score, steps: steps, pickedUpParcles: pickedUpParcles};
     }
 
     /**
@@ -451,14 +453,14 @@ class Intention {
         utility =
             score
             - carriedParcels.reduce((acc, id) => {
-                if(
-                    parcels.get(id).score - 
-                    ( 
-                        Math.ceil(steps / me.moves_per_parcel_decay) 
+                if (
+                    parcels.get(id).score -
+                    (
+                        Math.ceil(steps / me.moves_per_parcel_decay)
                         + Math.ceil(planning_time / me.config.PARCEL_DECADING_INTERVAL) * (this.started ? 0 : 1)
                         + Math.ceil(steps * MOVE_SLACK / me.config.PARCEL_DECADING_INTERVAL)
                     ) * penality >= 0
-                ){
+                ) {
                     return acc + (
                         Math.ceil(steps / me.moves_per_parcel_decay)
                         + Math.ceil(planning_time / me.config.PARCEL_DECADING_INTERVAL) * (this.started ? 0 : 1)
@@ -469,14 +471,14 @@ class Intention {
                 }
             }, 0)
             - pickedUpParcles.reduce((acc, id) => {
-                if(
-                    parcels.get(id).score - 
-                    ( 
-                        Math.ceil(steps / me.moves_per_parcel_decay) 
+                if (
+                    parcels.get(id).score -
+                    (
+                        Math.ceil(steps / me.moves_per_parcel_decay)
                         + Math.ceil(planning_time / me.config.PARCEL_DECADING_INTERVAL) * (this.started ? 0 : 1)
                         + Math.ceil(steps * MOVE_SLACK / me.config.PARCEL_DECADING_INTERVAL)
                     ) >= 0
-                ){
+                ) {
                     return acc + (
                         Math.ceil(steps / me.moves_per_parcel_decay)
                         + Math.ceil(planning_time / me.config.PARCEL_DECADING_INTERVAL) * (this.started ? 0 : 1)
@@ -546,12 +548,12 @@ class Intentions {
             let utility = await intention.utility();
             console.log('\tutility', intention.type, utility, intention.goal);
             if ((
-                utility > maxUtility || // if the utility is higher
-                (
-                    utility === maxUtility
-                    && distance(me, intention.goal) < distance(me, maxIntention.goal) 
-                ) // or if the utility is the same and the distance is lower
-            )
+                    utility > maxUtility || // if the utility is higher
+                    (
+                        utility === maxUtility
+                        && distance(me, intention.goal) < distance(me, maxIntention.goal)
+                    ) // or if the utility is the same and the distance is lower
+                )
                 &&
                 (
                     intention.type === 'explore' || intention.type === 'deliver'
@@ -572,11 +574,12 @@ class Intentions {
             this.currentIntention.executeInt();
         } else if ((this.currentIntention.goal !== maxIntention.goal && this.currentIntention.started) || this.currentIntention.reached) {
             //if the goal is different from the current intention switch intention
-            
+
             //wait for the current intention to stop before starting the new one
             stopEmitter.once('stoppedIntention' + this.currentIntention.type + ' ' + this.currentIntention.goal, () => {
                 console.log("starting intention", maxIntention.type, "to", (maxIntention.type !== "deliver") ? maxIntention.goal : "delivery zone");
-                sendMeInfo("intention", { type: maxIntention.type, goal: maxIntention.goal });
+                sendMeInfo("intention", {type: maxIntention.type, goal: maxIntention.goal});
+                me.intention = {type: maxIntention.type, goal: maxIntention.goal};
                 maxIntention.executeInt();
             });
 
@@ -597,7 +600,7 @@ class Intentions {
         let deliver = true;
         this.addIntention(new Intention(goal, pickUp, deliver, 'deliver', client));
         //explore intention
-        goal = { x: 0, y: 0 };
+        goal = {x: 0, y: 0};
         pickUp = false;
         deliver = false;
         this.addIntention(new Intention(goal, pickUp, deliver, 'explore', client));
@@ -639,16 +642,16 @@ class Intentions {
     }
 }
 
-/** 
+/**
  * List of parcels being currently carried
- * @type {Array<string>} 
+ * @type {Array<string>}
  */
 const carriedParcels = [];
 
-/** 
+/**
  * The intentions of the agent
- * @type {Intentions} 
-*/
+ * @type {Intentions}
+ */
 const intentions = new Intentions();
 
 /**
@@ -676,4 +679,4 @@ function IntentionRevision(client) {
     });
 }
 
-export { IntentionRevision };
+export {IntentionRevision};
