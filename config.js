@@ -10,7 +10,7 @@ const DASHBOARD = true; // if true, the dashboard will be available at http://lo
 // Agent intention revision and execution hyperparameters
 const MAX_RETRIES = 2; // Number of retries before trying to recover the plan
 const USE_PDDL = (process.env.USE_PDDL) ? process.env.USE_PDDL === "true" : false; // If true, the agent will use PDDL to plan its actions
-const CHANGE_INTENTION_INTERVAL = 1; // Number of moves before checking if the intention should be changed
+const CHANGE_INTENTION_INTERVAL = (process.env.USE_PDDL) ? 10 : 1; // Number of moves before checking if the intention should be changed
 const HARD_REPLAN_MOVE_INTERVAL = (USE_PDDL) ? Math.Infinity : 6; // Number of moves before hard replanning
 const SOFT_REPLAN_INTERVAL = (USE_PDDL) ? 6 : Math.Infinity; // Number of moves before soft replanning
 const INTENTION_REVISION_INTERVAL = 100; // Interval between intention revision
@@ -25,7 +25,7 @@ const SLACK_DECAY = 0.8; // Decay rate for the slack time
 const MAX_WAIT = (USE_PDDL)? 1:10; // Maximum number of moves to wait on a tile
 const MAX_EXPLORE_PATH_LENGTH = 20; // Maximum length of the path to explore
 const PROBABILITY_KEEP_BEST_TILE = 0.8; // Probability to keep the tile when ther is a tie in the exploration
-const TIME_PENALTY = 10; // When I'm unable to reach the exploration goal, penalize the tile so to eventually discard it
+const TIME_PENALTY = 100; // When I'm unable to reach the exploration goal, penalize the tile so to eventually discard it
 // Recover plan hyperparameters
 const MAX_WAIT_FAIL = 5; // Maximum number of moves to wait on a tile when the plan fails to see the other agent intention
 const BASE_FAIL_WAIT = 1000; // Base time to wait when the plan fails to see the other agent intention
