@@ -323,6 +323,7 @@ class Intention {
      * @returns {{score: number, steps: number}} The score and the steps to pick up the parcel
      */
     async pickUpUtility(numParcels, score, steps) {
+        let pickedUpParcles = [];
 
         if (
             map.map[this.goal.x][this.goal.y].agent !== null
@@ -341,6 +342,7 @@ class Intention {
                     steps++;
                 } else if (move.move === 'pickup') {
                     score += map.map[move.x][move.y].parcel.score;
+                    pickedUpParcles.push(map.map[move.x][move.y].parcel.id);
                     numParcels++;
                 }
             }
@@ -387,7 +389,7 @@ class Intention {
             }
         }
 
-        return { score: score, steps: steps };
+        return { score: score, steps: steps, pickedUpParcles: pickedUpParcles };
     }
 
     /**
@@ -414,15 +416,18 @@ class Intention {
 
         // compute the number of carried parcels, after removing the invalid ones
         let numParcels = carriedParcels.length;
+        let pickedUpParcles = [];
         let steps = 0;
         let utility = 0;
+        let penality = 1;
 
         switch (this.type) {
             case 'pickup':
-                numParcels *= PENALITY_RATE_CARRIED_PARCELS;
+                penality = PENALITY_RATE_CARRIED_PARCELS;
                 let res = await this.pickUpUtility(numParcels, score, steps);
                 score = res.score;
                 steps = res.steps;
+                pickedUpParcles = res.pickedUpParcles;
                 break;
             case 'deliver':
                 steps = frozenBFS(me, this.goal).length;
@@ -439,9 +444,42 @@ class Intention {
         // compute the utility of the intention
         utility =
             score
-            - (numParcels) * Math.ceil(steps / me.moves_per_parcel_decay)
-            - (numParcels) * Math.ceil(PLANNING_TIME / me.config.PARCEL_DECADING_INTERVAL) * (this.started ? 0 : 1)
-            - (numParcels) * Math.ceil(steps * MOVE_SLACK / me.config.PARCEL_DECADING_INTERVAL);
+            - carriedParcels.reduce((acc, id) => {
+                if(
+                    parcels.get(id).score - 
+                    ( 
+                        Math.ceil(steps / me.moves_per_parcel_decay) 
+                        + Math.ceil(PLANNING_TIME / me.config.PARCEL_DECADING_INTERVAL) * (this.started ? 0 : 1)
+                        + Math.ceil(steps * MOVE_SLACK / me.config.PARCEL_DECADING_INTERVAL)
+                    ) * penality >= 0
+                ){
+                    return acc + (
+                        Math.ceil(steps / me.moves_per_parcel_decay)
+                        + Math.ceil(PLANNING_TIME / me.config.PARCEL_DECADING_INTERVAL) * (this.started ? 0 : 1)
+                        + Math.ceil(steps * MOVE_SLACK / me.config.PARCEL_DECADING_INTERVAL)
+                    ) * penality
+                } else {
+                    return acc + parcels.get(id).score;
+                }
+            }, 0)
+            - pickedUpParcles.reduce((acc, id) => {
+                if(
+                    parcels.get(id).score - 
+                    ( 
+                        Math.ceil(steps / me.moves_per_parcel_decay) 
+                        + Math.ceil(PLANNING_TIME / me.config.PARCEL_DECADING_INTERVAL) * (this.started ? 0 : 1)
+                        + Math.ceil(steps * MOVE_SLACK / me.config.PARCEL_DECADING_INTERVAL)
+                    ) >= 0
+                ){
+                    return acc + (
+                        Math.ceil(steps / me.moves_per_parcel_decay)
+                        + Math.ceil(PLANNING_TIME / me.config.PARCEL_DECADING_INTERVAL) * (this.started ? 0 : 1)
+                        + Math.ceil(steps * MOVE_SLACK / me.config.PARCEL_DECADING_INTERVAL)
+                    )
+                } else {
+                    return acc + parcels.get(id).score;
+                }
+            }, 0)
 
         return utility;
     }
