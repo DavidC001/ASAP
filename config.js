@@ -10,7 +10,7 @@ const DASHBOARD = true; // if true, the dashboard will be available at http://lo
 // Agent intention revision and execution hyperparameters
 const MAX_RETRIES = 2; // Number of retries before trying to recover the plan
 const USE_PDDL = (process.env.USE_PDDL) ? process.env.USE_PDDL === "true" : false; // If true, the agent will use PDDL to plan its actions
-const CHANGE_INTENTION_INTERVAL = 10; // Number of moves before checking if the intention should be changed
+const CHANGE_INTENTION_INTERVAL = 1; // Number of moves before checking if the intention should be changed
 const HARD_REPLAN_MOVE_INTERVAL = (USE_PDDL) ? Math.Infinity : 6; // Number of moves before hard replanning
 const SOFT_REPLAN_INTERVAL = (USE_PDDL) ? 6 : Math.Infinity; // Number of moves before soft replanning
 const INTENTION_REVISION_INTERVAL = 100; // Interval between intention revision

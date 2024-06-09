@@ -308,7 +308,6 @@ class Intention {
             stopEmitter.emit('stoppedIntention' + this.type + ' ' + this.goal);
         } else {
             //if the goal has been reached set the reached flag
-            console.log('reached goal', this.type, this.goal);
             this.reached = true;
         }
     }
@@ -324,6 +323,7 @@ class Intention {
      */
     async pickUpUtility(numParcels, score, steps) {
         let pickedUpParcles = [];
+        let parcelsScore = 0;
 
         if (
             map.map[this.goal.x][this.goal.y].agent !== null
@@ -352,39 +352,43 @@ class Intention {
                 //if the goal is unreachable set the score to 0
                 score = 0;
             } else {
-
-                //check if another agent is closer and set the score accordingly
-                let closer = false;
-                let closestAgent = null;
-                for (let [id, agent] of agents) {
-                    if (agent.id !== me.id && agent.position.x !== -1) {
-                        
-                        // compute the distance of the other agent to the parcel, be conservative and use the clean BFS
-                        let distance_agent = frozenBFS(agent.position, this.goal).length - 1;
-                        
-                        if (distance_agent < steps && distance_agent > 1 ) {
-                            // if the other agent is closer set the score in the interval [0.2, 1]
-                            closer = true;
+                //if the parcel to pickup is not worth it early stop and set the score to 0
+                if (map.map[this.goal.x][this.goal.y].parcel.score - (steps + map.map[this.goal.x][this.goal.y].heuristic) <= 0) {
+                    score = 0;
+                    steps = 0;
+                } else {
+                    //check if another agent is closer and set the score accordingly
+                    let closer = false;
+                    for (let [id, agent] of agents) {
+                        if (agent.id !== me.id && agent.position.x !== -1) {
                             
-                            // compute the score based on the distance and the parcel score
-                            let parcelScore = parcels.get(this.pickUp).score / (me.config.PARCEL_REWARD_AVG + me.config.PARCEL_REWARD_VARIANCE) / 2;
-                            let distanceScore = (steps - distance_agent) / (map.width + map.height) * 0.3;
-                            score = 0.2 + parcelScore + distanceScore;
-                            steps = 0;
+                            // compute the distance of the other agent to the parcel, be conservative and use the clean BFS
+                            let distance_agent = frozenBFS(agent.position, this.goal).length - 1;
+                            
+                            if (distance_agent < steps && distance_agent > 1) {
+                                // if the other agent is closer set the score in the interval [0.2, 1]
+                                closer = true;
+                                
+                                // compute the score based on the distance and the parcel score
+                                let parcelScore = parcels.get(this.pickUp).score / (me.config.PARCEL_REWARD_AVG + me.config.PARCEL_REWARD_VARIANCE) / 2;
+                                let distanceScore = (steps - distance_agent) / (map.width + map.height) * 0.3;
+                                score = 0.2 + parcelScore + distanceScore;
+                                steps = 0;
 
-                            //if it's the other agent closer, then set the score to 0
-                            if (agent.id === otherAgent.id) {
-                                score = 0
-                                break;
+                                //if it's the other agent closer, then set the score to 0
+                                if (agent.id === otherAgent.id) {
+                                    score = 0
+                                    break;
+                                }
+                                //console.log('\t\tcloser agent', agent.id, 'distance', distance_agent, 'score', score);
                             }
-                            //console.log('\t\tcloser agent', agent.id, 'distance', distance_agent, 'score', score);
                         }
                     }
-                }
 
-                //if the other agent is not closer use the clean BFS precalculated heuristic to compute the steps to deliver the parcel
-                if (!closer) {
-                    steps += map.map[this.goal.x][this.goal.y].heuristic;
+                    //if the other agent is not closer use the clean BFS precalculated heuristic to compute the steps to deliver the parcel
+                    if (!closer) {
+                        steps += map.map[this.goal.x][this.goal.y].heuristic;
+                    }
                 }
             }
         }
@@ -420,9 +424,11 @@ class Intention {
         let steps = 0;
         let utility = 0;
         let penality = 1;
+        let planning_time = PLANNING_TIME;
 
         switch (this.type) {
             case 'pickup':
+                planning_time *= 2;
                 penality = PENALITY_RATE_CARRIED_PARCELS;
                 let res = await this.pickUpUtility(numParcels, score, steps);
                 score = res.score;
@@ -449,13 +455,13 @@ class Intention {
                     parcels.get(id).score - 
                     ( 
                         Math.ceil(steps / me.moves_per_parcel_decay) 
-                        + Math.ceil(PLANNING_TIME / me.config.PARCEL_DECADING_INTERVAL) * (this.started ? 0 : 1)
+                        + Math.ceil(planning_time / me.config.PARCEL_DECADING_INTERVAL) * (this.started ? 0 : 1)
                         + Math.ceil(steps * MOVE_SLACK / me.config.PARCEL_DECADING_INTERVAL)
                     ) * penality >= 0
                 ){
                     return acc + (
                         Math.ceil(steps / me.moves_per_parcel_decay)
-                        + Math.ceil(PLANNING_TIME / me.config.PARCEL_DECADING_INTERVAL) * (this.started ? 0 : 1)
+                        + Math.ceil(planning_time / me.config.PARCEL_DECADING_INTERVAL) * (this.started ? 0 : 1)
                         + Math.ceil(steps * MOVE_SLACK / me.config.PARCEL_DECADING_INTERVAL)
                     ) * penality
                 } else {
@@ -467,13 +473,13 @@ class Intention {
                     parcels.get(id).score - 
                     ( 
                         Math.ceil(steps / me.moves_per_parcel_decay) 
-                        + Math.ceil(PLANNING_TIME / me.config.PARCEL_DECADING_INTERVAL) * (this.started ? 0 : 1)
+                        + Math.ceil(planning_time / me.config.PARCEL_DECADING_INTERVAL) * (this.started ? 0 : 1)
                         + Math.ceil(steps * MOVE_SLACK / me.config.PARCEL_DECADING_INTERVAL)
                     ) >= 0
                 ){
                     return acc + (
                         Math.ceil(steps / me.moves_per_parcel_decay)
-                        + Math.ceil(PLANNING_TIME / me.config.PARCEL_DECADING_INTERVAL) * (this.started ? 0 : 1)
+                        + Math.ceil(planning_time / me.config.PARCEL_DECADING_INTERVAL) * (this.started ? 0 : 1)
                         + Math.ceil(steps * MOVE_SLACK / me.config.PARCEL_DECADING_INTERVAL)
                     )
                 } else {
@@ -494,7 +500,7 @@ class Intention {
             this.stop = false;
             this.started = false;
             this.reached = false;
-            console.log('stopped intention', this.type, "to", (this.type !== "deliver") ? this.goal : "delivery zone");
+            console.log('reached intention', this.type, "to", (this.type !== "deliver") ? this.goal : "delivery zone");
             stopEmitter.emit('stoppedIntention' + this.type + ' ' + this.goal);
         }
     }
@@ -538,7 +544,7 @@ class Intentions {
         let maxIntention = null;
         for (let intention of this.intentions) {
             let utility = await intention.utility();
-            // console.log('\tutility', intention.type, utility);
+            console.log('\tutility', intention.type, utility, intention.goal);
             if ((
                 utility > maxUtility || // if the utility is higher
                 (
@@ -557,6 +563,7 @@ class Intentions {
                 maxIntention = intention;
             }
         }
+        console.log("\n")
 
         if (this.currentIntention === null) {
             //if there is no current intention start the one with the highest utility
