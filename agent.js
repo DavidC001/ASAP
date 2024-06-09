@@ -546,7 +546,7 @@ class Intentions {
         let maxIntention = null;
         for (let intention of this.intentions) {
             let utility = await intention.utility();
-            console.log('\tutility', intention.type, utility, intention.goal);
+            // console.log('\tutility', intention.type, utility, intention.goal);
             if ((
                     utility > maxUtility || // if the utility is higher
                     (
@@ -565,7 +565,7 @@ class Intentions {
                 maxIntention = intention;
             }
         }
-        console.log("\n")
+        // console.log("\n")
 
         if (this.currentIntention === null) {
             //if there is no current intention start the one with the highest utility
