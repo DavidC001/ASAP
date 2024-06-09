@@ -161,7 +161,7 @@ async function parsePlan (json) {
     }
 
     // PARSING plan from /package/lama-first/solve
-    else if ( json.result.stdout.includes('Solution found!') ) {
+    else if ( json.stdout.includes('Solution found!') ) {
         
         // console.log( '\tUsing parser for /package/lama-first/solve');
 
