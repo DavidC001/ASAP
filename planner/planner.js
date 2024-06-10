@@ -259,15 +259,15 @@ function exploreClimb(pos, goal, usePDDL = false) {
 async function exploreBFS(pos, goal, usePDDL = false) {
     // console.log("\t[EXPLORE BFS]");
     let best_tile = {x: -1, y: -1, probability: 1};
-    let best_utility = -1;
+    let best_loss = -1;
 
-    // Loop through all the spawnable tiles and calculate the utility of each tile
+    // Loop through all the spawnable tiles and calculate the loss of each tile
     for (let tile of map.spawnableTiles) {
         let tileX = tile.x;
         let tileY = tile.y;
         let tile_last_seen = map.map[tileX][tileY].last_seen;
         let tile_agent_heat = map.map[tileX][tileY].agent_heat / Math.max(1, agents.size);
-        let tile_utility = Math.round(
+        let tile_loss = Math.round(
             tile_last_seen *
             (1 - tile.probability) *
             (tile_agent_heat) *
@@ -281,7 +281,7 @@ async function exploreBFS(pos, goal, usePDDL = false) {
         if (
             ( // If the tile is better than the current best tile
                 best_tile.x === -1
-                || best_utility >= tile_utility
+                || best_loss >= tile_loss
             )
             
             && (map.cleanBFS(pos, [tile]).length > 1 || (pos.x === tileX && pos.y === tileY)) // And the tile is reachable
@@ -292,16 +292,16 @@ async function exploreBFS(pos, goal, usePDDL = false) {
                 || (map.map[otherAgent.intention.goal.x][otherAgent.intention.goal.y].RegionIndex !== map.map[tileX][tileY].RegionIndex)
             )
         ) {
-            if (best_utility === tile_utility) {
+            if (best_loss === tile_loss) {
                 // When equal, randomly choose to keep the current best tile
                 if (Math.random() > PROBABILITY_KEEP_BEST_TILE) {
                     best_tile = {x: tile.x, y: tile.y, probability: tile.probability};
-                    best_utility = tile_utility
+                    best_loss = tile_loss
                 }
             } else {
                 // Otherwise, update the best tile
                 best_tile = {x: tile.x, y: tile.y, probability: tile.probability};
-                best_utility = tile_utility
+                best_loss = tile_loss
             }
         }
 
@@ -322,7 +322,7 @@ async function exploreBFS(pos, goal, usePDDL = false) {
         }
     }
 
-    // console.log("\t", best_tile, best_last_seen, best_agent_heat, "Utility", best_utility);
+    // console.log("\t", best_tile, best_last_seen, best_agent_heat, "loss", best_loss);
 
     // Search for the path to the best tile
     let plan = await beamPackageSearch(pos, [best_tile], usePDDL, true);
