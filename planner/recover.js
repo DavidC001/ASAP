@@ -152,9 +152,9 @@ async function handleNegotiation(index, plan) {
 async function agent0Negotiation(index, plan) {
     let x = me.x, y = me.y;
     // If the other agent is delivering and I'm not, I try to swap packages
-    if (otherAgent.intention.type === "deliver" && me.intention.type!=='deliver') {
+    if (otherAgent.intention.type === "deliver" && me.intention.type !== 'deliver') {
         plan = await swapPackages(plan, index);
-        if(plan) return plan;
+        if (plan) return plan;
     }
     // First only try to negotiate the move aside
     let response = await sendRequest("moveOut");
@@ -170,7 +170,7 @@ async function agent0Negotiation(index, plan) {
         console.log("\t\tMove aside successful");
     } else {
         // If the other agent cannot move aside, we try to move aside
-        let newPlan = await MoveAside(index, plan);
+        let newPlan = await planners['moveOut'](index, plan);
         if (newPlan.length > 0) {
             response = await sendRequest("waitForOther");
             if (response === "SUCCESS") {
@@ -192,7 +192,7 @@ async function agent0Negotiation(index, plan) {
             }
         } else {
             // We first try to move around the other agent
-            let newPlan = await goAround(index, plan);
+            let newPlan = await planners['goAround'](index, plan);
             if (newPlan.length > 0) {
                 response = await sendRequest("stayStill");
                 if (response === "SUCCESS") {
@@ -280,7 +280,7 @@ async function MoveAside(index, plan, no_check = false) {
  * @param index The index of the current plan
  * @returns {Promise<*[]>}
  */
-async function swapPackages(plan, index){
+async function swapPackages(plan, index) {
     let x = me.x, y = me.y;
     let inverseMove = {
         "up": "down",
