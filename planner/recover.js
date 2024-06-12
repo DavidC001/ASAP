@@ -138,7 +138,7 @@ async function goAround(index, plan) {
  * @returns {[{x: number, y: number, move: string}]} The new plan, [] if the plan is not recoverable
  */
 async function handleNegotiation(index, plan) {
-    console.log("\t[NEGOTIATION]");
+    console.log("\t[NEGOTIATION] AgentRole: ", AgentRole);
     if (AgentRole === 1) plan = agent1Negotiation(index, plan);
     else plan = agent0Negotiation(index, plan);
 
@@ -154,61 +154,66 @@ async function handleNegotiation(index, plan) {
  */
 async function agent0Negotiation(index, plan) {
     let x = me.x, y = me.y;
+    let newPlan = [];
     // If the other agent is delivering and I'm not, I try to swap packages
     if (otherAgent.intention.type === "deliver" || me.intention.type === 'deliver') {
-        plan = await swapPackages(plan, index);
-        if (plan) return plan;
+        newPlan = await swapPackages(plan, index);
+        if (newPlan) return newPlan;
     }
     // First only try to negotiate the move aside
     let response = await sendRequest("moveOut");
     console.log(response);
     if (response === "RE-SYNC") {
-        plan = [];
-    } else if (response === "SUCCESS") {
+        return [];
+    }
+    
+    if (response === "SUCCESS") {
         plan = [{x: x, y: y, move: "await"}].concat(plan.slice(index, index + 2)).concat([{
             x: x,
             y: y,
             move: "answer"
         }]).concat(plan.slice(index + 2));
         console.log("\t\tMove aside successful");
-    } else {
-        // If the other agent cannot move aside, we try to move aside
-        let newPlan = await planners['moveOut'](index, plan);
-        if (newPlan.length > 0) {
-            response = await sendRequest("waitForOther");
-            if (response === "SUCCESS") {
-                console.log("\tI'm moving aside and waiting for the other agent to pass");
-                return newPlan;
-            }
-        }
-
-        // If we cannot move aside, we ask if the other agent can plan around us
-        response = await sendRequest("planAround");
-        console.log(response);
-        if (response === "RE-SYNC") {
-            plan = [];
-        } else if (response !== "FAILED") {
-            plan = [{x: x, y: y, move: "await"}].concat(plan.slice(index));
-            console.log("\t\tPlan around successful");
-            if (response === "RE-SYNC") {
-                plan = [];
-            }
-        } else {
-            // We first try to move around the other agent
-            let newPlan = await planners['goAround'](index, plan);
-            if (newPlan.length > 0) {
-                response = await sendRequest("stayStill");
-                if (response === "SUCCESS") {
-                    console.log("\tI'm moving around the other agent");
-                    return newPlan;
-                }
-            }
-            // If we cannot move around the other agent, we try to swap packages
-            plan = await swapPackages(plan, index);
-
+        return plan;
+    }
+    // If the other agent cannot move aside, we try to move aside
+    newPlan = await planners['moveOut'](index, plan);
+    if (newPlan.length > 0) {
+        response = await sendRequest("waitForOther");
+        if (response === "SUCCESS") {
+            console.log("\tI'm moving aside and waiting for the other agent to pass");
+            return newPlan;
         }
     }
-    return plan;
+
+    // If we cannot move aside, we ask if the other agent can plan around us
+    response = await sendRequest("planAround");
+    console.log(response);
+    if (response === "RE-SYNC") {
+        return [];
+    }
+    
+    if (response !== "FAILED") {
+        plan = [{x: x, y: y, move: "await"}].concat(plan.slice(index));
+        console.log("\t\tPlan around successful");
+        if (response === "RE-SYNC") {
+            return [];
+        } else {
+            return plan;
+        }
+    } 
+
+    // We first try to move around the other agent
+    newPlan = await planners['planAround'](index, plan);
+    if (newPlan.length > 0) {
+        response = await sendRequest("stayStill");
+        if (response === "SUCCESS") {
+            console.log("\tI'm moving around the other agent");
+            return newPlan;
+        }
+    }
+
+    return [];
 }
 
 /**

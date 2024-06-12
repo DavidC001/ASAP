@@ -113,13 +113,17 @@ function beliefSharing(msg) {
  * @param msg
  */
 function handshake(id, name, msg) {
-    if (name.includes(NAME)) {
+    if (name.includes(NAME) && otherAgent.id !== id) {
+        otherAgent.id = id;
         console.log("handshake with", name, id);
         if (msg === "hello") {
+            console.log("I'm the master");
             AgentRole = 0;
             client.shout({header: "handshake", content: "ACK"});
+        } else {
+            console.log("I'm the collaborator");
+            AgentRole = 1;
         }
-        otherAgent.id = id;
     }
 }
 
@@ -200,7 +204,7 @@ function coordination(clientDeliverooApi) {
         } else {
             client.shout({header: "handshake", content: "hello"});
         }
-    }, 1000);
+    }, 1000+Math.random()*1000);
 }
 
 /**
