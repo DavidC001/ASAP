@@ -232,6 +232,7 @@ class Intention {
 
             if (!res) {
                 // if the move failed, handle the failure
+                retryCount++;
 
                 if (retryCount >= MAX_RETRIES) {
                     // if the retry count is too high, try to recover the plan
@@ -259,7 +260,6 @@ class Intention {
 
                 // if the move failed, retry the move
                 i--;
-                retryCount++;
             } else {
                 // the move was successful, reset the retry count and check if we want to replan
 

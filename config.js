@@ -10,7 +10,7 @@ const DASHBOARD = true; // if true, the dashboard will be available at http://lo
 // Agent intention revision and execution hyperparameters
 const MAX_RETRIES = 2; // Number of retries before trying to recover the plan
 const USE_PDDL = (process.env.USE_PDDL) ? process.env.USE_PDDL === "true" : false; // If true, the agent will use PDDL to plan its actions
-const CHANGE_INTENTION_INTERVAL = (process.env.USE_PDDL) ? 10 : 1; // Number of moves before checking if the intention should be changed
+const CHANGE_INTENTION_INTERVAL = 3; // Number of moves before checking if the intention should be changed
 const HARD_REPLAN_MOVE_INTERVAL = (USE_PDDL) ? Math.Infinity : 6; // Number of moves before hard replanning
 const SOFT_REPLAN_INTERVAL = (USE_PDDL) ? 6 : Math.Infinity; // Number of moves before soft replanning
 const INTENTION_REVISION_INTERVAL = 100; // Interval between intention revision
@@ -41,7 +41,7 @@ const MAX_HISTORY = 5; // Maximum number of history to keep for each agent
 const MAX_FUTURE = (USE_PDDL)? 1:20; // Maximum number of future to calculate
 const MAX_SPAWNABLE_TILES_DISTANCE = 1; // Maximum distance to consider a tile spawnable in the same region
 const MAX_AGENT_HEATMAP_DISTANCE = 3; // distance an agent affets the heatmap
-const MAX_TIME = 500; // Maximum time for last_seen for the tiles
+const MAX_TIME = 400; // Maximum time for last_seen for the tiles
 const DELETE_UNSEEN_AGENTS_INTERVAL = 2500; // Interval to delete the agents that are not seen anymore
 const LAST_SEEN_RESCALE_FACTOR = 0.5; // Factor to rescale the last seen time
 

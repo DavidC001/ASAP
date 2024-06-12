@@ -17,13 +17,6 @@ let planners = {
         }
         return [];
     },
-    "planAround": async (index, plan) => {
-        plan = await goAround(index, plan);
-        if (plan.length > 0) {
-            return [plan[0], {x: 0, y: 0, move: "answer"}].concat(plan.slice(1));
-        }
-        return [];
-    },
     "swap": async (index, plan) => {
         let backtrack = await MoveAside(index, plan, true);
         if (backtrack.length > 0) {
@@ -66,9 +59,6 @@ let planners = {
             y: 0,
             move: "answer"
         }]).concat(plan.slice(index + 2));
-    },
-    "stayStill": async (index, plan) => {
-        return [{x: me.x, y: me.y, move: "await"}].concat(plan.slice(index));
     }
 }
 
@@ -182,33 +172,6 @@ async function agent0Negotiation(index, plan) {
         response = await sendRequest("waitForOther");
         if (response === "SUCCESS") {
             console.log("\tI'm moving aside and waiting for the other agent to pass");
-            return newPlan;
-        }
-    }
-
-    // If we cannot move aside, we ask if the other agent can plan around us
-    response = await sendRequest("planAround");
-    console.log(response);
-    if (response === "RE-SYNC") {
-        return [];
-    }
-    
-    if (response !== "FAILED") {
-        plan = [{x: x, y: y, move: "await"}].concat(plan.slice(index));
-        console.log("\t\tPlan around successful");
-        if (response === "RE-SYNC") {
-            return [];
-        } else {
-            return plan;
-        }
-    } 
-
-    // We first try to move around the other agent
-    newPlan = await planners['planAround'](index, plan);
-    if (newPlan.length > 0) {
-        response = await sendRequest("stayStill");
-        if (response === "SUCCESS") {
-            console.log("\tI'm moving around the other agent");
             return newPlan;
         }
     }
