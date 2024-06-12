@@ -117,6 +117,9 @@ async function goAround(index, plan) {
     let newPlan = [];
     if (plan[index + 1]) {
         let objective = [{x: plan[index + 1].x, y: plan[index + 1].y}];
+        if (plan[index+1].move === "deliver") {
+            objective = map.deliveryZones;
+        }
         newPlan = await frozenBFS({x: currMovX, y: currMovY, move: 'none'}, objective);
         if (newPlan.length > 6 || newPlan.length < 2) {
             newPlan = []
@@ -152,7 +155,7 @@ async function handleNegotiation(index, plan) {
 async function agent0Negotiation(index, plan) {
     let x = me.x, y = me.y;
     // If the other agent is delivering and I'm not, I try to swap packages
-    if (otherAgent.intention.type === "deliver" && me.intention.type !== 'deliver') {
+    if (otherAgent.intention.type === "deliver" || me.intention.type === 'deliver') {
         plan = await swapPackages(plan, index);
         if (plan) return plan;
     }
