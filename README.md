@@ -41,6 +41,7 @@ ASAP/
 │   ├── log.js                 # Logging functionality
 |
 ├── agent.js                   # Main agent logic
+├── ASAP.pdf                   # Full project report
 ├── index.js                   # Entry point for running the agent
 ├── config.js                  # Configuration parameters
 ├── package.json               # Project metadata and dependencies
