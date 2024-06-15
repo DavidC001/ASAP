@@ -8,7 +8,7 @@ import {PDDL_path, PDDL_pickupAndDeliver} from "./PDDL_planners.js";
 
 import {otherAgent} from "../coordination/coordination.js";
 
-import {PROBABILITY_KEEP_BEST_TILE, TIME_PENALTY, MAX_EXPLORE_PATH_LENGTH} from "../config.js";
+import {PROBABILITY_KEEP_BEST_TILE, TIME_PENALTY, MAX_EXPLORE_PATH_LENGTH, MAX_TIME} from "../config.js";
 
 
 /**
@@ -273,7 +273,7 @@ async function exploreBFS(pos, goal, usePDDL = false) {
             (tile_agent_heat) *
             (otherAgent.intention.type === "" ?
                     1 :
-                    1 - (distance(tile, otherAgent.intention.goal) / (map.width + map.height)) * (1 - (tile_last_seen) / 700)
+                    1 - (distance(tile, otherAgent.intention.goal) / ((map.width + map.height))) * (1 - (tile_last_seen) / (MAX_TIME*1.5))
             )
         );
 
@@ -315,11 +315,15 @@ async function exploreBFS(pos, goal, usePDDL = false) {
 
     // give penality to all the tiles in the region of the best tile
     let region = map.map[best_tile.x][best_tile.y].RegionIndex;
-    for (let tile of map.spawnableTiles) {
-        if (map.map[tile.x][tile.y].RegionIndex === region) {
-            // console.log("\tPenalizing tile", tile);
-            map.map[tile.x][tile.y].last_seen += TIME_PENALTY;
+    if (map.numberOfRegions >1){
+        for (let tile of map.spawnableTiles) {
+            if (map.map[tile.x][tile.y].RegionIndex === region) {
+                // console.log("\tPenalizing tile", tile);
+                map.map[tile.x][tile.y].last_seen += TIME_PENALTY;
+            }
         }
+    }else{
+        map.map[best_tile.x][best_tile.y].last_seen += TIME_PENALTY;
     }
 
     // console.log("\t", best_tile, best_last_seen, best_agent_heat, "loss", best_loss);
