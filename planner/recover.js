@@ -80,7 +80,8 @@ async function recoverPlan(index, plan, intention_type) {
         if (map.map[x][y].agent === null) {
             console.log("\tAgent is gone");
             // if by waiting the agent is gone then try to keep going with the original plan
-            plan = plan.slice(index, plan.length);
+            if (plan[index].move === "fail") plan = [];
+            else plan = plan.slice(index, plan.length);
         } else {
             console.log("\tAgent is not the other agent");
             // try to go around the agent if possible
