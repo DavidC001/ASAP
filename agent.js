@@ -374,7 +374,7 @@ class Intention {
                                 // compute the score based on the distance and the parcel score
                                 let parcelScore = parcels.get(this.pickUp).score / (me.config.PARCEL_REWARD_AVG + me.config.PARCEL_REWARD_VARIANCE) / 2;
                                 let distanceScore = (steps - distance_agent) / (map.width + map.height) * 0.3;
-                                score = 0.2 + parcelScore + distanceScore;
+                                score = 0.5 + parcelScore - distanceScore;
                                 steps = 0;
 
                                 //if it's the other agent closer, then set the score to 0
