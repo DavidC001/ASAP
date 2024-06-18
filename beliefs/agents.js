@@ -125,6 +125,9 @@ class BelievedIntention {
         if (this.lastMove === "LEFT") {
             dx = -1;
         }
+        if (this.lastMove === "RIGHT") {
+            dx = 1;
+        }
 
         for (let i = 0; i < MAX_FUTURE; i++) {
             pos = {x: pos.x + dx, y: pos.y + dy};
@@ -378,7 +381,7 @@ function senseAgents(sensedAgents) {
         //console.log(agent);
 
         // add the agents to the beliefset to be used in the PDDL planner
-        if (agent.position.x > 0 && agent.position.y > 0 && agent.position.x < map.width && agent.position.y < map.height && map.map[agent.position.x][agent.position.y].type !== "obstacle") {
+        if (agent.position.x >= 0 && agent.position.y >= 0 && agent.position.x < map.width && agent.position.y < map.height && map.map[agent.position.x][agent.position.y].type !== "obstacle") {
             agentsBeliefSet.declare(`agent t_${agent.position.x}_${agent.position.y}`);
             futureAgentsBeliefSet.declare(`agent t_${agent.position.x}_${agent.position.y} T0`);
         }
@@ -387,7 +390,7 @@ function senseAgents(sensedAgents) {
 
         // add the future positions of the agents to the beliefset to be used in the PDDL planner
         for (let [index, move] of agent.believedIntetion.futureMoves.entries()) {
-            if (move.x > 0 && move.y > 0 && move.x < map.width && move.y < map.height && map.map[move.x][move.y].type !== "obstacle") {
+            if (move.x >= 0 && move.y >= 0 && move.x < map.width && move.y < map.height && map.map[move.x][move.y].type !== "obstacle") {
                 futureAgentsBeliefSet.declare(`agent t_${move.x}_${move.y} T${index + 1}`);
             }
         }
