@@ -218,6 +218,8 @@ class Maps {
             }
         }
         //console.log(this.spawnableTiles);
+
+        this.updatePrediction();
     }
     
     /**
@@ -317,7 +319,7 @@ class Maps {
         deletedParcels.length = 0;
 
         // Update the map with the new map
-        this.map = JSON.parse(JSON.stringify(new_map));
+        this.map = new_map;
         if ( DASHBOARD) drawMap(this.map);
 
         // Update the prediction of the map

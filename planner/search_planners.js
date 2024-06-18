@@ -24,12 +24,9 @@ function BFStoObjective(pos, objectiveList, startTime = 0) {
     let directions = [[[0, 1, 'up'], [0, -1, 'down'], [1, 0, 'right'], [-1, 0, 'left'], [0, 0, 'wait']],
         [[1, 0, 'right'], [-1, 0, 'left'], [0, 1, 'up'], [0, -1, 'down'], [0, 0, 'wait']]];
 
-    // Check if the goal is blocked by an obstacle or an agent
-    objectiveList = objectiveList.filter(objective => {
-        return (map.predictedMap[MAX_FUTURE - 1][objective.x][objective.y].type !== 'obstacle'
-            && map.predictedMap[MAX_FUTURE - 1][objective.x][objective.y].agent === null);
-    });
-
+    //if predictedMap is not available, return empty path
+    if (!map.predictedMap) return [pos];
+    
     // BFS
     while (queue.length > 0) {
         current = queue.shift();
