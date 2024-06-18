@@ -4,14 +4,18 @@ import http from "http";
 import express from "express";
 import path from "path";
 
-import { DASHBOARD } from "../config.js";
+import {DASHBOARD} from "../config.js";
 
 class MyServer {
     constructor() {
         this.app = express();
         this.server = http.createServer(this.app);
         this.io = new Server(this.server);
-
+        this.port = 3000;
+        this.server.on('error', (err) => {
+            this.port=0;
+            this.start();
+        });
         this.start();
         this.serveDashboard();
     }
@@ -26,7 +30,7 @@ class MyServer {
     }
 
     start() {
-        this.server.listen(0, () => {
+        this.server.listen(this.port, () => {
             console.log("Dashboard server running on http://localhost:" + this.server.address().port);
         });
     }
@@ -35,6 +39,7 @@ class MyServer {
         this.io.emit(event, data);
     }
 }
+
 /**
  * The server
  * @type {MyServer}

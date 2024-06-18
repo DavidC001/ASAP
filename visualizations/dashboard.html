@@ -86,6 +86,9 @@
         #map_table {
             width: auto;
         }
+        .intentions{
+            height: 120px;
+        }
     </style>
 </head>
 <body>
@@ -96,12 +99,12 @@
             <p>Welcome to the dashboard</p>
             <div class="row">
                 <!-- Current intention -->
-                <div class="col">
+                <div class="col intentions">
                     <h5>Current intention</h5>
                     <p id="current_intention">No intention</p>
                 </div>
                 <!-- Other agent intention -->
-                <div class="col">
+                <div class="col intentions">
                     <h5>Other agent intention</h5>
                     <p id="other_agent_intention">No intention</p>
                 </div>
@@ -168,8 +171,8 @@
                     if (cell_element.hasClass('otherAgentPlan') && !cell_element.hasClass('me')) other_class = ' otherAgentPlan';
                     if (cell_element.hasClass('plan') && !cell_element.hasClass('me')) other_class = ' plan';
                     cell_element.attr('class', cell + other_class);
-                    let element = `${score?score:(last_seen?Math.floor(last_seen):'')}
-                    <div class="heat" style="opacity: ${(heat-1)/10}"> </div>`;
+                    let element = `${score ? score : (last_seen ? Math.floor(last_seen) : '')}
+                    <div class="heat" style="opacity: ${(heat - 1) / 10}"> </div>`;
                     cell_element.html(element);
                 }
             }
